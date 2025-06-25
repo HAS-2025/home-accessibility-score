@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Accessibility Score</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+
+        .input-section {
+            margin-bottom: 2rem;
+        }
+
+        .input-section h2 {
+            color: #4a5568;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .url-input-container {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .analyze-btn {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+            color: #667eea;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .score-display {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 15px;
+        }
+
+        .score-number {
+            font-size: 4rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+        }
+
+        .score-label {
+            font-size: 1.2rem;
+            color: #4a5568;
+            margin-bottom: 1rem;
+        }
+
+        .score-stars {
+            font-size: 2rem;
+            color: #ffd700;
+        }
+
+        .criteria-breakdown {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .criteria-item {
+            background: #f8fafc;
+            padding: 1.5rem;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .criteria-item h3 {
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .criteria-score {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .score-excellent { color: #38a169; }
+        .score-good { color: #3182ce; }
+        .score-fair { color: #d69e2e; }
+        .score-poor { color: #e53e3e; }
+
+        .summary {
+            background: #f7fafc;
+            padding: 2rem;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .summary h3 {
+            color: #2d3748;
+            margin-bottom: 1rem;
+        }
+
+        .disclaimer {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+            border-radius: 10px;
+            color: #742a2a;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Home Accessibility Score</h1>
+            <p>Get an instant accessibility rating for any property, focusing on comfort and ease of living for older adults</p>
+        </div>
+
+        <div class="main-card">
+            <div class="input-section">
+                <h2>Analyze a Property</h2>
+                <div class="url-input-container">
+                    <input type="url" class="url-input" id="propertyUrl" placeholder="Paste Rightmove property URL here..." />
+                    <button class="analyze-btn" id="analyzeBtn" onclick="analyzeProperty()">Analyze Property</button>
+                </div>
+                <p style="color: #718096; font-size: 0.9rem;">Example: https://www.rightmove.co.uk/properties/123456789</p>
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing property accessibility...</p>
+            </div>
+
+            <div class="results" id="results">
+                <div class="score-display">
+                    <div class="score-number" id="overallScore">4.2</div>
+                    <div class="score-label">Overall Accessibility Score</div>
+                    <div class="score-stars" id="scoreStars">★★★★☆</div>
+                </div>
+
+                <div class="criteria-breakdown">
+                    <div class="criteria-item">
+                        <h3>🚪 Stairs & Accessibility</h3>
+                        <div class="criteria-score score-good" id="stairsScore">Good</div>
+                        <p id="stairsDetails">Ground floor living available with minimal steps</p>
+                    </div>
+
+                    <div class="criteria-item">
+                        <h3>🪟 Natural Light & Windows</h3>
+                        <div class="criteria-score score-excellent" id="lightScore">Excellent</div>
+                        <p id="lightDetails">Large windows throughout providing abundant natural light</p>
+                    </div>
+
+                    <div class="criteria-item">
+                        <h3>🏠 Heating Efficiency</h3>
+                        <div class="criteria-score score-good" id="heatingScore">Good</div>
+                        <p id="heatingDetails">Well-insulated with efficient heating system</p>
+                    </div>
+                </div>
+
+                <div class="summary">
+                    <h3>Summary & Recommendations</h3>
+                    <p id="summaryText">This property shows good accessibility features overall. The abundant natural light and efficient heating make it comfortable for daily living, though some consideration should be given to stair access for long-term mobility needs.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="disclaimer">
+            <strong>Disclaimer:</strong> This accessibility score is generated by AI analysis and should be used as a general guide only. We recommend visiting the property in person and consulting with accessibility specialists for specific mobility requirements.
+        </div>
+    </div>
+
+    <script>
+        function getScoreClass(rating) {
+            if (rating >= 4.5) return 'score-excellent';
+            if (rating >= 3.5) return 'score-good';
+            if (rating >= 2.5) return 'score-fair';
+            return 'score-poor';
+        }
+
+        function generateStars(score) {
+            const fullStars = Math.floor(score);
+            const hasHalfStar = score % 1 >= 0.5;
+            let stars = '★'.repeat(fullStars);
+            if (hasHalfStar) stars += '☆';
+            stars += '☆'.repeat(5 - fullStars - (hasHalfStar ? 1 : 0));
+            return stars;
+        }
+
+        async function analyzeProperty() {
+            const urlInput = document.getElementById('propertyUrl');
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                alert('Please enter a Rightmove property URL');
+                return;
+            }
+
+            if (!url.includes('rightmove.co.uk')) {
+                alert('Please enter a valid Rightmove property URL');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+            document.getElementById('analyzeBtn').disabled = true;
+
+            try {
+                // Call the real API
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to analyze property');
+                }
+
+                const result = await response.json();
+                const analysis = result.analysis;
+
+                // Update UI with real results from the API
+                document.getElementById('overallScore').textContent = analysis.overall.toFixed(1);
+                document.getElementById('scoreStars').textContent = generateStars(analysis.overall);
+
+                // Update criteria scores with real data
+                document.getElementById('stairsScore').textContent = analysis.stairs.rating;
+                document.getElementById('stairsScore').className = `criteria-score ${getScoreClass(analysis.stairs.score)}`;
+                document.getElementById('stairsDetails').textContent = analysis.stairs.details;
+
+                document.getElementById('lightScore').textContent = analysis.light.rating;
+                document.getElementById('lightScore').className = `criteria-score ${getScoreClass(analysis.light.score)}`;
+                document.getElementById('lightDetails').textContent = analysis.light.details;
+
+                document.getElementById('heatingScore').textContent = analysis.heating.rating;
+                document.getElementById('heatingScore').className = `criteria-score ${getScoreClass(analysis.heating.score)}`;
+                document.getElementById('heatingDetails').textContent = analysis.heating.details;
+
+                document.getElementById('summaryText').textContent = analysis.summary;
+
+                // Hide loading and show results
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('results').classList.add('show');
+                document.getElementById('analyzeBtn').disabled = false;
+
+                // Scroll to results
+                document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                console.error('Analysis error:', error);
+                alert('Failed to analyze property: ' + error.message);
+                
+                // Hide loading state on error
+                document.getElementById('loading').classList.remove('show');
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('propertyUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeProperty();
+            }
+        });
+    </script>
+</body>
+</html>
