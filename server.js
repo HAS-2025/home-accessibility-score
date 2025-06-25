@@ -11,6 +11,7 @@ const PORT = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static('.'));
 
 // Store for caching results
 const cache = new Map();
@@ -138,6 +139,11 @@ function getScoreRating(score) {
     if (score >= 2.5) return 'Fair';
     return 'Poor';
 }
+
+// Serve the main page
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
 
 // API Routes
 app.get('/health', (req, res) => {
