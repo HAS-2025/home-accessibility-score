@@ -202,7 +202,7 @@ $('img').each((i, img) => {
             features: features,
             images: images.slice(0, 5), // Limit to first 5 images
             floorplan: floorplan,
-            epcRating: null // We'll work on this next
+            epcRating: null,
             address: address || 'Address not found'
             coordinates: coordinates
         };
