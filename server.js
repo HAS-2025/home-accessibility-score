@@ -146,75 +146,10 @@ $('img').each((i, img) => {
     }
 }
 
-// AI-powered image filtering for accessibility analysis
-const filterImagesForAccessibility = async (images) => {
-    if (images.length <= 8) {
-        console.log('Using all images - within limit');
-        return images;
-    }
-    
-    console.log(`Filtering ${images.length} images for accessibility relevance...`);
-    
-    // Quick AI analysis to identify most relevant images
-    const filterPrompt = `You are an accessibility expert reviewing property images. From this list of ${images.length} images, identify the 8 MOST USEFUL for assessing home accessibility for older adults.
-
-PRIORITIZE images showing:
-- Floorplans or layouts
-- Interior rooms (kitchen, bedroom, bathroom, living areas)
-- Entrances, doorways, hallways
-- Stairs, steps, or level access
-- Exterior access (front door, garden paths, driveways)
-
-AVOID images that are:
-- Purely decorative/artistic
-- Landscape views without property access
-- Close-ups of furnishings/decorations
-- Multiple similar room angles
-
-Respond with ONLY a JSON array of the image URLs you want to analyze, like:
-["url1", "url2", "url3", "url4", "url5", "url6", "url7", "url8"]`;
-
-    try {
-        const filterResponse = await axios.post(CLAUDE_API_URL, {
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 500,
-            messages: [{
-                role: 'user',
-                content: [
-                    {
-                        type: "text",
-                        text: filterPrompt
-                    },
-                    ...images.slice(0, 15).map(url => ({ // Pre-filter to first 15 for efficiency
-                        type: "image",
-                        source: { type: "url", url: url }
-                    }))
-                ]
-            }]
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': CLAUDE_API_KEY,
-                'anthropic-version': '2023-06-01'
-            }
-        });
-
-        const filterResult = filterResponse.data.content[0].text;
-        const selectedImages = JSON.parse(filterResult);
-        
-        console.log(`AI selected ${selectedImages.length} most relevant images`);
-        return selectedImages;
-        
-    } catch (error) {
-        console.log('AI filtering failed, using first 8 images:', error.message);
-        return images.slice(0, 8);
-    }
-};
-
 // Analyze property with Claude (including vision)
 async function analyzePropertyAccessibility(property) {
-    // Use AI to select most relevant images for accessibility analysis
-    const imagesToAnalyze = await filterImagesForAccessibility(property.images);
+    // Select first 5 images for analysis (to avoid timeouts)
+const imagesToAnalyze = property.images.slice(0, 5);
     
     // Prepare the content array for Claude
     const content = [];
