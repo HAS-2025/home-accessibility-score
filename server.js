@@ -88,31 +88,83 @@ async function tryFloorplanURL(propertyId) {
     }
 }
 
-// Find nearest GP surgeries using Google Places API
+// Find nearest GP surgeries using Google Places API with multiple search strategies
 async function findNearestGPs(lat, lng) {
     try {
         console.log(`Finding real GPs near coordinates ${lat}, ${lng}`);
         
-        const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=doctor&keyword=gp+surgery+medical+centre&key=${process.env.GOOGLE_MAPS_API_KEY}`;
-        
-        const response = await axios.get(placesUrl);
-        
-        if (response.data.results && response.data.results.length > 0) {
-            // Get up to 3 nearest GPs
-            const gps = response.data.results.slice(0, 3).map(place => ({
-                name: place.name,
-                address: place.vicinity,
-                location: place.geometry.location,
-                rating: place.rating || 'No rating',
-                placeId: place.place_id
-            }));
+        // Try multiple search approaches
+        const searchStrategies = [
+            // Strategy 1: Doctor with GP keywords
+            `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=2000&type=doctor&keyword=gp+surgery+medical+centre&key=${process.env.GOOGLE_MAPS_API_KEY}`,
             
-            console.log(`Found ${gps.length} real GP surgeries:`, gps.map(gp => gp.name));
-            return gps;
+            // Strategy 2: Health category with specific keywords
+            `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=2000&type=health&keyword=gp+general+practitioner&key=${process.env.GOOGLE_MAPS_API_KEY}`,
+            
+            // Strategy 3: Text search for common GP terms
+            `https://maps.googleapis.com/maps/api/place/textsearch/json?query=gp+surgery+medical+centre+near+${lat},${lng}&radius=2000&key=${process.env.GOOGLE_MAPS_API_KEY}`,
+            
+            // Strategy 4: Hospital type (catches some medical centres)
+            `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=2000&type=hospital&keyword=surgery+medical+centre&key=${process.env.GOOGLE_MAPS_API_KEY}`
+        ];
+        
+        let allGPs = [];
+        
+        for (let i = 0; i < searchStrategies.length; i++) {
+            try {
+                console.log(`Trying search strategy ${i + 1}...`);
+                const response = await axios.get(searchStrategies[i]);
+                
+                if (response.data.results && response.data.results.length > 0) {
+                    const gps = response.data.results.map(place => ({
+                        name: place.name,
+                        address: place.vicinity || place.formatted_address,
+                        location: place.geometry.location,
+                        rating: place.rating || 'No rating',
+                        placeId: place.place_id,
+                        types: place.types
+                    }));
+                    
+                    allGPs.push(...gps);
+                    console.log(`Strategy ${i + 1} found ${gps.length} results:`, gps.map(gp => gp.name));
+                }
+            } catch (error) {
+                console.log(`Strategy ${i + 1} failed:`, error.message);
+            }
         }
         
-        console.log('No GP surgeries found in area');
+        // Remove duplicates and filter for likely GP surgeries
+        const uniqueGPs = allGPs.filter((gp, index, self) => 
+            index === self.findIndex(g => g.placeId === gp.placeId)
+        );
+        
+        // Filter for likely GP surgeries based on name patterns
+        const filteredGPs = uniqueGPs.filter(gp => {
+            const name = gp.name.toLowerCase();
+            return (
+                name.includes('surgery') ||
+                name.includes('medical centre') ||
+                name.includes('medical center') ||
+                name.includes('health centre') ||
+                name.includes('gp') ||
+                name.includes('family practice') ||
+                name.includes('clinic') ||
+                name.includes('doctors')
+            );
+        });
+        
+        console.log(`Total found: ${allGPs.length}, After filtering: ${filteredGPs.length}`);
+        
+        if (filteredGPs.length > 0) {
+            // Sort by distance and return top 3
+            const sortedGPs = filteredGPs.slice(0, 3);
+            console.log(`Final GP list:`, sortedGPs.map(gp => `${gp.name} (${gp.address})`));
+            return sortedGPs;
+        }
+        
+        console.log('No GP surgeries found after all search strategies');
         return [];
+        
     } catch (error) {
         console.error('Google Places API error:', error.response?.data || error.message);
         return [];
