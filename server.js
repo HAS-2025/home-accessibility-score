@@ -88,32 +88,112 @@ async function tryFloorplanURL(propertyId) {
     }
 }
 
-// Mock GP analysis (for testing without API key)
+// Find nearest GP surgeries using Google Places API
 async function findNearestGPs(lat, lng) {
-    console.log(`Mock: Finding GPs near coordinates ${lat}, ${lng}`);
-    
-    // Return mock GP data for testing
-    return [{
-        name: "Bath Medical Centre",
-        address: "High Street, Bath",
-        location: { lat: lat + 0.001, lng: lng + 0.001 },
-        rating: 4.2,
-        placeId: "mock_place_id"
-    }];
+    try {
+        console.log(`Finding real GPs near coordinates ${lat}, ${lng}`);
+        
+        const placesUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=doctor&keyword=gp+surgery+medical+centre&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+        
+        const response = await axios.get(placesUrl);
+        
+        if (response.data.results && response.data.results.length > 0) {
+            // Get up to 3 nearest GPs
+            const gps = response.data.results.slice(0, 3).map(place => ({
+                name: place.name,
+                address: place.vicinity,
+                location: place.geometry.location,
+                rating: place.rating || 'No rating',
+                placeId: place.place_id
+            }));
+            
+            console.log(`Found ${gps.length} real GP surgeries:`, gps.map(gp => gp.name));
+            return gps;
+        }
+        
+        console.log('No GP surgeries found in area');
+        return [];
+    } catch (error) {
+        console.error('Google Places API error:', error.response?.data || error.message);
+        return [];
+    }
 }
 
+// Get walking directions and analyze route accessibility
 async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
-    console.log(`Mock: Analyzing route to ${gpName}`);
+    try {
+        console.log(`Getting real walking route to ${gpName}`);
+        
+        const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&mode=walking&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+        
+        const response = await axios.get(directionsUrl);
+        
+        if (response.data.routes && response.data.routes.length > 0) {
+            const route = response.data.routes[0];
+            const leg = route.legs[0];
+            
+            // Analyze route for accessibility concerns
+            const steps = leg.steps;
+            const routeWarnings = [];
+            
+            steps.forEach(step => {
+                const instruction = step.html_instructions.toLowerCase();
+                
+                // Look for potential accessibility issues
+                if (instruction.includes('stairs') || instruction.includes('steps')) {
+                    routeWarnings.push('Route includes stairs or steps');
+                }
+                if (instruction.includes('steep') || instruction.includes('hill')) {
+                    routeWarnings.push('Route includes steep incline');
+                }
+                if (instruction.includes('busy') || instruction.includes('main road')) {
+                    routeWarnings.push('Route crosses busy roads');
+                }
+            });
+            
+            const result = {
+                distance: leg.distance.text,
+                duration: leg.duration.text,
+                durationMinutes: Math.ceil(leg.duration.value / 60),
+                routeWarnings: [...new Set(routeWarnings)], // Remove duplicates
+                accessibilityNotes: generateAccessibilityNotes(leg, routeWarnings),
+                gpName: gpName
+            };
+            
+            console.log(`Real route analysis: ${result.duration} (${result.distance})`);
+            return result;
+        }
+        
+        console.log('No walking route found');
+        return null;
+    } catch (error) {
+        console.error('Google Directions API error:', error.response?.data || error.message);
+        return null;
+    }
+}
+
+// Generate accessibility-focused route analysis
+function generateAccessibilityNotes(leg, warnings) {
+    const duration = Math.ceil(leg.duration.value / 60);
+    let notes = [];
     
-    // Return mock route data
-    return {
-        distance: "0.3 miles",
-        duration: "6 minutes",
-        durationMinutes: 6,
-        routeWarnings: [],
-        accessibilityNotes: "Mock route: Level ground with good pedestrian access and dropped kerbs",
-        gpName: gpName
-    };
+    if (duration <= 5) {
+        notes.push("Excellent proximity - very manageable walk for most older adults");
+    } else if (duration <= 10) {
+        notes.push("Good proximity - comfortable walking distance");
+    } else if (duration <= 20) {
+        notes.push("Moderate distance - may require planning for longer walk");
+    } else {
+        notes.push("Longer walk - consider transport alternatives");
+    }
+    
+    if (warnings.length === 0) {
+        notes.push("Route appears to be level with good pedestrian access");
+    } else {
+        notes.push(`Route considerations: ${warnings.join(', ').toLowerCase()}`);
+    }
+    
+    return notes.join('. ');
 }
 
 function calculateGPProximityScore(durationMinutes) {
