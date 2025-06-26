@@ -20,32 +20,44 @@ const cache = new Map();
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// Scrape Rightmove property data
 async function scrapeRightmoveProperty(url) {
     try {
-        // TEMPORARY: Return mock data to test the full system
-        console.log('Using mock property data for:', url);
+        console.log('Scraping Rightmove URL:', url);
+        
+        const response = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+
+        const $ = cheerio.load(response.data);
+        
+        // Debug: Log what we can find
+        console.log('Page title:', $('title').text());
+        console.log('H1 elements:', $('h1').length);
+        console.log('First H1:', $('h1').first().text());
+        
+        // Try multiple selectors for property title
+        const title = $('h1').first().text().trim() || 
+                     $('[data-testid="property-title"]').text().trim() ||
+                     $('.property-header-title').text().trim() ||
+                     'Property title not found';
+                     
+        console.log('Extracted title:', title);
+        
+        // Extract property ID from URL
+        const propertyIdMatch = url.match(/properties\/(\d+)/);
+        const propertyId = propertyIdMatch ? propertyIdMatch[1] : 'unknown';
         
         return {
-            id: '162747554',
-            title: '5 bedroom detached house for sale',
-            price: '£875,000',
-            description: 'A stunning detached family home situated on a generous plot. The property features a spacious entrance hall, large living room with bay window, modern kitchen with integrated appliances, and five good-sized bedrooms. The property benefits from gas central heating throughout, double glazing, and a private driveway. There is a large rear garden perfect for families. EPC Rating D.',
-            features: [
-                '5 bedrooms',
-                'Detached house',
-                'Gas central heating',
-                'Large bay windows',
-                'Double glazing',
-                'Private driveway',
-                'Large rear garden',
-                'Modern kitchen',
-                'Entrance hall',
-                'Family home'
-            ],
+            id: propertyId,
+            title: title,
+            price: 'Price extraction needed',
+            description: 'Description extraction needed', 
+            features: ['Feature extraction needed'],
             images: [],
             floorplan: null,
-            epcRating: 'D'
+            epcRating: null
         };
         
     } catch (error) {
