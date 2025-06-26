@@ -88,51 +88,79 @@ async function tryFloorplanURL(propertyId) {
     }
 }
 
-// Debug version - see what Google actually returns
+// Find nearest GP surgeries using NEW Google Places API
 async function findNearestGPs(lat, lng) {
     try {
-        console.log(`Finding real GPs near coordinates ${lat}, ${lng}`);
+        console.log(`Finding real GPs near coordinates ${lat}, ${lng} using NEW API`);
         
-        // Simple wide search to see what's actually there
-        const debugUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=5000&type=doctor&key=${process.env.GOOGLE_MAPS_API_KEY}`;
-        
-        console.log('Debug URL (first 100 chars):', debugUrl.substring(0, 100) + '...');
-        
-        const response = await axios.get(debugUrl);
-        
-        console.log('Google API Response Status:', response.data.status);
-        console.log('Total results found:', response.data.results?.length || 0);
-        
-        if (response.data.results && response.data.results.length > 0) {
-            // Log first few results with ALL their data
-            response.data.results.slice(0, 3).forEach((place, index) => {
-                console.log(`Result ${index + 1}:`, {
-                    name: place.name,
-                    types: place.types,
-                    vicinity: place.vicinity,
-                    rating: place.rating,
-                    business_status: place.business_status
-                });
-            });
-            
-            return response.data.results.slice(0, 3).map(place => ({
-                name: place.name,
-                address: place.vicinity,
-                location: place.geometry.location,
-                rating: place.rating || 'No rating',
-                placeId: place.place_id
-            }));
-        } else {
-            console.log('Google API returned no results');
-            if (response.data.error_message) {
-                console.log('Error message:', response.data.error_message);
+        // Use NEW Places API - Nearby Search
+        const requestBody = {
+            includedTypes: ["doctor", "hospital", "medical_clinic"],
+            maxResultCount: 10,
+            locationRestriction: {
+                circle: {
+                    center: {
+                        latitude: lat,
+                        longitude: lng
+                    },
+                    radius: 3000.0
+                }
             }
+        };
+        
+        const response = await axios.post(
+            'https://places.googleapis.com/v1/places:searchNearby',
+            requestBody,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id'
+                }
+            }
+        );
+        
+        console.log('NEW API Response received');
+        
+        if (response.data.places && response.data.places.length > 0) {
+            console.log(`Found ${response.data.places.length} medical facilities`);
+            
+            // Filter for likely GP surgeries
+            const gps = response.data.places.filter(place => {
+                const name = place.displayName?.text?.toLowerCase() || '';
+                const types = place.types || [];
+                
+                return (
+                    name.includes('surgery') ||
+                    name.includes('medical centre') ||
+                    name.includes('medical center') ||
+                    name.includes('health centre') ||
+                    name.includes('gp') ||
+                    name.includes('family practice') ||
+                    name.includes('clinic') ||
+                    name.includes('doctors') ||
+                    types.includes('doctor')
+                );
+            }).map(place => ({
+                name: place.displayName?.text || 'Medical Facility',
+                address: place.formattedAddress || 'Address not available',
+                location: {
+                    lat: place.location?.latitude,
+                    lng: place.location?.longitude
+                },
+                rating: place.rating || 'No rating',
+                placeId: place.id
+            }));
+            
+            console.log(`Filtered to ${gps.length} GP surgeries:`, gps.map(gp => gp.name));
+            return gps.slice(0, 3);
         }
         
+        console.log('No medical facilities found');
         return [];
         
     } catch (error) {
-        console.error('Google Places API error:', error.response?.data || error.message);
+        console.error('Google Places NEW API error:', error.response?.data || error.message);
         return [];
     }
 }
