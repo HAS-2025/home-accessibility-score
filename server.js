@@ -148,14 +148,25 @@ async function scrapeRightmoveProperty(url) {
 
 // Analyze property with Claude
 async function analyzePropertyAccessibility(property) {
-    const prompt = `You are an accessibility expert specializing in homes for older adults. Analyze this property and provide scores for three criteria.
+    // Add this after the basic prompt
+const hasImages = property.images && property.images.length > 0;
+const imageAnalysisNote = hasImages ? 
+  `\n\nProperty Images Available: ${property.images.length} images found for visual analysis of windows, layout, and accessibility features.` : 
+  '\n\nNo property images available for visual analysis.';
+
+const prompt = `You are an accessibility expert specializing in homes for older adults. Analyze this property and provide scores for three criteria.
 
 Property Details:
 - Title: ${property.title}
 - Price: ${property.price}
 - Description: ${property.description}
 - Features: ${property.features.join(', ')}
-- EPC Rating: ${property.epcRating || 'Not specified'}
+- EPC Rating: ${property.epcRating || 'Not specified'}${imageAnalysisNote}
+
+Focus on analyzing the DESCRIPTION text for specific details about:
+- Stairs, levels, and accessibility features
+- Window sizes, natural light mentions, room layouts
+- Heating systems, insulation, recent renovations
 
 IMPORTANT: You must respond with ONLY a valid JSON object, no other text.
 
