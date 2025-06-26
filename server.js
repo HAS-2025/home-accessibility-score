@@ -37,28 +37,44 @@ async function scrapeRightmoveProperty(url) {
         console.log('H1 elements:', $('h1').length);
         console.log('First H1:', $('h1').first().text());
         
-        // Try multiple selectors for property title
-        const title = $('h1').first().text().trim() || 
-                     $('[data-testid="property-title"]').text().trim() ||
-                     $('.property-header-title').text().trim() ||
-                     'Property title not found';
-                     
-        console.log('Extracted title:', title);
+      // Try multiple selectors for property title
+const title = $('.property-title').text().trim() ||
+             $('h1[data-testid="property-title"]').text().trim() ||
+             $('[data-testid="property-header-title"]').text().trim() ||
+             $('h1').eq(1).text().trim() || // Try second H1 
+             $('h1').first().text().trim() ||
+             'Property title not found';
+
+// Try to extract price
+const price = $('[data-testid="price"]').text().trim() ||
+             $('.property-header-price').text().trim() ||
+             $('[class*="price"]').first().text().trim() ||
+             'Price not found';
+
+// Try to extract description  
+const description = $('[data-testid="property-description"]').text().trim() ||
+                   $('.property-description').text().trim() ||
+                   $('[class*="description"]').text().trim() ||
+                   'Description not found';
+
+console.log('Extracted title:', title);
+console.log('Extracted price:', price);
+console.log('Extracted description:', description.substring(0, 100) + '...');
         
         // Extract property ID from URL
         const propertyIdMatch = url.match(/properties\/(\d+)/);
         const propertyId = propertyIdMatch ? propertyIdMatch[1] : 'unknown';
         
         return {
-            id: propertyId,
-            title: title,
-            price: 'Price extraction needed',
-            description: 'Description extraction needed', 
-            features: ['Feature extraction needed'],
-            images: [],
-            floorplan: null,
-            epcRating: null
-        };
+    id: propertyId,
+    title: title,
+    price: price,
+    description: description,
+    features: ['Feature extraction in progress'],
+    images: [],
+    floorplan: null,
+    epcRating: null
+};
         
     } catch (error) {
         console.error('Scraping error:', error.message);
