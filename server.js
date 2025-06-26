@@ -32,7 +32,7 @@ async function scrapeRightmoveProperty(url) {
 
         const $ = cheerio.load(response.data);
         
-        // Get all text content and look for patterns
+        // Get all text content
         const pageText = $('body').text();
         
         // Extract property ID
@@ -44,36 +44,100 @@ async function scrapeRightmoveProperty(url) {
         const titleMatch = fullTitle.match(/(.+?) for sale/i);
         const title = titleMatch ? titleMatch[1].trim() : fullTitle.split('open-rightmove')[0].trim();
         
-        // Look for price patterns in text
+        // Look for price patterns
         const priceMatch = pageText.match(/£[\d,]+/g);
         const price = priceMatch ? priceMatch[0] : 'Price not available';
         
-        // Look for bedroom/bathroom info
+        // Extract property description - try multiple approaches
+        let description = '';
+        
+        // Try to find description sections
+        const descriptionSelectors = [
+            '[data-testid="property-description"]',
+            '.property-description', 
+            '[class*="description"]',
+            '.PropertyDescription',
+            '[data-test="property-description"]'
+        ];
+        
+        for (const selector of descriptionSelectors) {
+            const desc = $(selector).text().trim();
+            if (desc && desc.length > 50) {
+                description = desc;
+                break;
+            }
+        }
+        
+        // If no description found, try to extract from page text patterns
+        if (!description) {
+            const textSections = pageText.split('\n').filter(line => 
+                line.length > 100 && 
+                !line.includes('cookie') && 
+                !line.includes('navigation') &&
+                (line.includes('property') || line.includes('bedroom') || line.includes('kitchen'))
+            );
+            description = textSections[0] || 'No detailed description available';
+        }
+        
+        // Extract images - look for property photos
+        const images = [];
+        $('img').each((i, img) => {
+            const src = $(img).attr('src') || $(img).attr('data-src');
+            if (src && (
+                src.includes('rightmove') || 
+                src.includes('property') || 
+                src.includes('photo')
+            ) && !src.includes('logo') && !src.includes('icon')) {
+                images.push(src);
+            }
+        });
+        
+        // Look for floorplan specifically
+        let floorplan = null;
+        $('img').each((i, img) => {
+            const src = $(img).attr('src') || $(img).attr('data-src');
+            const alt = $(img).attr('alt') || '';
+            if (src && (
+                alt.toLowerCase().includes('floorplan') || 
+                alt.toLowerCase().includes('floor plan') ||
+                src.includes('floorplan')
+            )) {
+                floorplan = src;
+            }
+        });
+        
+        // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
         const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
         
-        // Build features array from what we can find
         const features = [];
         if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
         if (bathroomMatch) features.push(`${bathroomMatch[1]} bathroom${bathroomMatch[1] > 1 ? 's' : ''}`);
         
-        // Look for property type
-        const typeMatch = pageText.match(/(detached|semi-detached|terraced|apartment|flat|bungalow|house)/i);
-        if (typeMatch) features.push(typeMatch[1]);
+        // Look for more features in description
+        if (description.toLowerCase().includes('garage')) features.push('garage');
+        if (description.toLowerCase().includes('garden')) features.push('garden');
+        if (description.toLowerCase().includes('parking')) features.push('parking');
+        if (description.toLowerCase().includes('ground floor')) features.push('ground floor accommodation');
+        if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
+        if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
         
         console.log('Extracted title:', title);
         console.log('Extracted price:', price);
-        console.log('Extracted features:', features);
+        console.log('Description length:', description.length);
+        console.log('Images found:', images.length);
+        console.log('Floorplan found:', !!floorplan);
+        console.log('Features:', features);
         
         return {
             id: propertyId,
             title: title,
             price: price,
-            description: `Property in ${title.split(',').pop() || 'location'}. ${features.join(', ')}.`,
+            description: description,
             features: features,
-            images: [],
-            floorplan: null,
-            epcRating: null
+            images: images.slice(0, 5), // Limit to first 5 images
+            floorplan: floorplan,
+            epcRating: null // We'll work on this next
         };
         
     } catch (error) {
