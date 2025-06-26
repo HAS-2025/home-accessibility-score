@@ -39,37 +39,69 @@ async function scrapeRightmoveProperty(url) {
         const propertyIdMatch = url.match(/properties\/(\d+)/);
         const propertyId = propertyIdMatch ? propertyIdMatch[1] : 'unknown';
 
-        // Extract property address/location
+        // Extract location coordinates from map data
+let coordinates = null;
 let address = '';
 
-// Try to extract address from title or page content
-const addressFromTitle = fullTitle.match(/in (.+?)(?:\s+for sale|$)/i);
-if (addressFromTitle) {
-    address = addressFromTitle[1].trim();
-}
+// Look for map-related data in the page
+const scripts = $('script').toArray();
+let mapData = null;
 
-// Also try to find address in page text
-if (!address) {
-    const addressPatterns = [
-        /Address[:\s]*([^,\n]+(?:,[^,\n]+)*)/i,
-        /Located[:\s]+(?:in|at)\s+([^,\n]+(?:,[^,\n]+)*)/i
-    ];
+scripts.forEach(script => {
+    const scriptContent = $(script).html() || '';
     
-    for (const pattern of addressPatterns) {
-        const match = pageText.match(pattern);
-        if (match && match[1].length > 10) {
-            address = match[1].trim();
-            break;
-        }
+    // Look for latitude/longitude in various formats
+    const latLngMatch = scriptContent.match(/(?:lat|latitude)["\s]*[:=]\s*([+-]?\d+\.?\d*)/i);
+    const lngMatch = scriptContent.match(/(?:lng|longitude|long)["\s]*[:=]\s*([+-]?\d+\.?\d*)/i);
+    
+    if (latLngMatch && lngMatch) {
+        coordinates = {
+            lat: parseFloat(latLngMatch[1]),
+            lng: parseFloat(lngMatch[1])
+        };
+        console.log('Found coordinates in script:', coordinates);
     }
+    
+    // Also look for address in map data
+    const addressMatch = scriptContent.match(/(?:address|location)["\s]*[:=]\s*["']([^"']+)["']/i);
+    if (addressMatch && !address) {
+        address = addressMatch[1];
+    }
+});
+
+// Alternative: look for data attributes on map elements
+if (!coordinates) {
+    $('[data-lat], [data-latitude]').each((i, el) => {
+        const lat = $(el).attr('data-lat') || $(el).attr('data-latitude');
+        const lng = $(el).attr('data-lng') || $(el).attr('data-longitude') || $(el).attr('data-long');
+        
+        if (lat && lng) {
+            coordinates = {
+                lat: parseFloat(lat),
+                lng: parseFloat(lng)
+            };
+            console.log('Found coordinates in data attributes:', coordinates);
+        }
+    });
 }
 
-// If still no address, extract from URL or title
-if (!address && title.includes(',')) {
-    const parts = title.split(',');
-    address = parts[parts.length - 1].trim();
+// Look for Google Maps or other map embed URLs
+if (!coordinates) {
+    $('iframe[src*="maps"], iframe[src*="google"]').each((i, iframe) => {
+        const src = $(iframe).attr('src');
+        const coordMatch = src.match(/[@!]([+-]?\d+\.?\d*),([+-]?\d+\.?\d*)/);
+        if (coordMatch) {
+            coordinates = {
+                lat: parseFloat(coordMatch[1]),
+                lng: parseFloat(coordMatch[2])
+            };
+            console.log('Found coordinates in map iframe:', coordinates);
+        }
+    });
 }
 
+console.log('Extracted coordinates:', coordinates);
+console.log('Extracted address:', address);
 console.log('Extracted address:', address);
         
         // Extract title from page title tag
@@ -172,6 +204,7 @@ $('img').each((i, img) => {
             floorplan: floorplan,
             epcRating: null // We'll work on this next
             address: address || 'Address not found'
+            coordinates: coordinates
         };
         
     } catch (error) {
