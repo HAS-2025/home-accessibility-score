@@ -88,15 +88,15 @@ async function tryFloorplanURL(propertyId) {
     }
 }
 
-// Find nearest GP surgeries using NEW Google Places API
+// Find nearest GP surgeries using NEW Google Places API (corrected types)
 async function findNearestGPs(lat, lng) {
     try {
         console.log(`Finding real GPs near coordinates ${lat}, ${lng} using NEW API`);
         
-        // Use NEW Places API - Nearby Search
+        // Use NEW Places API with correct type names
         const requestBody = {
-            includedTypes: ["doctor", "hospital", "medical_clinic"],
-            maxResultCount: 10,
+            includedTypes: ["doctor", "hospital", "health"], // Corrected types
+            maxResultCount: 20,
             locationRestriction: {
                 circle: {
                     center: {
@@ -107,6 +107,8 @@ async function findNearestGPs(lat, lng) {
                 }
             }
         };
+        
+        console.log('Request body:', JSON.stringify(requestBody, null, 2));
         
         const response = await axios.post(
             'https://places.googleapis.com/v1/places:searchNearby',
@@ -120,17 +122,21 @@ async function findNearestGPs(lat, lng) {
             }
         );
         
-        console.log('NEW API Response received');
+        console.log('NEW API Response received successfully');
+        console.log('Places found:', response.data.places?.length || 0);
         
         if (response.data.places && response.data.places.length > 0) {
-            console.log(`Found ${response.data.places.length} medical facilities`);
+            // Log all results to see what we're getting
+            response.data.places.forEach((place, index) => {
+                console.log(`Place ${index + 1}: ${place.displayName?.text} (${place.types?.join(', ')})`);
+            });
             
             // Filter for likely GP surgeries
             const gps = response.data.places.filter(place => {
                 const name = place.displayName?.text?.toLowerCase() || '';
                 const types = place.types || [];
                 
-                return (
+                const isGP = (
                     name.includes('surgery') ||
                     name.includes('medical centre') ||
                     name.includes('medical center') ||
@@ -141,6 +147,10 @@ async function findNearestGPs(lat, lng) {
                     name.includes('doctors') ||
                     types.includes('doctor')
                 );
+                
+                console.log(`Checking ${name}: ${isGP ? 'MATCH' : 'NO MATCH'}`);
+                return isGP;
+                
             }).map(place => ({
                 name: place.displayName?.text || 'Medical Facility',
                 address: place.formattedAddress || 'Address not available',
@@ -152,11 +162,11 @@ async function findNearestGPs(lat, lng) {
                 placeId: place.id
             }));
             
-            console.log(`Filtered to ${gps.length} GP surgeries:`, gps.map(gp => gp.name));
+            console.log(`Final filtered GP list: ${gps.length} surgeries`);
             return gps.slice(0, 3);
         }
         
-        console.log('No medical facilities found');
+        console.log('No medical facilities found in area');
         return [];
         
     } catch (error) {
@@ -164,6 +174,7 @@ async function findNearestGPs(lat, lng) {
         return [];
     }
 }
+
 // Get walking directions and analyze route accessibility
 async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
     try {
