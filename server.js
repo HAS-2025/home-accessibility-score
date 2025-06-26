@@ -146,26 +146,99 @@ $('img').each((i, img) => {
     }
 }
 
-// Analyze property with Claude
-async function analyzePropertyAccessibility(property) {
-    // Add this after the basic prompt
-const hasImages = property.images && property.images.length > 0;
-const imageAnalysisNote = hasImages ? 
-  `\n\nProperty Images Available: ${property.images.length} images found for visual analysis of windows, layout, and accessibility features.` : 
-  '\n\nNo property images available for visual analysis.';
+// AI-powered image filtering for accessibility analysis
+const filterImagesForAccessibility = async (images) => {
+    if (images.length <= 8) {
+        console.log('Using all images - within limit');
+        return images;
+    }
+    
+    console.log(`Filtering ${images.length} images for accessibility relevance...`);
+    
+    // Quick AI analysis to identify most relevant images
+    const filterPrompt = `You are an accessibility expert reviewing property images. From this list of ${images.length} images, identify the 8 MOST USEFUL for assessing home accessibility for older adults.
 
-const prompt = `You are an accessibility expert specializing in homes for older adults. Analyze this property and provide scores for three criteria.
+PRIORITIZE images showing:
+- Floorplans or layouts
+- Interior rooms (kitchen, bedroom, bathroom, living areas)
+- Entrances, doorways, hallways
+- Stairs, steps, or level access
+- Exterior access (front door, garden paths, driveways)
+
+AVOID images that are:
+- Purely decorative/artistic
+- Landscape views without property access
+- Close-ups of furnishings/decorations
+- Multiple similar room angles
+
+Respond with ONLY a JSON array of the image URLs you want to analyze, like:
+["url1", "url2", "url3", "url4", "url5", "url6", "url7", "url8"]`;
+
+    try {
+        const filterResponse = await axios.post(CLAUDE_API_URL, {
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 500,
+            messages: [{
+                role: 'user',
+                content: [
+                    {
+                        type: "text",
+                        text: filterPrompt
+                    },
+                    ...images.slice(0, 15).map(url => ({ // Pre-filter to first 15 for efficiency
+                        type: "image",
+                        source: { type: "url", url: url }
+                    }))
+                ]
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            }
+        });
+
+        const filterResult = filterResponse.data.content[0].text;
+        const selectedImages = JSON.parse(filterResult);
+        
+        console.log(`AI selected ${selectedImages.length} most relevant images`);
+        return selectedImages;
+        
+    } catch (error) {
+        console.log('AI filtering failed, using first 8 images:', error.message);
+        return images.slice(0, 8);
+    }
+};
+
+// Analyze property with Claude (including vision)
+async function analyzePropertyAccessibility(property) {
+    // Use AI to select most relevant images for accessibility analysis
+    const imagesToAnalyze = await filterImagesForAccessibility(property.images);
+    
+    // Prepare the content array for Claude
+    const content = [];
+    
+    // Add text description
+    content.push({
+        type: "text",
+        text: `You are an accessibility expert specializing in homes for older adults. Analyze this property and provide scores for three criteria.
 
 Property Details:
 - Title: ${property.title}
 - Price: ${property.price}
 - Description: ${property.description}
 - Features: ${property.features.join(', ')}
-- EPC Rating: ${property.epcRating || 'Not specified'}${imageAnalysisNote}
+- EPC Rating: ${property.epcRating || 'Not specified'}
 
-Focus on analyzing the DESCRIPTION text for specific details about:
+ANALYZE THE IMAGES for:
+- Floorplans showing room layouts, stairs, accessibility
+- Property photos showing windows, lighting, entrance access
+- Any visual clues about heating systems, renovations
+
+Focus on analyzing the DESCRIPTION text and IMAGES for specific details about:
 - Stairs, levels, and accessibility features
-- Window sizes, natural light mentions, room layouts
+- Window sizes, natural light, room layouts
 - Heating systems, insulation, recent renovations
 
 IMPORTANT: You must respond with ONLY a valid JSON object, no other text.
@@ -194,7 +267,21 @@ Respond with this exact JSON format:
   },
   "overall": 3.7,
   "summary": "Brief summary of accessibility for older adults"
-}`;
+}`
+    });
+
+    // Add the AI-selected images for visual analysis
+    imagesToAnalyze.forEach(imageUrl => {
+        content.push({
+            type: "image",
+            source: {
+                type: "url",
+                url: imageUrl
+            }
+        });
+    });
+
+    console.log(`Analyzing ${imagesToAnalyze.length} AI-selected images with Claude Vision`);
 
     try {
         const response = await axios.post(CLAUDE_API_URL, {
@@ -202,7 +289,7 @@ Respond with this exact JSON format:
             max_tokens: 1000,
             messages: [{
                 role: 'user',
-                content: prompt
+                content: content
             }]
         }, {
             headers: {
@@ -213,7 +300,7 @@ Respond with this exact JSON format:
         });
 
         const analysisText = response.data.content[0].text;
-        console.log('Claude response received');
+        console.log('Claude vision analysis completed');
 
         // Parse the JSON response
         let analysisData;
