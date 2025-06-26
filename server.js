@@ -20,6 +20,43 @@ const cache = new Map();
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// Try to access dedicated floorplan page
+async function tryFloorplanURL(propertyId) {
+    try {
+        const floorplanURL = `https://www.rightmove.co.uk/properties/${propertyId}#/floorplan?activePlan=1&channel=RES_BUY`;
+        
+        console.log('Trying floorplan URL:', floorplanURL);
+        
+        const response = await axios.get(floorplanURL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+
+        const $ = cheerio.load(response.data);
+        
+        // Look for floorplan images on this dedicated page
+        const floorplanImages = [];
+        $('img').each((i, img) => {
+            const src = $(img).attr('src') || $(img).attr('data-src');
+            if (src && (src.includes('floorplan') || src.includes('plan') || 
+                       $(img).attr('alt')?.toLowerCase().includes('floorplan'))) {
+                floorplanImages.push(src);
+            }
+        });
+        
+        console.log(`Found ${floorplanImages.length} floorplans on dedicated page`);
+        return floorplanImages.length > 0 ? floorplanImages[0] : null;
+        
+    } catch (error) {
+        console.log('Floorplan URL not accessible:', error.message);
+        return null;
+    }
+}
+
+// Scrape Rightmove property data
+async function scrapeRightmoveProperty(url) {
+
 async function scrapeRightmoveProperty(url) {
     try {
         console.log('Scraping Rightmove URL:', url);
@@ -157,19 +194,23 @@ console.log('Extracted address:', address);
             }
         });
         
-        // Look for floorplan specifically
-let floorplan = null;
-$('img').each((i, img) => {
-    const src = $(img).attr('src') || $(img).attr('data-src');
-    const alt = $(img).attr('alt') || '';
-    if (src && (
-        alt.toLowerCase().includes('floorplan') || 
-        alt.toLowerCase().includes('floor plan') ||
-        src.includes('floorplan')
-    )) {
-        floorplan = src;
-    }
-});
+        // Enhanced floorplan detection - try dedicated URL first
+let floorplan = await tryFloorplanURL(propertyId);
+
+if (!floorplan) {
+    // Fallback to existing detection method
+    $('img').each((i, img) => {
+        const src = $(img).attr('src') || $(img).attr('data-src') || $(img).attr('data-lazy-src');
+        const alt = $(img).attr('alt') || '';
+        if (src && (alt.toLowerCase().includes('floorplan') || 
+                   alt.toLowerCase().includes('floor plan') ||
+                   src.includes('floorplan'))) {
+            floorplan = src;
+        }
+    });
+}
+
+console.log('Final floorplan result:', !!floorplan);
         
         // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
