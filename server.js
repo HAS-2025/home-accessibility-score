@@ -32,49 +32,49 @@ async function scrapeRightmoveProperty(url) {
 
         const $ = cheerio.load(response.data);
         
-        // Debug: Log what we can find
-        console.log('Page title:', $('title').text());
-        console.log('H1 elements:', $('h1').length);
-        console.log('First H1:', $('h1').first().text());
+        // Get all text content and look for patterns
+        const pageText = $('body').text();
         
-      // Try multiple selectors for property title
-const title = $('.property-title').text().trim() ||
-             $('h1[data-testid="property-title"]').text().trim() ||
-             $('[data-testid="property-header-title"]').text().trim() ||
-             $('h1').eq(1).text().trim() || // Try second H1 
-             $('h1').first().text().trim() ||
-             'Property title not found';
-
-// Try to extract price
-const price = $('[data-testid="price"]').text().trim() ||
-             $('.property-header-price').text().trim() ||
-             $('[class*="price"]').first().text().trim() ||
-             'Price not found';
-
-// Try to extract description  
-const description = $('[data-testid="property-description"]').text().trim() ||
-                   $('.property-description').text().trim() ||
-                   $('[class*="description"]').text().trim() ||
-                   'Description not found';
-
-console.log('Extracted title:', title);
-console.log('Extracted price:', price);
-console.log('Extracted description:', description.substring(0, 100) + '...');
-        
-        // Extract property ID from URL
+        // Extract property ID
         const propertyIdMatch = url.match(/properties\/(\d+)/);
         const propertyId = propertyIdMatch ? propertyIdMatch[1] : 'unknown';
         
+        // Extract title from page title tag
+        const fullTitle = $('title').text();
+        const titleMatch = fullTitle.match(/(.+?) for sale/i);
+        const title = titleMatch ? titleMatch[1].trim() : fullTitle.split('open-rightmove')[0].trim();
+        
+        // Look for price patterns in text
+        const priceMatch = pageText.match(/£[\d,]+/g);
+        const price = priceMatch ? priceMatch[0] : 'Price not available';
+        
+        // Look for bedroom/bathroom info
+        const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
+        const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
+        
+        // Build features array from what we can find
+        const features = [];
+        if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
+        if (bathroomMatch) features.push(`${bathroomMatch[1]} bathroom${bathroomMatch[1] > 1 ? 's' : ''}`);
+        
+        // Look for property type
+        const typeMatch = pageText.match(/(detached|semi-detached|terraced|apartment|flat|bungalow|house)/i);
+        if (typeMatch) features.push(typeMatch[1]);
+        
+        console.log('Extracted title:', title);
+        console.log('Extracted price:', price);
+        console.log('Extracted features:', features);
+        
         return {
-    id: propertyId,
-    title: title,
-    price: price,
-    description: description,
-    features: ['Feature extraction in progress'],
-    images: [],
-    floorplan: null,
-    epcRating: null
-};
+            id: propertyId,
+            title: title,
+            price: price,
+            description: `Property in ${title.split(',').pop() || 'location'}. ${features.join(', ')}.`,
+            features: features,
+            images: [],
+            floorplan: null,
+            epcRating: null
+        };
         
     } catch (error) {
         console.error('Scraping error:', error.message);
