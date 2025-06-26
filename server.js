@@ -38,6 +38,39 @@ async function scrapeRightmoveProperty(url) {
         // Extract property ID
         const propertyIdMatch = url.match(/properties\/(\d+)/);
         const propertyId = propertyIdMatch ? propertyIdMatch[1] : 'unknown';
+
+        // Extract property address/location
+let address = '';
+
+// Try to extract address from title or page content
+const addressFromTitle = fullTitle.match(/in (.+?)(?:\s+for sale|$)/i);
+if (addressFromTitle) {
+    address = addressFromTitle[1].trim();
+}
+
+// Also try to find address in page text
+if (!address) {
+    const addressPatterns = [
+        /Address[:\s]*([^,\n]+(?:,[^,\n]+)*)/i,
+        /Located[:\s]+(?:in|at)\s+([^,\n]+(?:,[^,\n]+)*)/i
+    ];
+    
+    for (const pattern of addressPatterns) {
+        const match = pageText.match(pattern);
+        if (match && match[1].length > 10) {
+            address = match[1].trim();
+            break;
+        }
+    }
+}
+
+// If still no address, extract from URL or title
+if (!address && title.includes(',')) {
+    const parts = title.split(',');
+    address = parts[parts.length - 1].trim();
+}
+
+console.log('Extracted address:', address);
         
         // Extract title from page title tag
         const fullTitle = $('title').text();
@@ -138,6 +171,7 @@ $('img').each((i, img) => {
             images: images.slice(0, 5), // Limit to first 5 images
             floorplan: floorplan,
             epcRating: null // We'll work on this next
+            address: address || 'Address not found'
         };
         
     } catch (error) {
