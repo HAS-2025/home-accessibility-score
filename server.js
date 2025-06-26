@@ -324,6 +324,34 @@ console.log('Final floorplan result:', !!floorplan);
 
 // Analyze property with Claude (including vision)
 async function analyzePropertyAccessibility(property) {
+    // Analyze GP proximity if coordinates available
+let gpProximity = null;
+if (property.coordinates) {
+    console.log('Analyzing GP proximity...');
+    const nearbyGPs = await findNearestGPs(property.coordinates.lat, property.coordinates.lng);
+    
+    if (nearbyGPs.length > 0) {
+        const route = await analyzeWalkingRoute(
+            property.coordinates.lat, 
+            property.coordinates.lng,
+            nearbyGPs[0].location.lat,
+            nearbyGPs[0].location.lng,
+            nearbyGPs[0].name
+        );
+        
+        if (route) {
+            gpProximity = {
+                nearestGP: nearbyGPs[0].name,
+                walkingTime: route.duration,
+                distance: route.distance,
+                score: calculateGPProximityScore(route.durationMinutes),
+                accessibilityNotes: route.accessibilityNotes
+            };
+            
+            console.log('GP proximity analysis:', gpProximity);
+        }
+    }
+}
     // Select first 5 images for analysis (to avoid timeouts)
 const imagesToAnalyze = property.images.slice(0, 5);
     
