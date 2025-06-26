@@ -93,18 +93,18 @@ async function scrapeRightmoveProperty(url) {
         });
         
         // Look for floorplan specifically
-        let floorplan = null;
-        $('img').each((i, img) => {
-            const src = $(img).attr('src') || $(img).attr('data-src');
-            const alt = $(img).attr('alt') || '';
-            if (src && (
-                alt.toLowerCase().includes('floorplan') || 
-                alt.toLowerCase().includes('floor plan') ||
-                src.includes('floorplan')
-            )) {
-                floorplan = src;
-            }
-        });
+let floorplan = null;
+$('img').each((i, img) => {
+    const src = $(img).attr('src') || $(img).attr('data-src');
+    const alt = $(img).attr('alt') || '';
+    if (src && (
+        alt.toLowerCase().includes('floorplan') || 
+        alt.toLowerCase().includes('floor plan') ||
+        src.includes('floorplan')
+    )) {
+        floorplan = src;
+    }
+});
         
         // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
