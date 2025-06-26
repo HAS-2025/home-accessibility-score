@@ -216,7 +216,7 @@ Respond with this exact JSON format:
         });
     });
 
-    console.log(`Analyzing ${imagesToAnalyze.length} AI-selected images with Claude Vision`);
+    console.log(`Analyzing ${imagesToAnalyze.length} images with Claude Vision`);
 
     try {
         const response = await axios.post(CLAUDE_API_URL, {
