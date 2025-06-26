@@ -88,6 +88,42 @@ async function tryFloorplanURL(propertyId) {
     }
 }
 
+// Mock GP analysis (for testing without API key)
+async function findNearestGPs(lat, lng) {
+    console.log(`Mock: Finding GPs near coordinates ${lat}, ${lng}`);
+    
+    // Return mock GP data for testing
+    return [{
+        name: "Bath Medical Centre",
+        address: "High Street, Bath",
+        location: { lat: lat + 0.001, lng: lng + 0.001 },
+        rating: 4.2,
+        placeId: "mock_place_id"
+    }];
+}
+
+async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
+    console.log(`Mock: Analyzing route to ${gpName}`);
+    
+    // Return mock route data
+    return {
+        distance: "0.3 miles",
+        duration: "6 minutes",
+        durationMinutes: 6,
+        routeWarnings: [],
+        accessibilityNotes: "Mock route: Level ground with good pedestrian access and dropped kerbs",
+        gpName: gpName
+    };
+}
+
+function calculateGPProximityScore(durationMinutes) {
+    if (durationMinutes <= 5) return 5;
+    if (durationMinutes <= 10) return 4;  
+    if (durationMinutes <= 20) return 3;
+    if (durationMinutes <= 30) return 2;
+    return 1;
+}
+
 // Scrape Rightmove property data
 async function scrapeRightmoveProperty(url) {
     try {
