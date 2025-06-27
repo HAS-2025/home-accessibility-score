@@ -1111,3 +1111,5 @@ app.listen(PORT, () => {
         console.warn('⚠️  Warning: CLAUDE_API_KEY not set in environment variables');
     }
 });
+
+module.exports = app;
