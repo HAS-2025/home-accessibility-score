@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Accessibility Score</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .input-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .url-input {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        input[type="url"] {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 12px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input[type="url"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .analyze-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 20px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .property-info {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .property-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .property-price {
+            font-size: 1.2rem;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .score-overview {
+            background: white;
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .overall-score {
+            font-size: 4rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+        }
+
+        .score-label {
+            font-size: 1.5rem;
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .star-rating {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .star {
+            color: #ddd;
+            margin: 0 0.2rem;
+        }
+
+        .star.filled {
+            color: #ffd700;
+        }
+
+        .detailed-scores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .score-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .score-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .score-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .score-icon {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+        }
+
+        .score-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .score-value {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .score-value.excellent { color: #10b981; }
+        .score-value.good { color: #3b82f6; }
+        .score-value.fair { color: #f59e0b; }
+        .score-value.poor { color: #ef4444; }
+
+        .score-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .score-details {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .gp-details {
+            margin-top: 1rem;
+        }
+
+        .gp-info {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .gp-name {
+            font-weight: 600;
+            color: #1e40af;
+        }
+
+        .gp-time {
+            color: #059669;
+            font-weight: 500;
+        }
+
+        .route-warnings {
+            margin-top: 0.5rem;
+        }
+
+        .warning {
+            background: #fef3cd;
+            color: #92400e;
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin: 0.25rem 0;
+        }
+
+        .facilities-list {
+            margin-top: 0.5rem;
+        }
+
+        .facility-item {
+            background: #ecfdf5;
+            color: #059669;
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin: 0.25rem 0.25rem 0.25rem 0;
+            display: inline-block;
+        }
+
+        .summary-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .summary-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .summary-text {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: #555;
+        }
+
+        .error {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 12px;
+            margin: 1rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .url-input {
+                flex-direction: column;
+            }
+
+            .detailed-scores {
+                grid-template-columns: 1fr;
+            }
+
+            .overall-score {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 Home Accessibility Score</h1>
+            <p>Analyze properties for older adults and those with mobility needs</p>
+        </div>
+
+        <div class="input-section">
+            <div class="url-input">
+                <input type="url" id="propertyUrl" placeholder="Paste Rightmove property URL here..." />
+                <button class="analyze-btn" onclick="analyzeProperty()">Analyze Property</button>
+            </div>
+            <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+                📝 Enter a Rightmove property URL to get a comprehensive accessibility analysis
+            </p>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing property accessibility...</p>
+            <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
+                Finding nearby GP surgeries, analyzing walking routes, and assessing property features
+            </p>
+        </div>
+
+        <div class="results" id="results">
+            <div class="property-info" id="propertyInfo">
+                <div class="property-title" id="propertyTitle"></div>
+                <div class="property-price" id="propertyPrice"></div>
+            </div>
+
+            <div class="score-overview">
+                <div class="overall-score" id="overallScore"></div>
+                <div class="score-label">Overall Accessibility Score</div>
+                <div class="star-rating" id="starRating"></div>
+            </div>
+
+            <div class="detailed-scores">
+                <!-- GP Proximity Card -->
+                <div class="score-card">
+                    <div class="score-header">
+                        <span class="score-icon">🏥</span>
+                        <span class="score-title">GP Proximity</span>
+                    </div>
+                    <div class="score-value" id="gpScore"></div>
+                    <div class="score-description" id="gpDescription"></div>
+                    <div class="score-details" id="gpDetails"></div>
+                </div>
+
+                <!-- EPC Rating Card -->
+                <div class="score-card">
+                    <div class="score-header">
+                        <span class="score-icon">⚡</span>
+                        <span class="score-title">Energy Efficiency</span>
+                    </div>
+                    <div class="score-value" id="epcScore"></div>
+                    <div class="score-description" id="epcDescription"></div>
+                    <div class="score-details" id="epcDetails"></div>
+                </div>
+
+                <!-- Internal Facilities Card -->
+                <div class="score-card">
+                    <div class="score-header">
+                        <span class="score-icon">🏠</span>
+                        <span class="score-title">Internal Facilities</span>
+                    </div>
+                    <div class="score-value" id="facilitiesScore"></div>
+                    <div class="score-description" id="facilitiesDescription"></div>
+                    <div class="score-details" id="facilitiesDetails"></div>
+                </div>
+            </div>
+
+            <div class="summary-section">
+                <div class="summary-title">📋 Summary & Recommendations</div>
+                <div class="summary-text" id="summaryText"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeProperty() {
+            const url = document.getElementById('propertyUrl').value;
+            
+            if (!url || !url.includes('rightmove.co.uk')) {
+                alert('Please enter a valid Rightmove property URL');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+            document.querySelector('.analyze-btn').disabled = true;
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                displayResults(data);
+
+            } catch (error) {
+                console.error('Analysis error:', error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="error">
+                        <strong>Analysis Failed:</strong> ${error.message}
+                    </div>
+                `;
+            } finally {
+                document.querySelector('.analyze-btn').disabled = false;
+            }
+        }
+
+        function displayResults(data) {
+            const { property, analysis } = data;
+            
+            // Hide loading, show results
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('results').classList.add('show');
+
+            // Property info
+            document.getElementById('propertyTitle').textContent = property.title;
+            document.getElementById('propertyPrice').textContent = property.price;
+
+            // Overall score
+            document.getElementById('overallScore').textContent = analysis.overall;
+            
+            // Star rating
+            displayStarRating(analysis.overall);
+
+            // GP Proximity
+            displayGPProximity(analysis.gpProximity);
+            
+            // EPC Rating
+            displayEPCRating(analysis.epcRating);
+            
+            // Internal Facilities
+            displayInternalFacilities(analysis.internalFacilities);
+
+            // Summary
+            document.getElementById('summaryText').textContent = analysis.summary;
+        }
+
+        function displayStarRating(score) {
+            const starContainer = document.getElementById('starRating');
+            const fullStars = Math.floor(score);
+            const hasHalfStar = score % 1 >= 0.5;
+            
+            let starsHtml = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= fullStars) {
+                    starsHtml += '<span class="star filled">★</span>';
+                } else if (i === fullStars + 1 && hasHalfStar) {
+                    starsHtml += '<span class="star filled">☆</span>';
+                } else {
+                    starsHtml += '<span class="star">☆</span>';
+                }
+            }
+            starContainer.innerHTML = starsHtml;
+        }
+
+        function displayGPProximity(gp) {
+            document.getElementById('gpScore').textContent = gp.rating;
+            document.getElementById('gpScore').className = `score-value ${gp.rating.toLowerCase()}`;
+            document.getElementById('gpDescription').textContent = gp.details;
+            
+            let detailsHtml = '';
+            if (gp.nearestGP) {
+                detailsHtml += `
+                    <div class="gp-info">
+                        <div class="gp-name">📍 ${gp.nearestGP}</div>
+                        ${gp.walkingTime ? `<div class="gp-time">🚶 ${gp.walkingTime} walk (${gp.distance})</div>` : ''}
+                    </div>
+                `;
+                
+                if (gp.warnings && gp.warnings.length > 0) {
+                    detailsHtml += '<div class="route-warnings">';
+                    gp.warnings.forEach(warning => {
+                        detailsHtml += `<div class="warning">⚠️ ${warning}</div>`;
+                    });
+                    detailsHtml += '</div>';
+                }
+            }
+            
+            document.getElementById('gpDetails').innerHTML = detailsHtml;
+        }
+
+        function displayEPCRating(epc) {
+            document.getElementById('epcScore').textContent = epc.rating;
+            document.getElementById('epcScore').className = `score-value ${epc.rating.toLowerCase()}`;
+            document.getElementById('epcDescription').textContent = epc.details;
+            
+            let detailsHtml = '';
+            if (epc.actualRating) {
+                detailsHtml += `<div><strong>EPC Rating:</strong> ${epc.actualRating}</div>`;
+            }
+            document.getElementById('epcDetails').innerHTML = detailsHtml;
+        }
+
+        function displayInternalFacilities(facilities) {
+            document.getElementById('facilitiesScore').textContent = facilities.rating;
+            document.getElementById('facilitiesScore').className = `score-value ${facilities.rating.toLowerCase()}`;
+            document.getElementById('facilitiesDescription').textContent = facilities.details;
+            
+            let detailsHtml = '';
+            if (facilities.facilitiesFound && facilities.facilitiesFound.length > 0) {
+                detailsHtml += '<div class="facilities-list">';
+                facilities.facilitiesFound.forEach(facility => {
+                    detailsHtml += `<span class="facility-item">✓ ${facility}</span>`;
+                });
+                detailsHtml += '</div>';
+            }
+            
+            document.getElementById('facilitiesDetails').innerHTML = detailsHtml;
+        }
+
+        // Allow Enter key to trigger analysis
+        document.getElementById('propertyUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeProperty();
+            }
+        });
+    </script>
+</body>
+</html>
