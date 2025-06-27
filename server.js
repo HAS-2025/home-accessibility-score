@@ -980,32 +980,31 @@ async function analyzePropertyAccessibility(property) {
     });
 
     return {
-        gpProximity: {
-            score: gpProximity.score,
-            rating: getScoreRating(gpProximity.score),
-            details: gpProximity.accessibilityNotes,
-            nearestGP: gpProximity.nearestGP || null,
-            walkingTime: gpProximity.walkingTime || null,
-            distance: gpProximity.distance || null,
-            warnings: gpProximity.warnings || [],
-            allNearbyGPs: gpProximity.allNearbyGPs || []
-        },
-        epcRating: {
-            score: epcScore,
-            rating: getScoreRating(epcScore),
-            details: epcDetails,
-            actualRating: property.epcRating || null
-        },
-        internalFacilities: {
-            score: facilitiesScore,
-            rating: getScoreRating(facilitiesScore),
-            details: facilitiesDetails,
-            facilitiesFound: facilitiesFound
-        },
-        overall: Math.round(overallScore * 10) / 10,
-        summary: summary
-    };
-}
+    gpProximity: {
+        score: gpProximity.score || 0,
+        rating: getScoreRating(gpProximity.score || 0),
+        details: gpProximity.accessibilityNotes || 'No details available',
+        nearestGP: gpProximity.nearestGP || null,
+        walkingTime: gpProximity.walkingTime || null,
+        distance: gpProximity.distance || null,
+        warnings: gpProximity.warnings || [],
+        allNearbyGPs: gpProximity.allNearbyGPs || []
+    },
+    epcRating: {
+        score: epcScore || 0,
+        rating: getScoreRating(epcScore || 0),
+        details: epcDetails || 'No EPC details available',
+        actualRating: property.epcRating || null
+    },
+    internalFacilities: {
+        score: facilitiesScore || 0,
+        rating: getScoreRating(facilitiesScore || 0),
+        details: facilitiesDetails || 'No facilities details available',
+        facilitiesFound: facilitiesFound || []
+    },
+    overall: Math.round((overallScore || 0) * 10) / 10,
+    summary: summary || 'Analysis completed successfully'
+};
 
 // Generate comprehensive summary
 function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore) {
