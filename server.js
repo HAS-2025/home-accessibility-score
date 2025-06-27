@@ -979,7 +979,7 @@ async function analyzePropertyAccessibility(property) {
         overall: overallScore
     });
 
-    return {
+   return {
     gpProximity: {
         score: gpProximity.score || 0,
         rating: getScoreRating(gpProximity.score || 0),
