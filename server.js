@@ -967,66 +967,36 @@ async function analyzePropertyAccessibility(property) {
     }
 
     // Step 2: Calculate EPC Score using Vision-extracted data
-let epcScore = 3; // Default (keep this as 1-5 scale)
+    let epcScore = 3; // Default middle score (1-5 scale)
+    let epcDetails = 'EPC rating not specified';
 
-if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
-    // Convert 0-100 numerical score to 1-5 scale
-    if (property.epc.numericalScore && property.epc.confidence >= 80) {
-        epcScore = Math.max(1, Math.min(5, Math.round((property.epc.numericalScore / 100) * 5)));
-    } else {
-        // Letter to 1-5 scale
-        const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
-        epcScore = letterScores[property.epc.rating] || 3;
-    }
-    console.log(`✅ EPC Score: ${property.epc.rating} = ${epcScore}/5 (${property.epc.confidence}% confidence)`);
-    }
-else {
-    console.log('⚠️ Low confidence or no EPC rating, using default score of 50');
-}
-
-// Convert to 1-5 scale for compatibility with your existing system
-const epcScoreConverted = Math.round((epcScore / 100) * 5);
-const epcDetails = property.epc.rating 
-    ? `Energy rating ${property.epc.rating} (${property.epc.confidence}% confidence) - ${property.epc.reason}`
-    : 'EPC rating not available';
-    
-    } else {
-        // Try to extract EPC from description or features
-        const fullText = `${property.description} ${property.features.join(' ')}`.toLowerCase();
-        if (fullText.includes('epc')) {
-            const epcMatch = fullText.match(/epc[:\s]*([a-g])/i);
-            if (epcMatch) {
-                property.epcRating = epcMatch[1].toUpperCase();
-                // Recursively call this section with the found rating
-                const rating = property.epcRating;
-                switch(rating) {
-                    case 'A':
-                    case 'B':
-                        epcScore = 5;
-                        epcDetails = `Excellent energy efficiency (${rating} rating) - low heating costs`;
-                        break;
-                    case 'C':
-                    case 'D':
-                        epcScore = 4;
-                        epcDetails = `Good energy efficiency (${rating} rating) - reasonable heating costs`;
-                        break;
-                    case 'E':
-                        epcScore = 3;
-                        epcDetails = `Average energy efficiency (${rating} rating) - moderate heating costs`;
-                        break;
-                    case 'F':
-                        epcScore = 2;
-                        epcDetails = `Poor energy efficiency (${rating} rating) - high heating costs`;
-                        break;
-                    case 'G':
-                        epcScore = 1;
-                        epcDetails = `Very poor energy efficiency (${rating} rating) - very high heating costs`;
-                        break;
-                }
-            }
+    if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
+        // Convert 0-100 numerical score to 1-5 scale if available and confident
+        if (property.epc.numericalScore && property.epc.confidence >= 80) {
+            epcScore = Math.max(1, Math.min(5, Math.round((property.epc.numericalScore / 100) * 5)));
+            epcDetails = `Energy rating ${property.epc.rating} (score: ${property.epc.numericalScore}) - ${property.epc.confidence}% confidence via ${property.epc.confidence > 80 ? 'Vision API' : 'Text Search'}`;
+            console.log(`✅ Using numerical EPC score: ${property.epc.numericalScore}/100 = ${epcScore}/5 (${property.epc.confidence}% confidence)`);
+        } else {
+            // Letter to 1-5 scale conversion
+            const letterScores = { 
+                'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 
+            };
+            epcScore = letterScores[property.epc.rating] || 3;
+            epcDetails = `Energy rating ${property.epc.rating} (${property.epc.confidence}% confidence) - ${property.epc.reason}`;
+            console.log(`✅ Using letter EPC score: ${property.epc.rating} = ${epcScore}/5 (${property.epc.confidence}% confidence)`);
         }
+    } else if (property.epcRating) {
+        // Fallback to old epcRating if available
+        const rating = property.epcRating.toUpperCase();
+        const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
+        epcScore = letterScores[rating] || 3;
+        epcDetails = `Energy rating ${rating} (legacy extraction)`;
+        console.log(`✅ Using legacy EPC score: ${rating} = ${epcScore}/5`);
+    } else {
+        console.log('⚠️ No EPC rating available, using default score of 3/5');
+        epcDetails = 'EPC rating not available - using default score';
     }
-
+    
     // Step 3: Analyze internal facilities
     const fullText = `${property.description} ${property.features.join(' ')}`.toLowerCase();
     let facilitiesScore = 0;
