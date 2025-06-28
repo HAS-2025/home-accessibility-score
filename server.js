@@ -832,42 +832,19 @@ try {
     const visionResult = await epcExtractor.extractEPCFromProperty(url);
     
     if (visionResult.rating && visionResult.confidence > 50) {
-        epcData = {
-            rating: visionResult.rating,
-            score: visionResult.score,
-            confidence: visionResult.confidence,
-            reason: visionResult.reason,
-            numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
-        };
-        
-        console.log('✅ Vision EPC extraction successful:', {
-            rating: epcData.rating,
-            score: epcData.score,
-            confidence: epcData.confidence
-        });
+        // Success case
+        epcData = { ... };
+        console.log('✅ Vision EPC extraction successful:', { ... });
     } else {
-        console.log('⚠️ Vision extraction failed or low confidence:', visionResult.reason);
+        // Failure case
+        console.log('⚠️ Vision extraction failed...');
         
-        // Fallback: Try to find explicit mentions in description
         if (description && description.length > 0) {
-            console.log('🔍 Fallback: Searching description for explicit EPC mentions...');
-            
-            const epcPatterns = [
-                /epc\s*rating[:\s]*([a-g])/i,
-                /energy\s*performance[:\s]*([a-g])/i,
-                /energy\s*efficiency[:\s]*([a-g])/i
-            ];
-            
+            // Fallback logic
             for (const pattern of epcPatterns) {
                 const match = description.match(pattern);
                 if (match) {
-                    epcData = {
-                        rating: match[1].toUpperCase(),
-                        score: null,
-                        confidence: 60, // Medium confidence for text extraction
-                        reason: `Found in description: "${match[0]}"`,
-                        numericalScore: epcExtractor.convertRatingToScore(match[1].toUpperCase())
-                    };
+                    epcData = { ... };
                     console.log('✅ Found EPC in description:', epcData.rating);
                     break;
                 }
