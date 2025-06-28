@@ -1218,9 +1218,31 @@ app.post('/api/analyze', async (req, res) => {
         console.error('Analysis error:', error.message);
         res.status(500).json({ 
             error: error.message || 'Failed to analyze property' 
-        });
+    });
+}
+
+function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore) {
+    const summaryParts = [];
+    
+    if (overallScore >= 4) {
+        summaryParts.push("This property shows excellent suitability for older adults");
+    } else if (overallScore >= 3) {
+        summaryParts.push("This property offers good accessibility features for older adults");
+    } else if (overallScore >= 2) {
+        summaryParts.push("This property has some accessibility considerations for older adults");
+    } else {
+        summaryParts.push("This property may present accessibility challenges for older adults");
     }
-});
+    
+    return summaryParts.join('. ') + '.';
+}
+
+function getScoreRating(score) {
+    if (score >= 4.5) return 'Excellent';
+    if (score >= 3.5) return 'Good';
+    if (score >= 2.5) return 'Fair';
+    return 'Poor';
+}
 
 // Start server
 app.listen(PORT, () => {
