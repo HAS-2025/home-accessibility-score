@@ -773,126 +773,74 @@ if (!floorplan) {
 
 console.log('Final floorplan result:', !!floorplan);
 
-        // Debug EPC extraction - let's see what's actually in the content
+   // Working EPC extraction - handles cases where there's no space after the rating
 let epcRating = null;
 
-console.log('=== EPC DEBUG EXTRACTION START ===');
+console.log('Starting EPC extraction...');
 
-// Debug 1: Show a sample of the description
-console.log('Description sample (first 200 chars):', description.substring(0, 200));
-console.log('Description sample (chars 500-700):', description.substring(500, 700));
-
-// Debug 2: Search for any mention of "epc" in description (case insensitive)
-const descLower = description.toLowerCase();
-const epcIndex = descLower.indexOf('epc');
-if (epcIndex !== -1) {
-    console.log('Found "epc" in description at position:', epcIndex);
-    console.log('Context around EPC mention:', description.substring(Math.max(0, epcIndex - 30), epcIndex + 50));
-} else {
-    console.log('No "epc" found in description');
-}
-
-// Debug 3: Search for any mention of "energy" in description
-const energyIndex = descLower.indexOf('energy');
-if (energyIndex !== -1) {
-    console.log('Found "energy" in description at position:', energyIndex);
-    console.log('Context around energy mention:', description.substring(Math.max(0, energyIndex - 30), energyIndex + 50));
-} else {
-    console.log('No "energy" found in description');
-}
-
-// Debug 4: Search for any letters A-G in description
-const letterMatches = description.match(/\b[A-G]\b/g);
-if (letterMatches) {
-    console.log('Found potential rating letters in description:', letterMatches);
-} else {
-    console.log('No single letters A-G found in description');
-}
-
-// Debug 5: Look for any images with epc/energy keywords
-console.log('=== IMAGE ANALYSIS ===');
-let imageCount = 0;
-$('img').each((i, img) => {
-    const src = $(img).attr('src') || '';
-    const alt = $(img).attr('alt') || '';
+// Method 1: Look for "EPC Rating:" in description (handles no space after letter)
+if (description && description.length > 0) {
+    console.log('Searching description for EPC Rating...');
     
-    if (src.toLowerCase().includes('epc') || 
-        src.toLowerCase().includes('energy') ||
-        alt.toLowerCase().includes('epc') ||
-        alt.toLowerCase().includes('energy')) {
-        
-        imageCount++;
-        console.log(`EPC-related image ${imageCount}:`);
-        console.log('  - src:', src);
-        console.log('  - alt:', alt);
-    }
-});
-console.log('Total EPC-related images found:', imageCount);
-
-// Debug 6: Search pageText for any EPC mentions
-console.log('=== PAGE TEXT ANALYSIS ===');
-const pageTextLower = pageText.toLowerCase();
-const pageEpcIndex = pageTextLower.indexOf('epc');
-if (pageEpcIndex !== -1) {
-    console.log('Found "epc" in page text at position:', pageEpcIndex);
-    console.log('Context around EPC in page:', pageText.substring(Math.max(0, pageEpcIndex - 50), pageEpcIndex + 100));
-} else {
-    console.log('No "epc" found anywhere in page text');
-}
-
-// Debug 7: Look for rating patterns with more context
-const ratingPatterns = [
-    /epc[\s\S]{0,20}[A-G]/gi,
-    /energy[\s\S]{0,30}rating[\s\S]{0,20}[A-G]/gi,
-    /rating[\s\S]{0,20}[A-G]/gi
-];
-
-for (let i = 0; i < ratingPatterns.length; i++) {
-    const pattern = ratingPatterns[i];
-    const matches = pageText.match(pattern);
-    if (matches) {
-        console.log(`Pattern ${i + 1} matches:`, matches.slice(0, 3)); // Show first 3 matches
-    }
-}
-
-// Debug 8: Check for structured data
-console.log('=== STRUCTURED DATA CHECK ===');
-$('script[type="application/ld+json"]').each((i, script) => {
-    try {
-        const jsonData = JSON.parse($(script).html());
-        console.log('JSON-LD data keys:', Object.keys(jsonData));
-        
-        // Look for any energy-related properties
-        Object.keys(jsonData).forEach(key => {
-            if (key.toLowerCase().includes('energy') || key.toLowerCase().includes('epc')) {
-                console.log(`Found energy-related key "${key}":`, jsonData[key]);
-            }
-        });
-    } catch (e) {
-        console.log('JSON parse error in structured data');
-    }
-});
-
-// Simple extraction attempt
-console.log('=== SIMPLE EXTRACTION ATTEMPT ===');
-const simplePatterns = [
-    /epc.{0,10}([A-G])/gi,
-    /([A-G]).{0,10}rating/gi,
-    /rating.{0,10}([A-G])/gi
-];
-
-for (const pattern of simplePatterns) {
-    const match = pageText.match(pattern);
-    if (match) {
-        console.log('Simple pattern match:', match[0]);
-        const letter = match[0].match(/[A-G]/i);
-        if (letter) {
-            console.log('Extracted letter:', letter[0]);
+    // Updated pattern to handle "EPC Rating: DParking" format
+    const epcRatingPatterns = [
+        /epc\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i,  // Handles "EPC Rating: D" or "EPC Rating: DParking"
+        /epc[:\s]*([a-g])(?:\s|[A-Z]|$)/i,           // Handles "EPC: D" or "EPC: DParking"
+        /energy\s*performance\s*certificate[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
+        /energy\s*efficiency\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i
+    ];
+    
+    for (const pattern of epcRatingPatterns) {
+        const match = description.match(pattern);
+        if (match) {
+            epcRating = match[1].toUpperCase();
+            console.log(`Found EPC in description: "${match[0]}" -> Rating: ${epcRating}`);
+            break;
         }
     }
 }
 
-console.log('=== EPC DEBUG EXTRACTION END ===');
+// Method 2: If not found in description, try page text with same improved patterns
+if (!epcRating) {
+    console.log('Searching page text for EPC Rating...');
+    
+    const pageEpcPatterns = [
+        /epc\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
+        /epc[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
+        /energy\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i
+    ];
+    
+    for (const pattern of pageEpcPatterns) {
+        const match = pageText.match(pattern);
+        if (match) {
+            epcRating = match[1].toUpperCase();
+            console.log(`Found EPC in page text: "${match[0]}" -> Rating: ${epcRating}`);
+            break;
+        }
+    }
+}
+
+// Method 3: Look for structured data as backup
+if (!epcRating) {
+    console.log('Searching structured data...');
+    
+    $('script[type="application/ld+json"]').each((i, script) => {
+        try {
+            const jsonData = JSON.parse($(script).html());
+            
+            if (jsonData.energyEfficiencyRating) {
+                const rating = jsonData.energyEfficiencyRating.toString().toUpperCase();
+                if (/^[A-G]$/.test(rating)) {
+                    epcRating = rating;
+                    console.log('Found EPC in JSON-LD:', epcRating);
+                }
+            }
+        } catch (e) {
+            // Ignore JSON parsing errors
+        }
+    });
+}
+
 console.log('Final EPC rating extracted:', epcRating);
         
         // Extract basic features
