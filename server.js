@@ -1,3 +1,4 @@
+const { EPCVisionExtractor } = require('./epc-vision-extractor');
 // server.js - Node.js Backend for Home Accessibility Score
 const express = require('express');
 const cors = require('cors');
@@ -810,129 +811,82 @@ if (!floorplan) {
 
 console.log('Final floorplan result:', !!floorplan);
 
-   // Debug EPC extraction - see exactly what the code is finding
-let epcRating = null;
+  // ✅ NEW: Extract EPC using Claude Vision API
+// This replaces all the problematic text-based extraction
 
-console.log('=== EPC DEBUG - WHAT CODE ACTUALLY SEES ===');
+console.log('👁️ Starting Vision-based EPC extraction...');
 
-// Method 1: Look for "EPC Rating:" in description (most reliable)
-if (description && description.length > 0) {
-    console.log('Searching description for explicit EPC Rating...');
-    
-    const epcRatingPatterns = [
-        /epc\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
-        /epc[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
-        /energy\s*performance\s*certificate[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
-        /energy\s*efficiency\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i
-    ];
-    
-    for (const pattern of epcRatingPatterns) {
-        const match = description.match(pattern);
-        if (match) {
-            epcRating = match[1].toUpperCase();
-            console.log(`Found EPC in description: "${match[0]}" -> Rating: ${epcRating}`);
-            break;
-        }
-    }
-}
+let epcData = {
+    rating: null,
+    score: null,
+    confidence: 0,
+    reason: 'Not extracted',
+    numericalScore: 0
+};
 
-// Method 2: Debug what the EPC certificate elements actually contain
-if (!epcRating) {
-    console.log('=== DEBUGGING EPC CERTIFICATE ELEMENTS ===');
+try {
+    // Initialize the Vision extractor
+    const epcExtractor = new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
     
-    let epcElementCount = 0;
+    // Use Vision to extract accurate EPC rating from certificate images
+    const visionResult = await epcExtractor.extractEPCFromProperty(url);
     
-    // Find EPC certificate elements and show exactly what they contain
-    $('a, button, div, span, p').each((i, element) => {
-        const text = $(element).text().toLowerCase();
-        const href = $(element).attr('href') || '';
+    if (visionResult.rating && visionResult.confidence > 50) {
+        epcData = {
+            rating: visionResult.rating,
+            score: visionResult.score,
+            confidence: visionResult.confidence,
+            reason: visionResult.reason,
+            numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
+        };
         
-        // Check if this element mentions EPC certificate
-        if ((text.includes('energy performance certificate') || 
-             text.includes('epc certificate') ||
-             text.includes('view epc') ||
-             text.includes('download epc') ||
-             href.includes('epc'))) {
-            
-            epcElementCount++;
-            console.log(`=== EPC ELEMENT ${epcElementCount} ===`);
-            
-            const elementText = $(element).text();
-            console.log('Full element text:', elementText);
-            console.log('Element href:', href);
-            console.log('Element tag:', element.tagName);
-            console.log('Text length:', elementText.length);
-            
-            // Show all A-G letters found in this element
-            const allLetters = elementText.match(/\b[A-G]\b/gi);
-            console.log('All A-G letters found in element:', allLetters);
-            
-            // Show context around each letter
-            if (allLetters) {
-                allLetters.forEach((letter, index) => {
-                    const letterIndex = elementText.toUpperCase().indexOf(letter.toUpperCase());
-                    const context = elementText.substring(Math.max(0, letterIndex - 20), letterIndex + 21);
-                    console.log(`Letter "${letter}" context: "${context}"`);
-                });
-            }
-            
-            // Look for rating in the same element
-            let ratingMatch = elementText.match(/\b([A-G])\b/i);
-            if (ratingMatch) {
-                console.log(`FOUND RATING IN ELEMENT: "${ratingMatch[1]}" from text: "${ratingMatch[0]}"`);
-                console.log('Full match context:', elementText.substring(
-                    Math.max(0, elementText.indexOf(ratingMatch[0]) - 50), 
-                    elementText.indexOf(ratingMatch[0]) + 51
-                ));
-                
-                if (!epcRating) { // Only take the first one for now
-                    epcRating = ratingMatch[1].toUpperCase();
-                }
-            }
-            
-            // Limit to first 3 EPC elements to avoid spam
-            if (epcElementCount >= 3) {
-                return false;
-            }
-        }
-    });
-    
-    console.log(`Total EPC certificate elements found: ${epcElementCount}`);
-}
-
-// Method 3: Look for numeric scores in the page
-if (!epcRating) {
-    console.log('=== LOOKING FOR NUMERIC EPC SCORES ===');
-    
-    // Look for 2-3 digit numbers that could be EPC scores
-    const numberMatches = pageText.match(/\b(\d{2,3})\b/g);
-    if (numberMatches) {
-        const validEpcScores = numberMatches
-            .map(n => parseInt(n))
-            .filter(n => n >= 1 && n <= 100)
-            .slice(0, 10); // Show first 10 potential scores
-        
-        console.log('Potential EPC numeric scores found:', validEpcScores);
-        
-        // Try to find context for scores around 55-70 (D range)
-        validEpcScores.forEach(score => {
-            if (score >= 50 && score <= 70) {
-                const scoreIndex = pageText.indexOf(score.toString());
-                const context = pageText.substring(Math.max(0, scoreIndex - 50), scoreIndex + 51);
-                console.log(`Score ${score} context: "${context}"`);
-                
-                // Convert to letter if in reasonable range and not already found
-                if (!epcRating && score >= 55 && score <= 68) {
-                    epcRating = 'D';
-                    console.log(`Converting score ${score} to rating D`);
-                }
-            }
+        console.log('✅ Vision EPC extraction successful:', {
+            rating: epcData.rating,
+            score: epcData.score,
+            confidence: epcData.confidence
         });
+    } else {
+        console.log('⚠️ Vision extraction failed or low confidence:', visionResult.reason);
+        
+        // Fallback: Try to find explicit mentions in description
+        if (description && description.length > 0) {
+            console.log('🔍 Fallback: Searching description for explicit EPC mentions...');
+            
+            const epcPatterns = [
+                /epc\s*rating[:\s]*([a-g])/i,
+                /energy\s*performance[:\s]*([a-g])/i,
+                /energy\s*efficiency[:\s]*([a-g])/i
+            ];
+            
+            for (const pattern of epcPatterns) {
+                const match = description.match(pattern);
+                if (match) {
+                    epcData = {
+                        rating: match[1].toUpperCase(),
+                        score: null,
+                        confidence: 60, // Medium confidence for text extraction
+                        reason: `Found in description: "${match[0]}"`,
+                        numericalScore: epcExtractor.convertRatingToScore(match[1].toUpperCase())
+                    };
+                    console.log('✅ Found EPC in description:', epcData.rating);
+                    break;
+                }
+            }
+        }
     }
+    
+} catch (error) {
+    console.error('❌ EPC extraction error:', error.message);
+    epcData.reason = `Extraction failed: ${error.message}`;
 }
 
-console.log('=== FINAL DEBUG RESULT ===');
-console.log('Final EPC rating extracted:', epcRating);
+console.log('=== FINAL EPC RESULT ===');
+console.log('EPC Rating:', epcData.rating);
+console.log('Confidence:', epcData.confidence);
+console.log('Method:', epcData.confidence > 80 ? 'Vision API' : epcData.confidence > 50 ? 'Text Fallback' : 'Not Found');
+
+// Use epcData.rating instead of epcRating in the rest of your code
+const epcRating = epcData.rating; // For compatibility with existing code
         
         // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
@@ -965,7 +919,8 @@ console.log('Final EPC rating extracted:', epcRating);
             features: features,
             images: images.slice(0, 5), // Limit to first 5 images
             floorplan: floorplan,
-            epcRating: epcRating,
+            epc: epcData, // Full EPC data with confidence scores
+            epcRating: epcData.rating, // For backward compatibility
             address: address || 'Address not found',
             coordinates: coordinates
         };
@@ -1058,36 +1013,30 @@ async function analyzePropertyAccessibility(property) {
         };
     }
 
-    // Step 2: Extract EPC rating from property data
-    let epcScore = 3; // Default average score
-    let epcDetails = 'EPC rating not specified';
+    // Step 2: Calculate EPC Score using Vision-extracted data
+let epcScore = 3; // Default (keep this as 1-5 scale)
+
+if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
+    // Convert 0-100 numerical score to 1-5 scale
+    if (property.epc.numericalScore && property.epc.confidence >= 80) {
+        epcScore = Math.max(1, Math.min(5, Math.round((property.epc.numericalScore / 100) * 5)));
+    } else {
+        // Letter to 1-5 scale
+        const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
+        epcScore = letterScores[property.epc.rating] || 3;
+    }
+    console.log(`✅ EPC Score: ${property.epc.rating} = ${epcScore}/5 (${property.epc.confidence}% confidence)`);
+    }
+} else {
+    console.log('⚠️ Low confidence or no EPC rating, using default score of 50');
+}
+
+// Convert to 1-5 scale for compatibility with your existing system
+const epcScoreConverted = Math.round((epcScore / 100) * 5);
+const epcDetails = property.epc.rating 
+    ? `Energy rating ${property.epc.rating} (${property.epc.confidence}% confidence) - ${property.epc.reason}`
+    : 'EPC rating not available';
     
-    if (property.epcRating) {
-        const rating = property.epcRating.toUpperCase();
-        switch(rating) {
-            case 'A':
-            case 'B':
-                epcScore = 5;
-                epcDetails = `Excellent energy efficiency (${rating} rating) - low heating costs`;
-                break;
-            case 'C':
-            case 'D':
-                epcScore = 4;
-                epcDetails = `Good energy efficiency (${rating} rating) - reasonable heating costs`;
-                break;
-            case 'E':
-                epcScore = 3;
-                epcDetails = `Average energy efficiency (${rating} rating) - moderate heating costs`;
-                break;
-            case 'F':
-                epcScore = 2;
-                epcDetails = `Poor energy efficiency (${rating} rating) - high heating costs`;
-                break;
-            case 'G':
-                epcScore = 1;
-                epcDetails = `Very poor energy efficiency (${rating} rating) - very high heating costs`;
-                break;
-        }
     } else {
         // Try to extract EPC from description or features
         const fullText = `${property.description} ${property.features.join(' ')}`.toLowerCase();
@@ -1193,10 +1142,13 @@ async function analyzePropertyAccessibility(property) {
         allNearbyGPs: gpProximity.allNearbyGPs || []
     },
     epcRating: {
-        score: epcScore || 0,
-        rating: getScoreRating(epcScore || 0),
-        details: epcDetails || 'No EPC details available',
-        actualRating: property.epcRating || null
+    score: epcScore || 0,
+    rating: getScoreRating(epcScore || 0),
+    details: epcDetails || 'No EPC details available',
+    actualRating: property.epc?.rating || property.epcRating || null,
+    confidence: property.epc?.confidence || 0,
+    method: property.epc?.confidence > 80 ? 'Vision API' : 
+            property.epc?.confidence > 50 ? 'Text Search' : 'Default'
     },
     internalFacilities: {
         score: facilitiesScore || 0,
