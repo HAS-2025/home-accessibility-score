@@ -772,6 +772,94 @@ if (!floorplan) {
 }
 
 console.log('Final floorplan result:', !!floorplan);
+
+        // Extract EPC rating with multiple methods
+let epcRating = null;
+
+// Method 1: Look for EPC in meta tags
+$('meta[property*="epc"], meta[name*="epc"]').each((i, meta) => {
+    const content = $(meta).attr('content') || '';
+    const epcMatch = content.match(/\b([A-G])\b/i);
+    if (epcMatch && !epcRating) {
+        epcRating = epcMatch[1].toUpperCase();
+        console.log('Found EPC in meta tags:', epcRating);
+    }
+});
+
+// Method 2: Look for EPC in structured data (JSON-LD)
+$('script[type="application/ld+json"]').each((i, script) => {
+    try {
+        const jsonData = JSON.parse($(script).html());
+        if (jsonData.energyEfficiencyRating || jsonData.epcRating) {
+            epcRating = (jsonData.energyEfficiencyRating || jsonData.epcRating).toString().toUpperCase();
+            console.log('Found EPC in JSON-LD:', epcRating);
+        }
+    } catch (e) {
+        // Ignore JSON parsing errors
+    }
+});
+
+// Method 3: Look for EPC in page text with better patterns
+if (!epcRating) {
+    const epcPatterns = [
+        /epc\s*rating[:\s]*([a-g])\b/gi,
+        /energy\s*rating[:\s]*([a-g])\b/gi,
+        /epc[:\s]*([a-g])\b/gi,
+        /energy\s*efficiency[:\s]*([a-g])\b/gi,
+        /current\s*energy\s*rating[:\s]*([a-g])\b/gi
+    ];
+    
+    for (const pattern of epcPatterns) {
+        const matches = pageText.match(pattern);
+        if (matches) {
+            // Extract just the letter from the first match
+            const letterMatch = matches[0].match(/([a-g])\b/i);
+            if (letterMatch) {
+                epcRating = letterMatch[1].toUpperCase();
+                console.log(`Found EPC with pattern "${pattern}":`, epcRating);
+                break;
+            }
+        }
+    }
+}
+
+// Method 4: Look in specific EPC-related elements
+if (!epcRating) {
+    const epcSelectors = [
+        '[class*="epc"]',
+        '[class*="energy"]',
+        '[data-test*="epc"]',
+        '[data-testid*="epc"]',
+        '.energy-rating',
+        '.epc-rating',
+        '#epc-rating'
+    ];
+    
+    for (const selector of epcSelectors) {
+        const epcText = $(selector).text().toLowerCase();
+        const epcMatch = epcText.match(/\b([a-g])\b/i);
+        if (epcMatch) {
+            epcRating = epcMatch[1].toUpperCase();
+            console.log(`Found EPC in element "${selector}":`, epcRating);
+            break;
+        }
+    }
+}
+
+// Method 5: Look for EPC in image alt text (sometimes EPC certificates are images)
+if (!epcRating) {
+    $('img[alt*="epc"], img[alt*="energy"], img[src*="epc"]').each((i, img) => {
+        const alt = $(img).attr('alt') || '';
+        const src = $(img).attr('src') || '';
+        const epcMatch = (alt + ' ' + src).match(/\b([a-g])\b/i);
+        if (epcMatch) {
+            epcRating = epcMatch[1].toUpperCase();
+            console.log('Found EPC in image alt/src:', epcRating);
+        }
+    });
+}
+
+console.log('Final EPC rating extracted:', epcRating);
         
         // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
@@ -804,7 +892,7 @@ console.log('Final floorplan result:', !!floorplan);
             features: features,
             images: images.slice(0, 5), // Limit to first 5 images
             floorplan: floorplan,
-            epcRating: null,
+            epcRating: epcRating,
             address: address || 'Address not found',
             coordinates: coordinates
         };
