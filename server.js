@@ -1126,7 +1126,6 @@ async function analyzePropertyAccessibility(property) {
     overall: Math.round((overallScore || 0) * 10) / 10,
     summary: summary || 'Analysis completed successfully'
 };
-}
 
 // Generate comprehensive summary
 function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore) {
