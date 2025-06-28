@@ -844,7 +844,8 @@ try {
             rating: epcData.rating,
             score: epcData.score,
             confidence: epcData.confidence
-        }
+        }});
+    }
     } else {
         console.log('⚠️ Vision extraction failed or low confidence:', visionResult.reason);
         
