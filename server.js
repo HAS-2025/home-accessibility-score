@@ -1220,7 +1220,6 @@ app.post('/api/analyze', async (req, res) => {
             error: error.message || 'Failed to analyze property' 
     });
 }
-});
 
 // Generate comprehensive summary
 function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore) {
