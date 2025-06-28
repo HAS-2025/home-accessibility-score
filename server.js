@@ -884,6 +884,49 @@ console.log('Final floorplan result:', !!floorplan);
         // Use epcData for compatibility with existing code
         const epcRating = epcData.rating;
 
+        // Extract basic features
+        const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
+        const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
+        
+        const features = [];
+        if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
+        if (bathroomMatch) features.push(`${bathroomMatch[1]} bathroom${bathroomMatch[1] > 1 ? 's' : ''}`);
+        
+        // Look for more features in description
+        if (description.toLowerCase().includes('garage')) features.push('garage');
+        if (description.toLowerCase().includes('garden')) features.push('garden');
+        if (description.toLowerCase().includes('parking')) features.push('parking');
+        if (description.toLowerCase().includes('ground floor')) features.push('ground floor accommodation');
+        if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
+        if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
+        
+        console.log('Extracted title:', title);
+        console.log('Extracted price:', price);
+        console.log('Description length:', description.length);
+        console.log('Images found:', images.length);
+        console.log('Floorplan found:', !!floorplan);
+        console.log('Features:', features);
+        
+        return {
+            id: propertyId,
+            title: title,
+            price: price,
+            description: description,
+            features: features,
+            images: images.slice(0, 5), // Limit to first 5 images
+            floorplan: floorplan,
+            epc: epcData, // Full EPC data with confidence scores
+            epcRating: epcData.rating, // For backward compatibility
+            address: address || 'Address not found',
+            coordinates: coordinates
+        };
+        
+    } catch (error) {
+        console.error('Scraping error:', error.message);
+        throw new Error('Failed to scrape property data');
+    }
+}
+
 // Updated analyzePropertyAccessibility function with improved GP integration
 
 async function analyzePropertyAccessibility(property) {
