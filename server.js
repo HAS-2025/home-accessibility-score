@@ -841,51 +841,39 @@ if (!epcRating) {
     console.log('Searching for EPC certificate and extracting rating...');
     
     // Find EPC certificate elements and look for rating in nearby content
-    $('a, button, div, span, p').each((i, element) => {
+    const epcElements = $('a, button, div, span, p').filter((i, element) => {
         const text = $(element).text().toLowerCase();
         const href = $(element).attr('href') || '';
         
-        // Check if this element mentions EPC certificate
-        if ((text.includes('energy performance certificate') || 
-             text.includes('epc certificate') ||
-             text.includes('view epc') ||
-             text.includes('download epc') ||
-             href.includes('epc'))) {
-            
-            console.log('Found EPC certificate element, looking for rating...');
-            
-            // Look for rating in the same element
-            const elementText = $(element).text();
-            let ratingMatch = elementText.match(/\b([A-G])\b/i);
-            if (ratingMatch) {
-                epcRating = ratingMatch[1].toUpperCase();
-                console.log('Found EPC rating in certificate element:', epcRating);
-                return false; // Break out of each loop
-            }
-            
-            // Look for rating in parent element
-            const parentText = $(element).parent().text();
-            ratingMatch = parentText.match(/\b([A-G])\b/i);
-            if (ratingMatch) {
-                epcRating = ratingMatch[1].toUpperCase();
-                console.log('Found EPC rating in parent element:', epcRating);
-                return false;
-            }
-            
-            // Look for rating in sibling elements
-            $(element).siblings().each((j, sibling) => {
-                const siblingText = $(sibling).text();
-                const siblingMatch = siblingText.match(/\b([A-G])\b/i);
-                if (siblingMatch) {
-                    epcRating = siblingMatch[1].toUpperCase();
-                    console.log('Found EPC rating in sibling element:', epcRating);
-                    return false;
-                }
-            });
-            
-            if (epcRating) return false;
-        }
+        return (text.includes('energy performance certificate') || 
+                text.includes('epc certificate') ||
+                text.includes('view epc') ||
+                text.includes('download epc') ||
+                href.includes('epc'));
     });
+    
+    for (let i = 0; i < epcElements.length && !epcRating; i++) {
+        const element = epcElements[i];
+        console.log('Found EPC certificate element, looking for rating...');
+        
+        // Look for rating in the same element
+        const elementText = $(element).text();
+        let ratingMatch = elementText.match(/\b([A-G])\b/i);
+        if (ratingMatch) {
+            epcRating = ratingMatch[1].toUpperCase();
+            console.log('Found EPC rating in certificate element:', epcRating);
+            break;
+        }
+        
+        // Look for rating in parent element
+        const parentText = $(element).parent().text();
+        ratingMatch = parentText.match(/\b([A-G])\b/i);
+        if (ratingMatch) {
+            epcRating = ratingMatch[1].toUpperCase();
+            console.log('Found EPC rating in parent element:', epcRating);
+            break;
+        }
+    }
 }
 
 // Method 3: Look for numeric EPC score and convert to letter (like 59 -> D)
