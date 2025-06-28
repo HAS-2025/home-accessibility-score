@@ -810,10 +810,10 @@ if (!floorplan) {
 
 console.log('Final floorplan result:', !!floorplan);
 
-   // More specific EPC extraction - avoid false positives
+   // Enhanced EPC extraction - read from actual certificate content
 let epcRating = null;
 
-console.log('Starting specific EPC extraction...');
+console.log('Starting enhanced EPC certificate reading...');
 
 // Method 1: Look for "EPC Rating:" in description (most reliable)
 if (description && description.length > 0) {
@@ -836,39 +836,171 @@ if (description && description.length > 0) {
     }
 }
 
-// Method 2: Look specifically for EPC certificate links/buttons (more targeted)
+// Method 2: Look for EPC certificate and try to extract rating from surrounding content
 if (!epcRating) {
-    console.log('Searching for specific EPC certificate elements...');
+    console.log('Searching for EPC certificate and extracting rating...');
     
-    // Look for elements that specifically mention EPC or Energy Performance Certificate
-    $('a, button, div').each((i, element) => {
+    // Find EPC certificate elements and look for rating in nearby content
+    $('a, button, div, span, p').each((i, element) => {
         const text = $(element).text().toLowerCase();
         const href = $(element).attr('href') || '';
         
-        // Must be specifically about EPC certificates, not just any energy mention
+        // Check if this element mentions EPC certificate
         if ((text.includes('energy performance certificate') || 
              text.includes('epc certificate') ||
              text.includes('view epc') ||
              text.includes('download epc') ||
-             href.includes('epc')) &&
-            text.length < 100) { // Avoid very long text blocks
+             href.includes('epc'))) {
             
-            console.log('Found specific EPC certificate element:', text.substring(0, 50));
-            console.log('Element href:', href);
+            console.log('Found EPC certificate element, looking for rating...');
             
-            // Look for rating in the element text
+            // Look for rating in the same element
             const elementText = $(element).text();
-            const letterMatch = elementText.match(/\b([A-G])\b/i);
-            if (letterMatch) {
-                epcRating = letterMatch[1].toUpperCase();
-                console.log('Found EPC rating in specific certificate element:', epcRating);
+            let ratingMatch = elementText.match(/\b([A-G])\b/i);
+            if (ratingMatch) {
+                epcRating = ratingMatch[1].toUpperCase();
+                console.log('Found EPC rating in certificate element:', epcRating);
                 return false; // Break out of each loop
+            }
+            
+            // Look for rating in parent element
+            const parentText = $(element).parent().text();
+            ratingMatch = parentText.match(/\b([A-G])\b/i);
+            if (ratingMatch) {
+                epcRating = ratingMatch[1].toUpperCase();
+                console.log('Found EPC rating in parent element:', epcRating);
+                return false;
+            }
+            
+            // Look for rating in sibling elements
+            $(element).siblings().each((j, sibling) => {
+                const siblingText = $(sibling).text();
+                const siblingMatch = siblingText.match(/\b([A-G])\b/i);
+                if (siblingMatch) {
+                    epcRating = siblingMatch[1].toUpperCase();
+                    console.log('Found EPC rating in sibling element:', epcRating);
+                    return false;
+                }
+            });
+            
+            if (epcRating) return false;
+        }
+    });
+}
+
+// Method 3: Look for numeric EPC score and convert to letter (like 59 -> D)
+if (!epcRating) {
+    console.log('Looking for numeric EPC score to convert...');
+    
+    // Look for current energy efficiency scores
+    const numericPatterns = [
+        /current[\s\S]{0,50}(\d{2,3})(?!\d)/gi,  // "current" followed by 2-3 digit number
+        /energy\s+efficiency[\s\S]{0,50}(\d{2,3})(?!\d)/gi,
+        /epc[\s\S]{0,30}(\d{2,3})(?!\d)/gi
+    ];
+    
+    for (const pattern of numericPatterns) {
+        const matches = pageText.match(pattern);
+        if (matches) {
+            for (const match of matches) {
+                const scoreMatch = match.match(/(\d{2,3})(?!\d)/);
+                if (scoreMatch) {
+                    const score = parseInt(scoreMatch[1]);
+                    
+                    // Convert numeric score to letter grade (EPC scale)
+                    if (score >= 92) {
+                        epcRating = 'A';
+                    } else if (score >= 81) {
+                        epcRating = 'B';
+                    } else if (score >= 69) {
+                        epcRating = 'C';
+                    } else if (score >= 55) {
+                        epcRating = 'D';
+                    } else if (score >= 39) {
+                        epcRating = 'E';
+                    } else if (score >= 21) {
+                        epcRating = 'F';
+                    } else if (score >= 1) {
+                        epcRating = 'G';
+                    }
+                    
+                    if (epcRating && score >= 1 && score <= 100) { // Validate reasonable EPC score
+                        console.log(`Found EPC numeric score ${score}, converted to letter: ${epcRating}`);
+                        break;
+                    } else {
+                        epcRating = null; // Reset if invalid score
+                    }
+                }
+            }
+            if (epcRating) break;
+        }
+    }
+}
+
+// Method 4: Look specifically for EPC certificate images and analyze content around them
+if (!epcRating) {
+    console.log('Analyzing EPC certificate images and surrounding content...');
+    
+    $('img').each((i, img) => {
+        const src = $(img).attr('src') || '';
+        const alt = $(img).attr('alt') || '';
+        const title = $(img).attr('title') || '';
+        
+        // Check if this is an EPC certificate image
+        if ((src.toLowerCase().includes('epc') && 
+             (src.toLowerCase().includes('certificate') || src.toLowerCase().includes('rating'))) ||
+            (alt.toLowerCase().includes('energy performance') || 
+             alt.toLowerCase().includes('epc'))) {
+            
+            console.log('Found EPC certificate image, analyzing content...');
+            console.log('  - src:', src);
+            console.log('  - alt:', alt);
+            
+            // Look for rating in image alt/title
+            let ratingMatch = (alt + ' ' + title).match(/\b([A-G])\b/i);
+            if (ratingMatch) {
+                epcRating = ratingMatch[1].toUpperCase();
+                console.log('Found EPC rating in image attributes:', epcRating);
+                return false;
+            }
+            
+            // Look for rating in text near the image
+            const imgParent = $(img).closest('div, section, article');
+            const nearbyText = imgParent.text();
+            ratingMatch = nearbyText.match(/\b([A-G])\b/i);
+            if (ratingMatch) {
+                epcRating = ratingMatch[1].toUpperCase();
+                console.log('Found EPC rating near certificate image:', epcRating);
+                return false;
             }
         }
     });
 }
 
-// Method 3: Look for EPC in structured data (JSON-LD)
+// Method 5: Look for "current" rating context specifically
+if (!epcRating) {
+    console.log('Looking for current energy rating context...');
+    
+    // Split page into sections and look for current rating mentions
+    const lines = pageText.split('\n');
+    for (const line of lines) {
+        const lowerLine = line.toLowerCase();
+        
+        // Look for lines that mention "current" and contain a letter
+        if (lowerLine.includes('current') && 
+            (lowerLine.includes('energy') || lowerLine.includes('rating') || lowerLine.includes('epc'))) {
+            
+            const letterMatch = line.match(/\b([A-G])\b/i);
+            if (letterMatch) {
+                epcRating = letterMatch[1].toUpperCase();
+                console.log(`Found current rating in line: "${line.trim()}" -> Rating: ${epcRating}`);
+                break;
+            }
+        }
+    }
+}
+
+// Method 6: Look for structured data (JSON-LD)
 if (!epcRating) {
     console.log('Searching structured data for EPC...');
     
@@ -885,60 +1017,6 @@ if (!epcRating) {
             }
         } catch (e) {
             // Ignore JSON parsing errors
-        }
-    });
-}
-
-// Method 4: Very careful page text search for explicit "EPC Rating" mentions
-if (!epcRating) {
-    console.log('Careful search for explicit EPC rating mentions...');
-    
-    // Look for very specific patterns in the text
-    const explicitEpcPatterns = [
-        /epc\s+rating[:\s]*([a-g])(?:\s|[^a-z]|$)/gi,
-        /energy\s+performance\s+certificate[:\s]*rating[:\s]*([a-g])(?:\s|[^a-z]|$)/gi,
-        /current\s+epc[:\s]*([a-g])(?:\s|[^a-z]|$)/gi
-    ];
-    
-    for (const pattern of explicitEpcPatterns) {
-        const matches = pageText.match(pattern);
-        if (matches) {
-            const match = matches[0];
-            const letterMatch = match.match(/([a-g])(?:\s|[^a-z]|$)/i);
-            if (letterMatch) {
-                epcRating = letterMatch[1].toUpperCase();
-                console.log(`Found explicit EPC in page text: "${match.trim()}" -> Rating: ${epcRating}`);
-                break;
-            }
-        }
-    }
-}
-
-// Method 5: Look for actual EPC certificate images (with better validation)
-if (!epcRating) {
-    console.log('Searching for actual EPC certificate images...');
-    
-    $('img').each((i, img) => {
-        const src = $(img).attr('src') || '';
-        const alt = $(img).attr('alt') || '';
-        const title = $(img).attr('title') || '';
-        
-        // Must be specifically an EPC certificate image
-        if ((src.toLowerCase().includes('epc') && src.toLowerCase().includes('certificate')) ||
-            (alt.toLowerCase().includes('energy performance certificate')) ||
-            (src.toLowerCase().includes('energy') && src.toLowerCase().includes('certificate'))) {
-            
-            console.log('Found actual EPC certificate image:');
-            console.log('  - src:', src);
-            console.log('  - alt:', alt);
-            
-            // Look for rating in alt text or title
-            const ratingMatch = (alt + ' ' + title).match(/\b([A-G])\b/i);
-            if (ratingMatch) {
-                epcRating = ratingMatch[1].toUpperCase();
-                console.log('Found EPC rating in certificate image:', epcRating);
-                return false; // Break out of each loop
-            }
         }
     });
 }
