@@ -269,7 +269,6 @@ if (response.data.places && response.data.places.length > 0) {
     
     return isValid;
 })
-        })
         .map(place => ({
             name: place.displayName?.text || 'Medical Practice',
             address: place.formattedAddress || 'Address not available',
