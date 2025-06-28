@@ -133,64 +133,94 @@ async function findNearestGPs(lat, lng) {
         console.log('Total places found:', response.data.places?.length || 0);
         
         if (response.data.places && response.data.places.length > 0) {
-            // Enhanced filtering for UK GP surgeries
-            const gps = response.data.places
-                .filter(place => {
-                    const name = place.displayName?.text?.toLowerCase() || '';
-                    const types = place.types || [];
-                    const businessStatus = place.businessStatus;
-                    
-                    // Skip permanently closed places
-                    if (businessStatus === 'CLOSED_PERMANENTLY') {
-                        console.log(`Skipping closed place: ${name}`);
-                        return false;
-                    }
-                    
-                    // UK-specific GP surgery indicators
-                    const isGPSurgery = (
-                        // UK-specific terms
-                        name.includes('surgery') ||
-                        name.includes('medical centre') ||
-                        name.includes('medical center') ||
-                        name.includes('health centre') ||
-                        name.includes('health center') ||
-                        name.includes('gp practice') ||
-                        name.includes('doctors surgery') ||
-                        name.includes('family practice') ||
-                        name.includes('primary care') ||
-                        
-                        // General medical terms
-                        name.includes('doctors') ||
-                        name.includes('clinic') ||
-                        name.includes('medical practice') ||
-                        
-                        // Type-based (most reliable)
-                        types.includes('doctor') ||
-                        types.includes('health')
-                    );
-                    
-                    // Exclude non-GP medical facilities
-                    const isExcluded = (
-                        name.includes('hospital') ||
-                        name.includes('pharmacy') ||
-                        name.includes('dentist') ||
-                        name.includes('dental') ||
-                        name.includes('optician') ||
-                        name.includes('chiropractor') ||
-                        name.includes('physiotherapy') ||
-                        name.includes('physio') ||
-                        name.includes('vet') ||
-                        name.includes('veterinary') ||
-                        name.includes('care home') ||
-                        name.includes('nursing home') ||
-                        name.includes('mental health')
-                    );
-                    
-                    const isValid = isGPSurgery && !isExcluded;
-                    console.log(`${name}: GP=${isGPSurgery}, Excluded=${isExcluded}, Valid=${isValid}`);
-                    
-                    return isValid;
-                })
+            // Improved GP surgery filtering - much more strict
+.filter(place => {
+    const name = place.displayName?.text?.toLowerCase() || '';
+    const types = place.types || [];
+    const businessStatus = place.businessStatus;
+    
+    // Skip permanently closed places
+    if (businessStatus === 'CLOSED_PERMANENTLY') {
+        console.log(`Skipping closed place: ${name}`);
+        return false;
+    }
+    
+    // STRICT GP surgery indicators - must contain these specific terms
+    const isActualGPSurgery = (
+        // UK GP surgery specific terms
+        name.includes('gp surgery') ||
+        name.includes('doctors surgery') ||
+        name.includes('medical centre') ||
+        name.includes('medical center') ||
+        name.includes('health centre') ||
+        name.includes('health center') ||
+        name.includes('family practice') ||
+        name.includes('primary care') ||
+        
+        // Generic but likely GP terms (more cautious)
+        (name.includes('surgery') && !name.includes('plastic') && !name.includes('cosmetic')) ||
+        (name.includes('medical practice') && !name.includes('specialist')) ||
+        
+        // Names that clearly indicate GP practices
+        name.includes('group practice') ||
+        name.includes('health practice') ||
+        
+        // Type-based identification for general practitioners
+        (types.includes('doctor') && !name.includes('specialist'))
+    );
+    
+    // STRICT exclusions - definitely not GP surgeries
+    const isDefinitelyNotGP = (
+        // Specialist medical services
+        name.includes('fertility') ||
+        name.includes('astrology') ||
+        name.includes('acupuncture') ||
+        name.includes('podiatry') ||
+        name.includes('chiropractor') ||
+        name.includes('physiotherapy') ||
+        name.includes('physio') ||
+        name.includes('osteopath') ||
+        name.includes('counselling') ||
+        name.includes('therapy') ||
+        name.includes('beauty') ||
+        name.includes('aesthetic') ||
+        name.includes('cosmetic') ||
+        name.includes('laser') ||
+        name.includes('skin') ||
+        name.includes('hair') ||
+        
+        // Non-GP medical facilities
+        name.includes('hospital') ||
+        name.includes('pharmacy') ||
+        name.includes('dentist') ||
+        name.includes('dental') ||
+        name.includes('optician') ||
+        name.includes('eye') ||
+        name.includes('hearing') ||
+        name.includes('vet') ||
+        name.includes('veterinary') ||
+        name.includes('care home') ||
+        name.includes('nursing home') ||
+        
+        // Specialist clinics
+        name.includes('clinic') && (
+            name.includes('specialist') ||
+            name.includes('private') ||
+            name.includes('cosmetic') ||
+            name.includes('laser') ||
+            name.includes('weight') ||
+            name.includes('fertility') ||
+            name.includes('sexual health') ||
+            name.includes('travel') ||
+            name.includes('occupational')
+        )
+    );
+    
+    const isValid = isActualGPSurgery && !isDefinitelyNotGP;
+    console.log(`${name}: GP=${isActualGPSurgery}, Excluded=${isDefinitelyNotGP}, Final=${isValid}`);
+    
+    return isValid;
+})
                 .map(place => ({
                     name: place.displayName?.text || 'Medical Practice',
                     address: place.formattedAddress || 'Address not available',
