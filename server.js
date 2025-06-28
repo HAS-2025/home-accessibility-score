@@ -137,100 +137,138 @@ async function findNearestGPs(lat, lng) {
 if (response.data.places && response.data.places.length > 0) {
     // Enhanced filtering for UK GP surgeries - balanced approach
     const gps = response.data.places
-        .filter(place => {
-            const name = place.displayName?.text?.toLowerCase() || '';
-            const types = place.types || [];
-            const businessStatus = place.businessStatus;
-            
-            // Skip permanently closed places
-            if (businessStatus === 'CLOSED_PERMANENTLY') {
-                console.log(`Skipping closed place: ${name}`);
-                return false;
-            }
-            
-            // UK GP surgery indicators - more balanced approach
-            const isLikelyGPSurgery = (
-                // Explicit GP surgery terms
-                name.includes('gp surgery') ||
-                name.includes('doctors surgery') ||
-                name.includes('medical centre') ||
-                name.includes('medical center') ||
-                name.includes('health centre') ||
-                name.includes('health center') ||
-                name.includes('family practice') ||
-                name.includes('primary care') ||
-                name.includes('group practice') ||
-                
-                // Generic surgery terms (but be more careful)
-                (name.includes('surgery') && 
-                 !name.includes('plastic') && 
-                 !name.includes('cosmetic') && 
-                 !name.includes('laser') &&
-                 !name.includes('aesthetic')) ||
-                
-                // Medical practice terms
-                name.includes('medical practice') ||
-                name.includes('health practice') ||
-                
-                // Heart of Bath, James surgery etc - area specific
-                (name.includes('surgery') && (
-                    name.includes('heart of') ||
-                    name.includes('james') ||
-                    name.includes('bath') ||
-                    name.includes('st ') ||
-                    name.includes('dr ')
-                )) ||
-                
-                // General doctor references
-                (name.includes('doctors') && !name.includes('specialist')) ||
-                (name.includes('clinic') && name.includes('medical')) ||
-                
-                // Type-based identification
-                types.includes('doctor') ||
-                types.includes('health')
-            );
-            
-            // Things that are definitely NOT GP surgeries
-            const isDefinitelyNotGP = (
-                // Specialist treatments
-                name.includes('fertility') ||
-                name.includes('astrology') ||
-                name.includes('acupuncture') ||
-                name.includes('podiatry') ||
-                name.includes('chiropractor') ||
-                name.includes('physiotherapy') ||
-                name.includes('physio') ||
-                name.includes('osteopath') ||
-                name.includes('beauty') ||
-                name.includes('cosmetic') ||
-                name.includes('laser eye') ||
-                name.includes('weight loss') ||
-                name.includes('botox') ||
-                name.includes('massage') ||
-                
-                // Non-medical or specialist medical
-                name.includes('pharmacy') ||
-                name.includes('dentist') ||
-                name.includes('dental') ||
-                name.includes('optician') ||
-                name.includes('eye care') ||
-                name.includes('hearing') ||
-                name.includes('vet') ||
-                name.includes('veterinary') ||
-                name.includes('care home') ||
-                name.includes('nursing home') ||
-                name.includes('mental health') ||
-                
-                // Large hospitals (we want GP surgeries, not big hospitals)
-                name.includes('royal united hospital') ||
-                name.includes('ruh') ||
-                name.includes('university hospital')
-            );
-            
-            const isValid = isLikelyGPSurgery && !isDefinitelyNotGP;
-            console.log(`${name}: GP=${isLikelyGPSurgery}, Excluded=${isDefinitelyNotGP}, Final=${isValid}`);
-            
-            return isValid;
+        // Much stricter GP surgery filtering - exclude obvious non-GP services
+.filter(place => {
+    const name = place.displayName?.text?.toLowerCase() || '';
+    const types = place.types || [];
+    const businessStatus = place.businessStatus;
+    
+    // Skip permanently closed places
+    if (businessStatus === 'CLOSED_PERMANENTLY') {
+        console.log(`Skipping closed place: ${name}`);
+        return false;
+    }
+    
+    // FIRST: Strict exclusions - things that are definitely NOT GP surgeries
+    const isDefinitelyNotGP = (
+        // Specialist ear/foot/skin services
+        name.includes('ear wax') ||
+        name.includes('earwax') ||
+        name.includes('chiropody') ||
+        name.includes('podiatry') ||
+        name.includes('foot care') ||
+        name.includes('hearing') ||
+        
+        // Tree surgery and other non-medical
+        name.includes('tree surgery') ||
+        name.includes('tree service') ||
+        name.includes('landscaping') ||
+        
+        // Specialist medical services
+        name.includes('fertility') ||
+        name.includes('astrology') ||
+        name.includes('acupuncture') ||
+        name.includes('chiropractor') ||
+        name.includes('physiotherapy') ||
+        name.includes('physio') ||
+        name.includes('osteopath') ||
+        name.includes('counselling') ||
+        name.includes('therapy') ||
+        name.includes('beauty') ||
+        name.includes('aesthetic') ||
+        name.includes('cosmetic') ||
+        name.includes('laser') ||
+        name.includes('skin care') ||
+        name.includes('botox') ||
+        name.includes('massage') ||
+        
+        // Non-medical or specialist medical
+        name.includes('pharmacy') ||
+        name.includes('dentist') ||
+        name.includes('dental') ||
+        name.includes('optician') ||
+        name.includes('eye care') ||
+        name.includes('vet') ||
+        name.includes('veterinary') ||
+        name.includes('care home') ||
+        name.includes('nursing home') ||
+        name.includes('mental health') ||
+        
+        // Websites and online services
+        name.includes('.co.uk') ||
+        name.includes('.com') ||
+        name.includes('www.') ||
+        
+        // Large hospitals (we want GP surgeries, not big hospitals)
+        name.includes('royal united hospital') ||
+        name.includes('ruh') ||
+        name.includes('university hospital')
+    );
+    
+    // If it's definitely not a GP, exclude it immediately
+    if (isDefinitelyNotGP) {
+        console.log(`${name}: Excluded (definitely not GP)`);
+        return false;
+    }
+    
+    // SECOND: Positive identification - must have GP surgery indicators
+    const isLikelyGPSurgery = (
+        // Explicit GP surgery terms
+        name.includes('gp surgery') ||
+        name.includes('doctors surgery') ||
+        name.includes('medical centre') ||
+        name.includes('medical center') ||
+        name.includes('health centre') ||
+        name.includes('health center') ||
+        name.includes('family practice') ||
+        name.includes('primary care') ||
+        name.includes('group practice') ||
+        name.includes('health practice') ||
+        
+        // Medical practice with doctor names
+        (name.includes('medical practice') && name.includes('dr ')) ||
+        
+        // Surgery with area/doctor names (but not tree surgery)
+        (name.includes('surgery') && 
+         !name.includes('tree') && 
+         !name.includes('plastic') && 
+         !name.includes('cosmetic') && 
+         !name.includes('laser') &&
+         !name.includes('aesthetic') &&
+         (name.includes('dr ') || 
+          name.includes('practice') || 
+          name.includes('medical') ||
+          name.includes('health') ||
+          name.includes('grosvenor') ||
+          name.includes('pulteney') ||
+          name.includes('batheaston') ||
+          name.includes('bath'))) ||
+        
+        // Medical centre with proper indicators
+        (name.includes('medical') && 
+         (name.includes('centre') || name.includes('center')) &&
+         !name.includes('specialist') &&
+         !name.includes('private')) ||
+        
+        // Doctor names with practice indicators
+        (name.includes('dr ') && 
+         (name.includes('surgery') || 
+          name.includes('practice') || 
+          name.includes('medical') ||
+          name.includes('health'))) ||
+        
+        // Type-based identification (but be more careful)
+        (types.includes('doctor') && 
+         !name.includes('specialist') &&
+         !name.includes('private') &&
+         !name.includes('clinic'))
+    );
+    
+    const isValid = isLikelyGPSurgery;
+    console.log(`${name}: GP=${isLikelyGPSurgery}, Final=${isValid}`);
+    
+    return isValid;
+})
         })
         .map(place => ({
             name: place.displayName?.text || 'Medical Practice',
@@ -773,19 +811,18 @@ if (!floorplan) {
 
 console.log('Final floorplan result:', !!floorplan);
 
-   // Working EPC extraction - handles cases where there's no space after the rating
+   // Enhanced EPC extraction - better certificate detection
 let epcRating = null;
 
-console.log('Starting EPC extraction...');
+console.log('Starting enhanced EPC extraction...');
 
-// Method 1: Look for "EPC Rating:" in description (handles no space after letter)
+// Method 1: Look for "EPC Rating:" in description
 if (description && description.length > 0) {
     console.log('Searching description for EPC Rating...');
     
-    // Updated pattern to handle "EPC Rating: DParking" format
     const epcRatingPatterns = [
-        /epc\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i,  // Handles "EPC Rating: D" or "EPC Rating: DParking"
-        /epc[:\s]*([a-g])(?:\s|[A-Z]|$)/i,           // Handles "EPC: D" or "EPC: DParking"
+        /epc\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
+        /epc[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
         /energy\s*performance\s*certificate[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
         /energy\s*efficiency\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i
     ];
@@ -800,27 +837,34 @@ if (description && description.length > 0) {
     }
 }
 
-// Method 2: If not found in description, try page text with same improved patterns
+// Method 2: Look for EPC certificate links/buttons on the page
 if (!epcRating) {
-    console.log('Searching page text for EPC Rating...');
+    console.log('Searching for EPC certificate links...');
     
-    const pageEpcPatterns = [
-        /epc\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
-        /epc[:\s]*([a-g])(?:\s|[A-Z]|$)/i,
-        /energy\s*rating[:\s]*([a-g])(?:\s|[A-Z]|$)/i
-    ];
-    
-    for (const pattern of pageEpcPatterns) {
-        const match = pageText.match(pattern);
-        if (match) {
-            epcRating = match[1].toUpperCase();
-            console.log(`Found EPC in page text: "${match[0]}" -> Rating: ${epcRating}`);
-            break;
+    // Look for links or buttons that mention EPC certificate
+    $('a, button, div').each((i, element) => {
+        const text = $(element).text().toLowerCase();
+        const href = $(element).attr('href') || '';
+        
+        if ((text.includes('epc') || text.includes('energy') || text.includes('certificate')) &&
+            (text.includes('view') || text.includes('download') || text.includes('certificate'))) {
+            
+            console.log('Found EPC certificate element:', text);
+            console.log('Element href:', href);
+            
+            // Look for rating in the element text or nearby
+            const elementText = $(element).text();
+            const letterMatch = elementText.match(/\b([A-G])\b/i);
+            if (letterMatch) {
+                epcRating = letterMatch[1].toUpperCase();
+                console.log('Found EPC rating in certificate element:', epcRating);
+                return false; // Break out of each loop
+            }
         }
-    }
+    });
 }
 
-// Method 3: Look for structured data as backup
+// Method 3: Look for EPC in structured data
 if (!epcRating) {
     console.log('Searching structured data...');
     
@@ -837,6 +881,65 @@ if (!epcRating) {
             }
         } catch (e) {
             // Ignore JSON parsing errors
+        }
+    });
+}
+
+// Method 4: Careful page text search - avoid corrupted matches like "epcGr"
+if (!epcRating) {
+    console.log('Careful page text search...');
+    
+    // Split into words and look for proper EPC patterns
+    const words = pageText.split(/\s+/);
+    
+    for (let i = 0; i < words.length - 2; i++) {
+        const word1 = words[i].toLowerCase();
+        const word2 = words[i + 1].toLowerCase();
+        const word3 = words[i + 2];
+        
+        // Look for "EPC Rating X" or "EPC: X" patterns
+        if ((word1.includes('epc') && (word2.includes('rating') || word2.includes(':'))) ||
+            (word1.includes('energy') && word2.includes('rating'))) {
+            
+            // Check if the next word contains a single letter A-G
+            const letterMatch = word3.match(/^([A-G])(?:[^a-zA-Z]|$)/);
+            if (letterMatch) {
+                epcRating = letterMatch[1].toUpperCase();
+                console.log(`Found EPC in word sequence: "${word1} ${word2} ${word3}" -> Rating: ${epcRating}`);
+                break;
+            }
+        }
+    }
+}
+
+// Method 5: Look for EPC images with better detection
+if (!epcRating) {
+    console.log('Searching for EPC certificate images...');
+    
+    $('img').each((i, img) => {
+        const src = $(img).attr('src') || '';
+        const alt = $(img).attr('alt') || '';
+        const title = $(img).attr('title') || '';
+        
+        const imgText = (src + ' ' + alt + ' ' + title).toLowerCase();
+        
+        // Look for EPC certificate images
+        if ((imgText.includes('epc') || 
+             (imgText.includes('energy') && (imgText.includes('certificate') || imgText.includes('efficiency')))) &&
+            !imgText.includes('logo')) {
+            
+            console.log('Found potential EPC certificate image:');
+            console.log('  - src:', src);
+            console.log('  - alt:', alt);
+            console.log('  - title:', title);
+            
+            // Look for rating in alt text or title
+            const ratingMatch = (alt + ' ' + title).match(/\b([A-G])\b/i);
+            if (ratingMatch) {
+                epcRating = ratingMatch[1].toUpperCase();
+                console.log('Found EPC rating in image attributes:', epcRating);
+                return false; // Break out of each loop
+            }
         }
     });
 }
