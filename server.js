@@ -1220,10 +1220,13 @@ app.post('/api/analyze', async (req, res) => {
             error: error.message || 'Failed to analyze property' 
     });
 }
+});
 
+// Generate comprehensive summary
 function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore) {
     const summaryParts = [];
     
+    // Overall assessment
     if (overallScore >= 4) {
         summaryParts.push("This property shows excellent suitability for older adults");
     } else if (overallScore >= 3) {
@@ -1234,15 +1237,86 @@ function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, ov
         summaryParts.push("This property may present accessibility challenges for older adults");
     }
     
+    // Key strengths
+    const strengths = [];
+    if (gpProximity.score >= 4) strengths.push("excellent GP proximity");
+    if (epcScore >= 4) strengths.push("good energy efficiency");
+    if (facilitiesScore >= 4) strengths.push("suitable room configuration");
+    
+    if (strengths.length > 0) {
+        summaryParts.push(`with ${strengths.join(' and ')}`);
+    }
+    
+    // Key concerns
+    const concerns = [];
+    if (gpProximity.score <= 2) concerns.push("limited GP access");
+    if (epcScore <= 2) concerns.push("poor energy efficiency");
+    if (facilitiesScore <= 2) concerns.push("limited facilities");
+    
+    if (concerns.length > 0) {
+        summaryParts.push(`Main concerns include ${concerns.join(' and ')}`);
+    }
+    
     return summaryParts.join('. ') + '.';
 }
 
+// Helper function to convert score to rating text
 function getScoreRating(score) {
     if (score >= 4.5) return 'Excellent';
     if (score >= 3.5) return 'Good';
     if (score >= 2.5) return 'Fair';
     return 'Poor';
 }
+
+// Serve the main page
+app.get('/', (req, res) => {
+    res.sendFile(__dirname + '/index.html');
+});
+
+// API Routes
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+app.post('/api/analyze', async (req, res) => {
+    try {
+        const { url } = req.body;
+
+        if (!url || !url.includes('rightmove.co.uk')) {
+            return res.status(400).json({ 
+                error: 'Please provide a valid Rightmove property URL' 
+            });
+        }
+
+        console.log('Analyzing property:', url);
+
+        // Step 1: Get property data
+        const property = await scrapeRightmoveProperty(url);
+        console.log('Property data obtained:', property.title);
+
+        // Step 2: Analyze with new 3-factor system
+        const analysis = await analyzePropertyAccessibility(property);
+        console.log('Analysis completed');
+
+        const result = {
+            property: {
+                title: property.title,
+                price: property.price,
+                url: url
+            },
+            analysis: analysis,
+            timestamp: new Date().toISOString()
+        };
+
+        res.json(result);
+
+    } catch (error) {
+        console.error('Analysis error:', error.message);
+        res.status(500).json({ 
+            error: error.message || 'Failed to analyze property' 
+        });
+    }
+});
 
 // Start server
 app.listen(PORT, () => {
