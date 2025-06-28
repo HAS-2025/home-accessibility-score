@@ -773,45 +773,80 @@ if (!floorplan) {
 
 console.log('Final floorplan result:', !!floorplan);
 
-        // Enhanced EPC rating extraction - prioritize CURRENT rating
+        // Targeted EPC rating extraction - prioritize description and EPC chart images
 let epcRating = null;
 
-// Method 1: Look specifically for "current" EPC rating first (most reliable)
-const currentEpcPatterns = [
-    /current\s*energy\s*rating[:\s]*([a-g])\b/gi,
-    /current\s*epc[:\s]*([a-g])\b/gi,
-    /current[^a-z]*([a-g])\b/gi,  // Current followed by a letter within reasonable distance
-    /energy\s*efficiency\s*rating[^a-z]*current[^a-z]*([a-g])\b/gi
-];
+console.log('Starting targeted EPC extraction...');
 
-for (const pattern of currentEpcPatterns) {
-    const matches = pageText.match(pattern);
-    if (matches) {
-        const letterMatch = matches[0].match(/([a-g])\b/i);
-        if (letterMatch) {
-            epcRating = letterMatch[1].toUpperCase();
-            console.log(`Found CURRENT EPC with pattern "${pattern}":`, epcRating);
+// Method 1: Search specifically in property description for "EPC Rating:"
+console.log('Method 1: Searching description for EPC Rating...');
+if (description && description.length > 0) {
+    const descriptionText = description.toLowerCase();
+    console.log('Description length:', description.length);
+    
+    // Look for "EPC Rating:" followed by a letter
+    const epcRatingPatterns = [
+        /epc\s*rating[:\s]*([a-g])\b/i,
+        /epc\s*rating[:\s]*-\s*([a-g])\b/i,
+        /epc[:\s]*([a-g])\b/i,
+        /energy\s*performance\s*certificate[:\s]*([a-g])\b/i,
+        /energy\s*efficiency\s*rating[:\s]*([a-g])\b/i
+    ];
+    
+    for (const pattern of epcRatingPatterns) {
+        const match = descriptionText.match(pattern);
+        if (match) {
+            epcRating = match[1].toUpperCase();
+            console.log(`Found EPC in description with pattern "${pattern.source}":`, epcRating);
+            console.log('Match context:', match[0]);
             break;
         }
     }
 }
 
-// Method 2: Look for EPC in structured data (JSON-LD) - often most accurate
+// Method 2: Look for EPC certificate images and analyze their alt text
 if (!epcRating) {
+    console.log('Method 2: Searching for EPC certificate images...');
+    
+    $('img').each((i, img) => {
+        const src = $(img).attr('src') || '';
+        const alt = $(img).attr('alt') || '';
+        const imgText = (src + ' ' + alt).toLowerCase();
+        
+        // Look for EPC certificate images
+        if (imgText.includes('epc') || 
+            imgText.includes('energy') && imgText.includes('certificate') ||
+            imgText.includes('energy') && imgText.includes('efficiency') ||
+            imgText.includes('energy') && imgText.includes('rating')) {
+            
+            console.log('Found potential EPC image:', src);
+            console.log('Image alt text:', alt);
+            
+            // Look for letter rating in the alt text or nearby elements
+            const letterMatch = alt.match(/\b([A-G])\b/i);
+            if (letterMatch) {
+                epcRating = letterMatch[1].toUpperCase();
+                console.log('Found EPC rating in image alt text:', epcRating);
+                return false; // Break out of .each loop
+            }
+        }
+    });
+}
+
+// Method 3: Look for structured data in JSON-LD
+if (!epcRating) {
+    console.log('Method 3: Searching JSON-LD structured data...');
+    
     $('script[type="application/ld+json"]').each((i, script) => {
         try {
             const jsonData = JSON.parse($(script).html());
             
-            // Look for current energy rating specifically
             if (jsonData.energyEfficiencyRating) {
-                epcRating = jsonData.energyEfficiencyRating.toString().toUpperCase();
-                console.log('Found EPC in JSON-LD energyEfficiencyRating:', epcRating);
-            } else if (jsonData.currentEnergyRating) {
-                epcRating = jsonData.currentEnergyRating.toString().toUpperCase();
-                console.log('Found EPC in JSON-LD currentEnergyRating:', epcRating);
-            } else if (jsonData.epcRating) {
-                epcRating = jsonData.epcRating.toString().toUpperCase();
-                console.log('Found EPC in JSON-LD epcRating:', epcRating);
+                const rating = jsonData.energyEfficiencyRating.toString().toUpperCase();
+                if (/^[A-G]$/.test(rating)) {
+                    epcRating = rating;
+                    console.log('Found EPC in JSON-LD energyEfficiencyRating:', epcRating);
+                }
             }
         } catch (e) {
             // Ignore JSON parsing errors
@@ -819,149 +854,90 @@ if (!epcRating) {
     });
 }
 
-// Method 3: Look specifically in property description text
+// Method 4: Look for "current" rating context in page text, avoiding CO2 mentions
 if (!epcRating) {
-    const descriptionText = description.toLowerCase();
-    console.log('Searching in description text for EPC...');
+    console.log('Method 4: Searching for current energy efficiency rating...');
     
-    const descriptionEpcPatterns = [
-        /epc\s*rating[:\s]*([a-g])\b/gi,
-        /energy\s*rating[:\s]*([a-g])\b/gi,
-        /epc[:\s]*([a-g])\b/gi,
-        /energy\s*efficiency[:\s]*([a-g])\b/gi,
-        /energy\s*performance[:\s]*([a-g])\b/gi
-    ];
-    
-    for (const pattern of descriptionEpcPatterns) {
-        const matches = descriptionText.match(pattern);
-        if (matches) {
-            const letterMatch = matches[0].match(/([a-g])\b/i);
-            if (letterMatch) {
-                epcRating = letterMatch[1].toUpperCase();
-                console.log(`Found EPC in description with pattern "${pattern}":`, epcRating);
-                console.log('Description context:', matches[0]);
-                break;
-            }
-        }
-    }
-}
-
-// Method 4: Look for EPC in meta tags
-if (!epcRating) {
-    $('meta[property*="epc"], meta[name*="epc"], meta[property*="energy"], meta[name*="energy"]').each((i, meta) => {
-        const content = $(meta).attr('content') || '';
-        const epcMatch = content.match(/\b([A-G])\b/i);
-        if (epcMatch) {
-            epcRating = epcMatch[1].toUpperCase();
-            console.log('Found EPC in meta tags:', epcRating);
-        }
-    });
-}
-
-// Method 5: Look for numeric score and convert to letter (57 = D)
-if (!epcRating) {
-    const numericEpcPatterns = [
-        /current[^0-9]*(\d{1,3})[^0-9]/gi,
-        /energy\s*rating[^0-9]*(\d{1,3})[^0-9]/gi,
-        /epc[^0-9]*(\d{1,3})[^0-9]/gi
-    ];
-    
-    for (const pattern of numericEpcPatterns) {
-        const matches = pageText.match(pattern);
-        if (matches) {
-            const scoreMatch = matches[0].match(/(\d{1,3})/);
-            if (scoreMatch) {
-                const score = parseInt(scoreMatch[1]);
-                // Convert numeric score to letter grade
-                if (score >= 92) epcRating = 'A';
-                else if (score >= 81) epcRating = 'B';
-                else if (score >= 69) epcRating = 'C';
-                else if (score >= 55) epcRating = 'D';
-                else if (score >= 39) epcRating = 'E';
-                else if (score >= 21) epcRating = 'F';
-                else epcRating = 'G';
-                
-                console.log(`Found EPC numeric score ${score}, converted to letter:`, epcRating);
-                break;
-            }
-        }
-    }
-}
-
-// Method 5: Look for pattern that excludes "potential" - target current rating specifically
-if (!epcRating) {
-    // Split the page text and look for current rating context
     const lines = pageText.split('\n');
     for (const line of lines) {
         const lowerLine = line.toLowerCase();
         
-        // Skip lines that mention "potential" 
-        if (lowerLine.includes('potential')) continue;
-        
-        // Look for current rating in this line
-        if (lowerLine.includes('current') && lowerLine.includes('rating')) {
-            const epcMatch = line.match(/\b([A-G])\b/i);
-            if (epcMatch) {
-                epcRating = epcMatch[1].toUpperCase();
-                console.log('Found CURRENT EPC in line analysis:', epcRating);
-                break;
-            }
+        // Skip CO2-related lines and potential ratings
+        if (lowerLine.includes('co2') || 
+            lowerLine.includes('co₂') || 
+            lowerLine.includes('potential') ||
+            lowerLine.includes('environmental impact')) {
+            continue;
         }
         
-        // Look for EPC patterns but skip potential
-        if ((lowerLine.includes('epc') || lowerLine.includes('energy')) && 
-            !lowerLine.includes('potential')) {
-            const epcMatch = line.match(/\b([A-G])\b/i);
-            if (epcMatch) {
-                epcRating = epcMatch[1].toUpperCase();
-                console.log('Found EPC in non-potential line:', epcRating);
+        // Look for current energy efficiency rating
+        if ((lowerLine.includes('current') && lowerLine.includes('energy') && lowerLine.includes('efficiency')) ||
+            (lowerLine.includes('energy efficiency rating') && lowerLine.includes('current'))) {
+            
+            const letterMatch = line.match(/\b([A-G])\b/i);
+            if (letterMatch) {
+                epcRating = letterMatch[1].toUpperCase();
+                console.log('Found current energy efficiency rating in text:', epcRating);
+                console.log('Line context:', line.trim());
                 break;
             }
         }
     }
 }
 
-// Method 6: Look in specific EPC-related elements - prioritize current
+// Method 5: Look for EPC-specific HTML elements (current rating only)
 if (!epcRating) {
+    console.log('Method 5: Searching EPC-specific HTML elements...');
+    
     const epcSelectors = [
-        '[class*="current"][class*="epc"]',
         '[class*="current"][class*="energy"]',
-        '[data-test*="current-epc"]',
-        '[id*="current-epc"]',
-        '.current-energy-rating',
+        '[class*="current"][class*="epc"]',
+        '[data-test*="current-energy"]',
+        '[data-test*="epc-current"]',
+        '.energy-efficiency-current',
         '.current-epc-rating',
-        '[class*="epc"]:not([class*="potential"])',
-        '[class*="energy"]:not([class*="potential"])'
+        '[class*="epc"]:not([class*="potential"]):not([class*="co2"])',
+        '[class*="energy-rating"]:not([class*="potential"])'
     ];
     
     for (const selector of epcSelectors) {
-        const epcText = $(selector).text();
-        const epcMatch = epcText.match(/\b([A-G])\b/i);
-        if (epcMatch) {
-            epcRating = epcMatch[1].toUpperCase();
-            console.log(`Found EPC in element "${selector}":`, epcRating);
-            break;
+        const element = $(selector);
+        if (element.length > 0) {
+            const elementText = element.text();
+            const letterMatch = elementText.match(/\b([A-G])\b/i);
+            if (letterMatch) {
+                epcRating = letterMatch[1].toUpperCase();
+                console.log(`Found EPC in element "${selector}":`, epcRating);
+                console.log('Element text:', elementText.trim());
+                break;
+            }
         }
     }
 }
 
-// Method 7: Last resort - general EPC search but be more careful
+// Method 6: Last resort - general search but very careful
 if (!epcRating) {
-    const generalEpcPatterns = [
-        /epc[:\s]*([a-g])\b/gi,
-        /energy\s*rating[:\s]*([a-g])\b/gi,
-        /energy\s*efficiency[:\s]*([a-g])\b/gi
-    ];
+    console.log('Method 6: Careful general search...');
     
-    for (const pattern of generalEpcPatterns) {
-        const matches = pageText.match(pattern);
-        if (matches) {
-            // Take the first match but log what we found
-            const letterMatch = matches[0].match(/([a-g])\b/i);
+    // Split into lines and be very selective
+    const lines = pageText.split('\n');
+    for (const line of lines) {
+        const lowerLine = line.toLowerCase();
+        
+        // Must contain "epc" or "energy" AND "rating", but exclude problematic terms
+        if ((lowerLine.includes('epc') || (lowerLine.includes('energy') && lowerLine.includes('rating'))) &&
+            !lowerLine.includes('potential') &&
+            !lowerLine.includes('co2') &&
+            !lowerLine.includes('co₂') &&
+            !lowerLine.includes('environmental') &&
+            !lowerLine.includes('impact') &&
+            line.length < 100) { // Avoid very long lines that might be irrelevant
+            
+            const letterMatch = line.match(/\b([A-G])\b/i);
             if (letterMatch) {
                 epcRating = letterMatch[1].toUpperCase();
-                console.log(`Found EPC with general pattern "${pattern}" (may include potential):`, epcRating);
-                console.log('Full match context:', matches[0]);
+                console.log('Found EPC in general search:', epcRating);
+                console.log('Line context:', line.trim());
                 break;
             }
         }
