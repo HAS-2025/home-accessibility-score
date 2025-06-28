@@ -1039,7 +1039,6 @@ async function analyzePropertyAccessibility(property) {
         console.log('⚠️ No EPC rating available, using default score of 3/5');
         epcDetails = 'EPC rating not available - using default score';
     }
-}
     
     // Step 3: Analyze internal facilities
     const fullText = `${property.description} ${property.features.join(' ')}`.toLowerCase();
