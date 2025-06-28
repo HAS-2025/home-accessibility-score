@@ -811,102 +811,78 @@ if (!floorplan) {
 
 console.log('Final floorplan result:', !!floorplan);
 
-  // ✅ NEW: Extract EPC using Claude Vision API
-// This replaces all the problematic text-based extraction
+// ✅ NEW: Extract EPC using Claude Vision API
+        console.log('👁️ Starting Vision-based EPC extraction...');
 
-console.log('👁️ Starting Vision-based EPC extraction...');
+        let epcData = {
+            rating: null,
+            score: null,
+            confidence: 0,
+            reason: 'Not extracted',
+            numericalScore: 0
+        };
 
-let epcData = {
-    rating: null,
-    score: null,
-    confidence: 0,
-    reason: 'Not extracted',
-    numericalScore: 0
-};
-
-try {
-    // Initialize the Vision extractor
-    const epcExtractor = new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
-    
-    // Use Vision to extract accurate EPC rating from certificate images
-    const visionResult = await epcExtractor.extractEPCFromProperty(url);
-    
-    if (visionResult.rating && visionResult.confidence > 50) {
-        // Success case
-        epcData = { ... };
-        console.log('✅ Vision EPC extraction successful:', { ... });
-    } else {
-        // Failure case
-        console.log('⚠️ Vision extraction failed...');
-        
-        if (description && description.length > 0) {
-            // Fallback logic
-            for (const pattern of epcPatterns) {
-                const match = description.match(pattern);
-                if (match) {
-                    epcData = { ... };
-                    console.log('✅ Found EPC in description:', epcData.rating);
-                    break;
+        try {
+            // Initialize the Vision extractor
+            const epcExtractor = new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
+            
+            // Use Vision to extract accurate EPC rating from certificate images
+            const visionResult = await epcExtractor.extractEPCFromProperty(url);
+            
+            if (visionResult.rating && visionResult.confidence > 50) {
+                epcData = {
+                    rating: visionResult.rating,
+                    score: visionResult.score,
+                    confidence: visionResult.confidence,
+                    reason: visionResult.reason,
+                    numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
+                };
+                
+                console.log('✅ Vision EPC extraction successful:', {
+                    rating: epcData.rating,
+                    score: epcData.score,
+                    confidence: epcData.confidence
+                });
+            }
+            
+            // Fallback: Try to find explicit mentions in description if Vision failed
+            if (!epcData.rating && description && description.length > 0) {
+                console.log('🔍 Fallback: Searching description for explicit EPC mentions...');
+                
+                const epcPatterns = [
+                    /epc\s*rating[:\s]*([a-g])/i,
+                    /energy\s*performance[:\s]*([a-g])/i,
+                    /energy\s*efficiency[:\s]*([a-g])/i
+                ];
+                
+                for (const pattern of epcPatterns) {
+                    const match = description.match(pattern);
+                    if (match) {
+                        epcData = {
+                            rating: match[1].toUpperCase(),
+                            score: null,
+                            confidence: 60,
+                            reason: `Found in description: "${match[0]}"`,
+                            numericalScore: epcExtractor.convertRatingToScore(match[1].toUpperCase())
+                        };
+                        console.log('✅ Found EPC in description:', epcData.rating);
+                        break;
+                    }
                 }
             }
+            
+        } catch (error) {
+            console.error('❌ EPC extraction error:', error.message);
+            epcData.reason = `Extraction failed: ${error.message}`;
         }
-    }
-    
-} catch (error) {
-    console.error('❌ EPC extraction error:', error.message);
-    epcData.reason = `Extraction failed: ${error.message}`;
-}
 
-console.log('=== FINAL EPC RESULT ===');
-console.log('EPC Rating:', epcData.rating);
-console.log('Confidence:', epcData.confidence);
-console.log('Method:', epcData.confidence > 80 ? 'Vision API' : epcData.confidence > 50 ? 'Text Fallback' : 'Not Found');
+        console.log('=== FINAL EPC RESULT ===');
+        console.log('EPC Rating:', epcData.rating);
+        console.log('Confidence:', epcData.confidence);
+        console.log('Method:', epcData.confidence > 80 ? 'Vision API' : epcData.confidence > 50 ? 'Text Fallback' : 'Not Found');
 
-// Use epcData.rating instead of epcRating in the rest of your code
-const epcRating = epcData.rating; // For compatibility with existing code
-        
-        // Extract basic features
-        const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
-        const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
-        
-        const features = [];
-        if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
-        if (bathroomMatch) features.push(`${bathroomMatch[1]} bathroom${bathroomMatch[1] > 1 ? 's' : ''}`);
-        
-        // Look for more features in description
-        if (description.toLowerCase().includes('garage')) features.push('garage');
-        if (description.toLowerCase().includes('garden')) features.push('garden');
-        if (description.toLowerCase().includes('parking')) features.push('parking');
-        if (description.toLowerCase().includes('ground floor')) features.push('ground floor accommodation');
-        if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
-        if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
-        
-        console.log('Extracted title:', title);
-        console.log('Extracted price:', price);
-        console.log('Description length:', description.length);
-        console.log('Images found:', images.length);
-        console.log('Floorplan found:', !!floorplan);
-        console.log('Features:', features);
-        
-        return {
-            id: propertyId,
-            title: title,
-            price: price,
-            description: description,
-            features: features,
-            images: images.slice(0, 5), // Limit to first 5 images
-            floorplan: floorplan,
-            epc: epcData, // Full EPC data with confidence scores
-            epcRating: epcData.rating, // For backward compatibility
-            address: address || 'Address not found',
-            coordinates: coordinates
-        };
-        
-    } catch (error) {
-        console.error('Scraping error:', error.message);
-        throw new Error('Failed to scrape property data');
-    }
-}
+        // Use epcData for compatibility with existing code
+        const epcRating = epcData.rating;
 
 // Updated analyzePropertyAccessibility function with improved GP integration
 
