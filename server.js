@@ -134,7 +134,7 @@ async function findNearestGPs(lat, lng) {
         
         if (response.data.places && response.data.places.length > 0) {
             // Improved GP surgery filtering - much more strict
-.filter(place => {
+filter(place => {
     const name = place.displayName?.text?.toLowerCase() || '';
     const types = place.types || [];
     const businessStatus = place.businessStatus;
