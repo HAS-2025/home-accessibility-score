@@ -1027,7 +1027,7 @@ if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
     }
     console.log(`✅ EPC Score: ${property.epc.rating} = ${epcScore}/5 (${property.epc.confidence}% confidence)`);
     }
-} else {
+else {
     console.log('⚠️ Low confidence or no EPC rating, using default score of 50');
 }
 
