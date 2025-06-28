@@ -1209,7 +1209,7 @@ app.post('/api/analyze', async (req, res) => {
                 price: property.price,
                 url: url
             },
-            analysis: analysis,  // ✅ Now uses new 3-factor scoring
+            analysis: analysis,
             timestamp: new Date().toISOString()
         };
 
@@ -1219,8 +1219,10 @@ app.post('/api/analyze', async (req, res) => {
         console.error('Analysis error:', error.message);
         res.status(500).json({ 
             error: error.message || 'Failed to analyze property' 
-});
-}
+        });
+    } // ✅ closes catch
+}); // ✅ closes app.post
+
     
 // Generate comprehensive summary
 function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore) {
