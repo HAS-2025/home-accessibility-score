@@ -1218,8 +1218,9 @@ app.post('/api/analyze', async (req, res) => {
         console.error('Analysis error:', error.message);
         res.status(500).json({ 
             error: error.message || 'Failed to analyze property' 
+});
 }
-
+    
 // Generate comprehensive summary
 function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore) {
     const summaryParts = [];
