@@ -781,6 +781,26 @@ async function scrapeRightmoveProperty(url) {
         try {
             // Step 1: Try dropdown detection first
             const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
+
+            // Additional EPC image search - look for actual EPC images
+console.log('🔍 Searching for direct EPC images in page source...');
+const pageHTML = response.data;
+const epcImageMatches = pageHTML.match(/https?:\/\/[^"'\s]*EPC[^"'\s]*\.(png|jpg|jpeg)/gi);
+if (epcImageMatches) {
+    console.log(`🎯 Found ${epcImageMatches.length} EPC images in page source:`, epcImageMatches);
+    epcImageUrls.push(...epcImageMatches);
+}
+
+// Also search for media.rightmove.co.uk EPC patterns
+const rightmoveEPCMatches = pageHTML.match(/https?:\/\/media\.rightmove\.co\.uk[^"'\s]*EPC[^"'\s]*/gi);
+if (rightmoveEPCMatches) {
+    console.log(`🎯 Found ${rightmoveEPCMatches.length} Rightmove EPC URLs:`, rightmoveEPCMatches);
+    epcImageUrls.push(...rightmoveEPCMatches);
+}
+
+// Remove duplicates
+const uniqueEpcUrls = [...new Set(epcImageUrls)];
+console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniqueEpcUrls);
             
             if (epcImageUrls.length > 0) {
                 console.log(`📋 Found ${epcImageUrls.length} EPC images:`, epcImageUrls);
