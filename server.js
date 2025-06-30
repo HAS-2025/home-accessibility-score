@@ -947,18 +947,33 @@ console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniq
                     }
                 }
             }
-            // Step 4: FINAL FALLBACK - Search description for explicit "EPC Rating: X" format
+            // Step 4: FINAL FALLBACK - Search description for explicit "EPC RATING X" format
 if (!epcData.rating && description && description.length > 0) {
-    console.log('🔍 Final fallback: Searching description for "EPC Rating: X" format...');
+    console.log('🔍 Final fallback: Searching description for EPC rating...');
+    console.log('📝 Description text (first 300 chars):', description.substring(0, 300));
     
-    // Very specific pattern: "EPC Rating:" followed by a letter
-    const epcRatingPattern = /EPC\s+Rating:\s*([A-G])\b/gi;
-    const match = description.match(epcRatingPattern);
+    // Show any EPC mentions
+    const epcMentions = description.match(/[^.]*epc[^.]*/gi);
+    if (epcMentions) {
+        console.log('🎯 Found EPC mentions:', epcMentions);
+    } else {
+        console.log('❌ No EPC mentions found in description');
+    }
     
-    if (match) {
-        const rating = match[0].match(/([A-G])\b/i)[1].toUpperCase();
-        
-        if (['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
+    // Try multiple patterns
+    const patterns = [
+        /EPC\s+RATING\s+([A-G])\b/gi,
+        /EPC\s+Rating\s+([A-G])\b/gi,
+        /EPC\s*:\s*([A-G])\b/gi,
+        /EPC\s+([A-G])\b/gi
+    ];
+    
+    for (const pattern of patterns) {
+        const match = description.match(pattern);
+        if (match) {
+            console.log(`🎯 Pattern matched: "${match[0]}" using ${pattern}`);
+            const rating = match[0].match(/([A-G])\b/i)[1].toUpperCase();
+            
             epcData = {
                 rating: rating,
                 score: null,
@@ -967,10 +982,13 @@ if (!epcData.rating && description && description.length > 0) {
                 numericalScore: 0
             };
             
-            console.log(`✅ Found EPC in description: ${rating} from "${match[0]}"`);
+            console.log(`✅ Found EPC in description: ${rating}`);
+            break;
         }
-    } else {
-        console.log('❌ No "EPC Rating: X" format found in description');
+    }
+    
+    if (!epcData.rating) {
+        console.log('❌ No EPC rating patterns matched');
     }
 }
         } catch (error) {
