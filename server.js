@@ -973,7 +973,7 @@ if (!epcData.rating && description && description.length > 0) {
         const match = description.match(pattern);
         if (match) {
             console.log(`🎯 Pattern matched: "${match[0]}" using ${pattern}`);
-            const rating = match[0].match(/([A-G])\b/i)[1].toUpperCase();
+            const rating = match[1].toUpperCase(); // Use the captured group directly
             
             epcData = {
                 rating: rating,
