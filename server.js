@@ -895,76 +895,93 @@ try {
         
         // Get full page text for comprehensive search
         const fullPageText = $('body').text();
+        // Enhanced text patterns with much stricter validation
+const enhancedPatterns = [
+    // Only very explicit EPC patterns
+    /epc\s*rating[:\s]*([a-g])\b/gi,
+    /energy\s*performance\s*certificate[:\s]*([a-g])\b/gi,
+    /energy\s*efficiency[:\s]*rating[:\s]*([a-g])\b/gi,
+    /current\s*energy\s*rating[:\s]*([a-g])\b/gi,
+    
+    // Pattern for "EPC: D" or similar
+    /\bepc[:\s]+([a-g])\b/gi,
+    
+    // Only match single letters followed by numbers (EPC format)
+    /\b([a-g])\s*[-:]\s*\d{1,3}\b/gi // "D-59", "D: 59", "D 59"
+];
+
+// Much stricter context validation
+for (const { text, source } of searchTexts) {
+    for (const pattern of enhancedPatterns) {
+        const matches = [...text.matchAll(pattern)];
         
-        // Enhanced patterns with context validation
-        const enhancedPatterns = [
-            /epc\s*rating[:\s]*([a-g])\b/gi,
-            /energy\s*performance\s*certificate[:\s]*([a-g])\b/gi,
-            /energy\s*efficiency[:\s]*rating[:\s]*([a-g])\b/gi,
-            /current\s*energy\s*rating[:\s]*([a-g])\b/gi,
-            /energy\s*rating[:\s]*([a-g])\b/gi,
-            /\b([a-g])[:\s-]*\d{2}\b/gi // Matches "D 59", "D-59"
-        ];
-        
-        // Search both description and full page
-        const searchTexts = [
-            { text: description, source: 'description' },
-            { text: fullPageText, source: 'page' }
-        ];
-        
-        searchLoop: for (const { text, source } of searchTexts) {
-            for (const pattern of enhancedPatterns) {
-                const matches = [...text.matchAll(pattern)];
+        for (const match of matches) {
+            const rating = match[1].toUpperCase();
+            
+            // Get larger context for better validation
+            const matchContext = text.substring(
+                Math.max(0, match.index - 60), 
+                match.index + 80
+            ).toLowerCase();
+            
+            console.log(`🔍 Checking: "${match[0]}" in context: "${matchContext.trim()}"`);
+            
+            // Much stricter validation - must have explicit energy context
+            const hasEnergyContext = (
+                matchContext.includes('energy performance') ||
+                matchContext.includes('energy certificate') ||
+                matchContext.includes('energy efficiency') ||
+                matchContext.includes('epc rating') ||
+                matchContext.includes('energy rating')
+            );
+            
+            // Exclude financial/measurement contexts
+            const isFinancialContext = (
+                matchContext.includes('deposit') ||
+                matchContext.includes('mortgage') ||
+                matchContext.includes('payment') ||
+                matchContext.includes('interest') ||
+                matchContext.includes('rate%') ||
+                matchContext.includes('percentage') ||
+                matchContext.includes('years') ||
+                matchContext.includes('months') ||
+                matchContext.includes('council tax') ||
+                matchContext.includes('band:')
+            );
+            
+            // Exclude address contexts
+            const isAddressContext = (
+                matchContext.includes('bathampton') ||
+                matchContext.includes('street') ||
+                matchContext.includes('road') ||
+                matchContext.includes('avenue') ||
+                matchContext.includes('hill') ||
+                matchContext.includes('ba2') ||
+                matchContext.includes('bath,')
+            );
+            
+            // Must have energy context AND not be financial/address
+            const isValidContext = hasEnergyContext && !isFinancialContext && !isAddressContext;
+            
+            if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
+                const confidence = 80; // Higher confidence for validated context
                 
-                for (const match of matches) {
-                    const rating = match[1].toUpperCase();
-                    
-                    // Get context around the match
-                    const matchContext = text.substring(
-                        Math.max(0, match.index - 40), 
-                        match.index + 60
-                    ).toLowerCase();
-                    
-                    console.log(`🔍 Checking: "${match[0]}" in context: "${matchContext.trim()}"`);
-                    
-                    // Strict validation to avoid false positives
-                    const isValidContext = (
-                        // Exclude addresses and location names
-                        !matchContext.includes('bathampton') &&
-                        !matchContext.includes('street') &&
-                        !matchContext.includes('road') &&
-                        !matchContext.includes('avenue') &&
-                        !matchContext.includes('hill') &&
-                        !matchContext.includes('ba2') &&
-                        !matchContext.includes('bath,') &&
-                        
-                        // Must have energy context OR be number pattern
-                        (matchContext.includes('energy') || 
-                         matchContext.includes('performance') || 
-                         matchContext.includes('certificate') ||
-                         matchContext.includes('efficiency') ||
-                         matchContext.includes('rating') ||
-                         /\b[a-g]\s*\d{2}\b/i.test(match[0])) // "D 59" pattern
-                    );
-                    
-                    if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
-                        const confidence = matchContext.includes('energy') ? 75 : 65;
-                        
-                        epcData = {
-                            rating: rating,
-                            score: null,
-                            confidence: confidence,
-                            reason: `Enhanced text (${source}): "${match[0]}"`,
-                            numericalScore: epcExtractor.convertRatingToScore(rating)
-                        };
-                        
-                        console.log(`✅ Found validated EPC in ${source}: ${rating} (${confidence}% confidence)`);
-                        break searchLoop;
-                    }
-                }
+                epcData = {
+                    rating: rating,
+                    score: null,
+                    confidence: confidence,
+                    reason: `Validated text (${source}): "${match[0]}"`,
+                    numericalScore: epcExtractor.convertRatingToScore(rating)
+                };
+                
+                console.log(`✅ Found validated EPC in ${source}: ${rating} (${confidence}% confidence)`);
+                break searchLoop;
+            } else {
+                console.log(`❌ Rejected "${match[0]}" - Energy: ${hasEnergyContext}, Financial: ${isFinancialContext}, Address: ${isAddressContext}`);
             }
         }
     }
+}
     
 } catch (error) {
     console.error('❌ Enhanced EPC extraction error:', error.message);
@@ -982,10 +999,11 @@ console.log('Details:', epcData.reason);
 // Use epcData for compatibility with existing code
 const epcRating = epcData.rating;
 
-// Add the dropdown detection function to your file
+// Improved EPC extraction - replace your current dropdown detection function
+
 async function extractEPCFromRightmoveDropdown(url) {
     try {
-        console.log('🔍 Analyzing Rightmove EPC dropdown structure...');
+        console.log('🔍 Enhanced Rightmove EPC detection...');
         
         const response = await axios.get(url, {
             headers: {
@@ -996,82 +1014,109 @@ async function extractEPCFromRightmoveDropdown(url) {
         const $ = cheerio.load(response.data);
         const epcImageUrls = [];
         
-        // Strategy 1: Look for "Energy Performance Certificate" sections
-        const epcSections = [
-            'Energy Performance Certificate',
-            'EPC',
-            'Energy performance',
-            'Energy efficiency'
-        ];
-        
-        epcSections.forEach(sectionName => {
-            $(`*:contains("${sectionName}")`).each((i, element) => {
-                const $element = $(element);
-                const elementText = $element.text().trim();
+        // Strategy 1: Look for PDF brochures that might contain EPC
+        console.log('📄 Strategy 1: Checking PDF brochures for EPC...');
+        $('a[href*=".pdf"]').each((i, link) => {
+            const href = $(link).attr('href');
+            const text = $(link).text().toLowerCase();
+            
+            console.log(`📄 Found PDF: "${text}" -> ${href}`);
+            
+            // PDFs that might contain EPC certificates
+            if (text.includes('brochure') || 
+                text.includes('details') || 
+                text.includes('information') ||
+                href.toLowerCase().includes('epc')) {
                 
-                if (elementText.toLowerCase().includes(sectionName.toLowerCase()) && 
-                    elementText.length < 100) {
-                    
-                    console.log(`📂 Found EPC section: "${elementText}"`);
-                    
-                    // Look for images in nearby elements
-                    const searchElements = [
-                        $element,
-                        $element.parent(),
-                        $element.siblings(),
-                        $element.next().next(),
-                        $element.prev()
-                    ];
-                    
-                    searchElements.forEach($searchEl => {
-                        if ($searchEl.length) {
-                            $searchEl.find('img').each((i, img) => {
-                                const src = $(img).attr('src') || 
-                                          $(img).attr('data-src') || 
-                                          $(img).attr('data-lazy-src');
-                                if (src && (src.includes('epc') || src.includes('energy'))) {
-                                    const fullUrl = src.startsWith('http') ? src : 
-                                                  src.startsWith('//') ? `https:${src}` : 
-                                                  `https://www.rightmove.co.uk${src}`;
-                                    epcImageUrls.push(fullUrl);
-                                    console.log('📋 Found EPC image in section:', fullUrl);
-                                }
-                            });
-                        }
-                    });
-                }
-            });
+                const fullUrl = href.startsWith('http') ? href : 
+                              href.startsWith('//') ? `https:${href}` : 
+                              `https://www.rightmove.co.uk${href}`;
+                
+                console.log('📋 PDF might contain EPC, adding for analysis:', fullUrl);
+                epcImageUrls.push(fullUrl);
+            }
         });
         
-        // Strategy 2: Look for EPC URL patterns anywhere in the HTML
-        const epcUrlPatterns = [/_EPC_/, /\/epc\//i, /energy.*certificate/i];
+        // Strategy 2: Look for direct EPC image patterns in HTML
+        console.log('🖼️ Strategy 2: Looking for direct EPC images...');
+        const epcUrlPatterns = [
+            /_EPC_/i,
+            /\/epc\//i, 
+            /energy[-_]performance/i,
+            /energy[-_]certificate/i,
+            /certificate.*energy/i
+        ];
         
         $('*').each((i, element) => {
             const $el = $(element);
-            ['src', 'data-src', 'href', 'data-href'].forEach(attr => {
+            ['src', 'data-src', 'data-lazy-src', 'href', 'data-href', 'data-url'].forEach(attr => {
                 const value = $el.attr(attr);
                 if (value && epcUrlPatterns.some(pattern => pattern.test(value))) {
                     const fullUrl = value.startsWith('http') ? value : 
                                   value.startsWith('//') ? `https:${value}` : 
                                   `https://www.rightmove.co.uk${value}`;
+                    
                     if (!epcImageUrls.includes(fullUrl)) {
                         epcImageUrls.push(fullUrl);
-                        console.log('🎯 Found EPC URL pattern:', fullUrl);
+                        console.log('🎯 Found direct EPC URL:', fullUrl);
                     }
                 }
             });
         });
         
-        // Remove duplicates and filter valid image URLs
-        return [...new Set(epcImageUrls)]
-            .filter(url => url && url.startsWith('http'))
-            .filter(url => {
-                const ext = url.split('.').pop().toLowerCase();
-                return ['jpg', 'jpeg', 'png', 'pdf'].includes(ext);
-            });
+        // Strategy 3: Look for JavaScript-embedded EPC data
+        console.log('📜 Strategy 3: Checking JavaScript for EPC data...');
+        $('script').each((i, script) => {
+            const scriptContent = $(script).html() || '';
+            
+            // Look for EPC-related URLs in JavaScript
+            const epcMatches = scriptContent.match(/['"](https?:\/\/[^'"]*(?:epc|energy)[^'"]*\.(jpg|jpeg|png|pdf))['"]/gi);
+            if (epcMatches) {
+                epcMatches.forEach(match => {
+                    const cleanUrl = match.replace(/['"]/g, '');
+                    if (!epcImageUrls.includes(cleanUrl)) {
+                        epcImageUrls.push(cleanUrl);
+                        console.log('🔧 Found EPC URL in JavaScript:', cleanUrl);
+                    }
+                });
+            }
+        });
+        
+        // Strategy 4: Check property reference for EPC lookup
+        console.log('🏷️ Strategy 4: Looking for property reference...');
+        const propertyRefMatch = response.data.match(/property reference (\d+)/i);
+        if (propertyRefMatch) {
+            const propertyRef = propertyRefMatch[1];
+            console.log('🏷️ Found property reference:', propertyRef);
+            
+            // Try common EPC URL patterns with property reference
+            const potentialEpcUrls = [
+                `https://media.rightmove.co.uk/${propertyRef}_EPC.jpg`,
+                `https://media.rightmove.co.uk/${propertyRef}_EPC.pdf`,
+                `https://docs.rightmove.co.uk/${propertyRef}_EPC.pdf`
+            ];
+            
+            for (const url of potentialEpcUrls) {
+                console.log('🔍 Checking potential EPC URL:', url);
+                try {
+                    // Quick check if URL exists (head request)
+                    const headResponse = await axios.head(url, { timeout: 5000 });
+                    if (headResponse.status === 200) {
+                        epcImageUrls.push(url);
+                        console.log('✅ Found working EPC URL:', url);
+                    }
+                } catch (error) {
+                    // URL doesn't exist, continue
+                }
+            }
+        }
+        
+        console.log(`📊 Total potential EPC sources found: ${epcImageUrls.length}`);
+        
+        return epcImageUrls.filter(url => url && url.startsWith('http'));
         
     } catch (error) {
-        console.error('❌ Error in dropdown detection:', error.message);
+        console.error('❌ Error in enhanced EPC detection:', error.message);
         return [];
     }
 }
