@@ -1200,7 +1200,7 @@ async function validateAPIKey() {
     try {
         console.log('🧪 Testing API key with simple call...');
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-sonnet-20240229',
+            model: 'claude-3-5-sonnet-20241022', // Updated to newer model
             max_tokens: 10,
             messages: [{
                 role: 'user',
@@ -1221,7 +1221,7 @@ async function validateAPIKey() {
         try {
             console.log('👁️ Testing Vision capability...');
             const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
-                model: 'claude-3-sonnet-20240229',
+                model: 'claude-3-5-sonnet-20241022', // Updated model
                 max_tokens: 50,
                 messages: [{
                     role: 'user',
