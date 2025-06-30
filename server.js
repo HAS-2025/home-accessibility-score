@@ -972,8 +972,20 @@ if (!epcData.rating && description && description.length > 0) {
     for (const pattern of patterns) {
         const match = description.match(pattern);
         if (match) {
-            console.log(`🎯 Pattern matched: "${match[0]}" using ${pattern}`);
-            const rating = match[1].toUpperCase(); // Use the captured group directly
+    console.log(`🎯 Pattern matched: "${match[0]}" using ${pattern}`);
+    console.log(`🔍 Full match object:`, match); // Debug the match
+    
+    // Extract rating more carefully
+    let rating;
+    if (match[1]) {
+        rating = match[1].toUpperCase();
+    } else {
+        // Fallback: extract from the matched string
+        const ratingMatch = match[0].match(/RATING\s*([A-G])/i);
+        rating = ratingMatch ? ratingMatch[1].toUpperCase() : null;
+    }
+    
+    if (rating && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
             
             epcData = {
                 rating: rating,
