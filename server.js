@@ -107,10 +107,11 @@ async function getPropertyCoordinates(address, existingCoords) {
     return null;
 }
 
-// ✅ FULL GP FILTERING - Keep all the important exclusions
+// ✅ ENHANCED GP SEARCH with detailed coordinate logging
 async function findNearestGPs(lat, lng) {
     try {
         console.log(`Finding GP surgeries near ${lat}, ${lng} using Places API (New)`);
+        console.log(`🗺️ Property location: https://www.google.com/maps?q=${lat},${lng}`);
         
         const requestBody = {
             includedTypes: ["doctor"],
@@ -135,7 +136,7 @@ async function findNearestGPs(lat, lng) {
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
                     'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id,places.businessStatus,places.websiteUri'
                 },
-                timeout: 8000 // Reduced but still reasonable
+                timeout: 8000
             }
         );
         
@@ -143,7 +144,7 @@ async function findNearestGPs(lat, lng) {
         console.log('Total places found:', response.data.places?.length || 0);
 
         if (response.data.places && response.data.places.length > 0) {
-            // ✅ KEEP FULL ENHANCED FILTERING - This is crucial
+            // ✅ KEEP FULL ENHANCED FILTERING but add coordinate logging
             const gps = response.data.places
                 .filter(place => {
                     const name = place.displayName?.text?.toLowerCase() || '';
@@ -155,7 +156,7 @@ async function findNearestGPs(lat, lng) {
                         return false;
                     }
                     
-                    // FULL exclusions list - this is important for accuracy
+                    // FULL exclusions list
                     const isDefinitelyNotGP = (
                         name.includes('ear wax') || name.includes('earwax') || name.includes('chiropody') ||
                         name.includes('podiatry') || name.includes('foot care') || name.includes('hearing') ||
@@ -204,18 +205,34 @@ async function findNearestGPs(lat, lng) {
                     
                     return isValid;
                 })
-                .map(place => ({
-                    name: place.displayName?.text || 'Medical Practice',
-                    address: place.formattedAddress || 'Address not available',
-                    location: {
-                        lat: place.location?.latitude,
-                        lng: place.location?.longitude
-                    },
-                    rating: place.rating || null,
-                    placeId: place.id,
-                    businessStatus: place.businessStatus,
-                    website: place.websiteUri || null
-                }))
+                .map(place => {
+                    const gpLat = place.location?.latitude;
+                    const gpLng = place.location?.longitude;
+                    
+                    // Calculate straight-line distance for verification
+                    const straightLineDistance = calculateStraightLineDistance(lat, lng, gpLat, gpLng);
+                    
+                    const gpInfo = {
+                        name: place.displayName?.text || 'Medical Practice',
+                        address: place.formattedAddress || 'Address not available',
+                        location: { lat: gpLat, lng: gpLng },
+                        rating: place.rating || null,
+                        placeId: place.id,
+                        businessStatus: place.businessStatus,
+                        website: place.websiteUri || null,
+                        straightLineDistance: straightLineDistance
+                    };
+                    
+                    // 📍 LOG DETAILED COORDINATE INFO
+                    console.log(`📍 GP: ${gpInfo.name}`);
+                    console.log(`   Address: ${gpInfo.address}`);
+                    console.log(`   Coordinates: ${gpLat}, ${gpLng}`);
+                    console.log(`   Google Maps: https://www.google.com/maps?q=${gpLat},${gpLng}`);
+                    console.log(`   Straight-line distance: ${straightLineDistance.toFixed(2)} km`);
+                    console.log(`   ---`);
+                    
+                    return gpInfo;
+                })
                 .slice(0, 5);
             
             console.log(`Found ${gps.length} valid GP surgeries`);
@@ -225,17 +242,27 @@ async function findNearestGPs(lat, lng) {
             }
         }
 
-        // Fallback: Broader search if no results
+        // Fallback searches...
         console.log('No GPs found with strict search, trying broader criteria...');
         return await findGPsBroadSearch(lat, lng);
         
     } catch (error) {
         console.error('Places API (New) error:', error.response?.data || error.message);
-        
-        // Ultimate fallback: Legacy Places API
         console.log('Falling back to legacy Places API...');
         return await findGPsLegacyAPI(lat, lng);
     }
+}
+
+// Helper function to calculate straight-line distance
+function calculateStraightLineDistance(lat1, lng1, lat2, lng2) {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLng/2) * Math.sin(dLng/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
 }
 
 // Broader search using multiple place types
@@ -689,7 +716,7 @@ async function scrapeRightmoveProperty(url) {
             });
         }
 
-        // ✅ Enhanced EPC extraction with LAZY LOADING Vision API
+        // ✅ Enhanced EPC extraction with better error handling
         console.log('👁️ Starting enhanced EPC extraction...');
 
         let epcData = {
@@ -705,58 +732,59 @@ async function scrapeRightmoveProperty(url) {
             const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
             
             if (epcImageUrls.length > 0) {
-                console.log(`📋 Found ${epcImageUrls.length} EPC images, trying Vision API...`);
+                console.log(`📋 Found ${epcImageUrls.length} EPC images:`, epcImageUrls);
                 
-                // LAZY LOAD Vision API only when we have images to analyze
-                const epcExtractor = getEPCExtractor();
-                
-                if (epcExtractor) {
-                    for (const imageUrl of epcImageUrls.slice(0, 3)) { // Limit to 3 for speed
-                        try {
-                            const visionResult = await epcExtractor.analyzeEPCWithVision(imageUrl);
-                            
-                            if (visionResult.rating && visionResult.confidence > 70) {
-                                epcData = {
-                                    rating: visionResult.rating,
-                                    score: visionResult.score,
-                                    confidence: visionResult.confidence,
-                                    reason: `Vision API: ${visionResult.reason}`,
-                                    numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
-                                };
+                // Check if we have a valid API key before attempting Vision API
+                if (process.env.CLAUDE_API_KEY && process.env.CLAUDE_API_KEY.length > 10) {
+                    console.log('🔑 Claude API key available, trying Vision API...');
+                    
+                    const epcExtractor = getEPCExtractor();
+                    
+                    if (epcExtractor) {
+                        for (const imageUrl of epcImageUrls.slice(0, 2)) { // Limit to 2 for speed
+                            try {
+                                console.log(`👁️ Analyzing EPC image: ${imageUrl.substring(0, 100)}...`);
                                 
-                                console.log('✅ Vision extraction successful:', epcData.rating);
-                                break;
+                                // Add timeout to Vision API call
+                                const visionPromise = epcExtractor.analyzeEPCWithVision(imageUrl);
+                                const timeoutPromise = new Promise((_, reject) => 
+                                    setTimeout(() => reject(new Error('Vision API timeout')), 10000)
+                                );
+                                
+                                const visionResult = await Promise.race([visionPromise, timeoutPromise]);
+                                
+                                if (visionResult.rating && visionResult.confidence > 60) { // Lower threshold
+                                    epcData = {
+                                        rating: visionResult.rating,
+                                        score: visionResult.score,
+                                        confidence: visionResult.confidence,
+                                        reason: `Vision API: ${visionResult.reason}`,
+                                        numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
+                                    };
+                                    
+                                    console.log('✅ Vision extraction successful:', epcData.rating);
+                                    break;
+                                } else {
+                                    console.log(`⚠️ Low confidence result: ${visionResult.confidence}%`);
+                                }
+                            } catch (imageError) {
+                                console.log(`❌ Vision analysis failed:`, imageError.message);
+                                if (imageError.message.includes('401')) {
+                                    console.log('🔑 API authentication issue - check CLAUDE_API_KEY');
+                                }
+                                continue;
                             }
-                        } catch (imageError) {
-                            console.log(`❌ Vision analysis failed for image:`, imageError.message);
-                            continue;
                         }
+                    } else {
+                        console.log('⚠️ Vision extractor failed to initialize');
                     }
                 } else {
-                    console.log('⚠️ Vision extractor not available');
+                    console.log('⚠️ No valid Claude API key found - skipping Vision API');
                 }
             }
             
-            // Step 2: Fallback to original Vision approach if dropdown failed
-            if (!epcData.rating) {
-                const epcExtractor = getEPCExtractor();
-                if (epcExtractor) {
-                    console.log('🔍 Trying original Vision extraction...');
-                    const originalVisionResult = await epcExtractor.extractEPCFromProperty(url);
-                    
-                    if (originalVisionResult.rating && originalVisionResult.confidence > 50) {
-                        epcData = {
-                            rating: originalVisionResult.rating,
-                            score: originalVisionResult.score,
-                            confidence: originalVisionResult.confidence,
-                            reason: `Vision API (original): ${originalVisionResult.reason}`,
-                            numericalScore: epcExtractor.convertRatingToScore(originalVisionResult.rating, originalVisionResult.score)
-                        };
-                        
-                        console.log('✅ Original Vision extraction successful:', epcData.rating);
-                    }
-                }
-            }
+            // Step 2: Skip original Vision approach if API key issues
+            // (since it would fail with the same 401 error)
             
             // Step 3: Enhanced text fallback
             if (!epcData.rating && description && description.length > 0) {
@@ -1145,15 +1173,126 @@ app.post('/api/analyze', async (req, res) => {
     }
 });
 
+// 🔑 API KEY VALIDATION at startup
+async function validateAPIKey() {
+    if (!process.env.CLAUDE_API_KEY) {
+        console.warn('⚠️  No CLAUDE_API_KEY found in environment variables');
+        return false;
+    }
+    
+    const apiKey = process.env.CLAUDE_API_KEY;
+    console.log('🔑 Checking Claude API key...');
+    console.log(`   Key format: ${apiKey.substring(0, 15)}...${apiKey.substring(apiKey.length - 5)}`);
+    console.log(`   Key length: ${apiKey.length} characters`);
+    
+    // Check format
+    if (!apiKey.startsWith('sk-ant-api')) {
+        console.error('❌ Invalid API key format - should start with "sk-ant-api"');
+        return false;
+    }
+    
+    if (apiKey.length < 50) {
+        console.error('❌ API key seems too short');
+        return false;
+    }
+    
+    // Test API call
+    try {
+        console.log('🧪 Testing API key with simple call...');
+        const response = await axios.post('https://api.anthropic.com/v1/messages', {
+            model: 'claude-3-sonnet-20240229',
+            max_tokens: 10,
+            messages: [{
+                role: 'user',
+                content: 'Hi'
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+                'anthropic-version': '2023-06-01'
+            },
+            timeout: 10000
+        });
+        
+        console.log('✅ API key is valid and working!');
+        
+        // Test Vision capability
+        try {
+            console.log('👁️ Testing Vision capability...');
+            const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
+                model: 'claude-3-sonnet-20240229',
+                max_tokens: 50,
+                messages: [{
+                    role: 'user',
+                    content: [{
+                        type: 'image',
+                        source: {
+                            type: 'base64',
+                            media_type: 'image/png',
+                            data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
+                        }
+                    }, {
+                        type: 'text',
+                        text: 'What color is this?'
+                    }]
+                }]
+            }, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                timeout: 10000
+            });
+            
+            console.log('✅ Vision API is enabled and working!');
+            return true;
+            
+        } catch (visionError) {
+            if (visionError.response?.status === 400 && 
+                visionError.response?.data?.error?.message?.includes('image')) {
+                console.log('❌ Vision API not enabled for this key');
+            } else {
+                console.log('⚠️ Vision test inconclusive:', visionError.response?.data?.error?.message || visionError.message);
+            }
+            return true; // API key works, just no vision
+        }
+        
+    } catch (error) {
+        if (error.response?.status === 401) {
+            console.error('❌ API key authentication failed (401)');
+            console.error('   This API key is invalid, expired, or revoked');
+        } else if (error.response?.status === 403) {
+            console.error('❌ API key permissions denied (403)');
+        } else {
+            console.error('❌ API test failed:', error.response?.data?.error?.message || error.message);
+        }
+        return false;
+    }
+}
+
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`🏠 Home Accessibility Score API running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log('🎯 Full functionality with deployment optimizations');
+    console.log('');
     
-    if (!process.env.CLAUDE_API_KEY) {
-        console.warn('⚠️  Warning: CLAUDE_API_KEY not set - EPC Vision API will be disabled');
+    // Validate API key on startup
+    const isValid = await validateAPIKey();
+    console.log('');
+    
+    if (!isValid) {
+        console.log('🔧 To fix API key issues:');
+        console.log('   1. Go to console.anthropic.com');
+        console.log('   2. Click "Get API Key" or navigate to API settings');
+        console.log('   3. Generate a new API key');
+        console.log('   4. Update your CLAUDE_API_KEY environment variable');
+        console.log('');
     }
+    
+    console.log('🚀 Server ready for requests');
 });
 
 module.exports = app;
