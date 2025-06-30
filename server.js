@@ -602,6 +602,36 @@ async function extractEPCFromRightmoveDropdown(url) {
 
     } catch (error) {
         console.error('❌ Error in enhanced EPC detection:', error.message);
+        
+        // Strategy 3: Look for direct EPC images in media URLs
+console.log('🖼️ Strategy 3: Looking for direct EPC images...');
+$('img[src*="EPC"], img[data-src*="EPC"]').each((i, img) => {
+    const src = $(img).attr('src') || $(img).attr('data-src');
+    if (src && (src.includes('EPC') || src.includes('epc'))) {
+        const fullUrl = src.startsWith('http') ? src : 
+                      src.startsWith('//') ? `https:${src}` : 
+                      `https://www.rightmove.co.uk${src}`;
+        
+        if (!epcImageUrls.includes(fullUrl)) {
+            epcImageUrls.push(fullUrl);
+            console.log('🎯 Found direct EPC image:', fullUrl);
+        }
+    }
+});
+
+// Strategy 4: Look in page scripts for EPC image URLs
+$('script').each((i, script) => {
+    const scriptContent = $(script).html() || '';
+    const epcMatches = scriptContent.match(/https?:\/\/[^"'\s]*EPC[^"'\s]*/gi);
+    if (epcMatches) {
+        epcMatches.forEach(match => {
+            if (!epcImageUrls.includes(match)) {
+                epcImageUrls.push(match);
+                console.log('🎯 Found EPC URL in script:', match);
+            }
+        });
+    }
+});
         return [];
     }
 }
