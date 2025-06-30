@@ -1,5 +1,4 @@
-const { EPCVisionExtractor } = require('./epc-vision-extractor');
-// server.js - Node.js Backend for Home Accessibility Score
+// server.js - Optimized initialization while keeping full functionality
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -17,6 +16,26 @@ app.use(express.static('.'));
 // Store for caching results
 const cache = new Map();
 
+// ✅ LAZY LOAD EPCVisionExtractor - This was the main timeout culprit
+let EPCVisionExtractor = null;
+let epcExtractorInstance = null;
+
+const getEPCExtractor = () => {
+    if (!EPCVisionExtractor && process.env.CLAUDE_API_KEY) {
+        try {
+            console.log('🔄 Lazy loading EPC Vision Extractor...');
+            const { EPCVisionExtractor: ExtractorClass } = require('./epc-vision-extractor');
+            EPCVisionExtractor = ExtractorClass;
+            epcExtractorInstance = new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
+            console.log('✅ EPC Vision Extractor loaded successfully');
+        } catch (error) {
+            console.warn('⚠️ EPC Vision Extractor not available:', error.message);
+            EPCVisionExtractor = false; // Mark as failed to avoid retrying
+        }
+    }
+    return epcExtractorInstance;
+};
+
 // Claude API configuration
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -31,7 +50,8 @@ async function tryFloorplanURL(propertyId) {
         const response = await axios.get(floorplanURL, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
+            },
+            timeout: 8000 // Slightly reduced from original
         });
 
         const $ = cheerio.load(response.data);
@@ -73,7 +93,9 @@ async function getPropertyCoordinates(address, existingCoords) {
                 `region=uk&` +  // Bias results to UK
                 `key=${process.env.GOOGLE_MAPS_API_KEY}`;
             
-            const response = await axios.get(geocodeUrl);
+            const response = await axios.get(geocodeUrl, {
+                timeout: 6000 // Reduced from 10000
+            });
             
             if (response.data.results && response.data.results.length > 0) {
                 const location = response.data.results[0].geometry.location;
@@ -92,7 +114,7 @@ async function getPropertyCoordinates(address, existingCoords) {
     return null;
 }
 
-// Find nearest GPs using Places API (New) - optimized for UK GP surgeries
+// ✅ KEEP FULL GP FILTERING - This was important for accuracy
 async function findNearestGPs(lat, lng) {
     try {
         console.log(`Finding GP surgeries near ${lat}, ${lng} using Places API (New)`);
@@ -126,7 +148,7 @@ async function findNearestGPs(lat, lng) {
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
                     'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id,places.businessStatus,places.websiteUri'
                 },
-                timeout: 10000 // 10 second timeout
+                timeout: 8000 // Reduced from 10000
             }
         );
         
@@ -134,7 +156,7 @@ async function findNearestGPs(lat, lng) {
         console.log('Total places found:', response.data.places?.length || 0);
 
         if (response.data.places && response.data.places.length > 0) {
-            // Enhanced filtering for UK GP surgeries - balanced approach
+            // ✅ KEEP ENHANCED FILTERING - This was crucial for ruling out fertility clinics etc.
             const gps = response.data.places
                 .filter(place => {
                     const name = place.displayName?.text?.toLowerCase() || '';
@@ -256,7 +278,8 @@ async function findGPsBroadSearch(lat, lng) {
                     'Content-Type': 'application/json',
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
                     'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id'
-                }
+                },
+                timeout: 8000 // Reduced timeout
             }
         );
         
@@ -294,7 +317,7 @@ async function findGPsBroadSearch(lat, lng) {
     }
 }
 
-// Legacy API fallback (still uses your enabled APIs)
+// Legacy API fallback
 async function findGPsLegacyAPI(lat, lng) {
     try {
         console.log('Using legacy Places API as final fallback...');
@@ -305,7 +328,9 @@ async function findGPsLegacyAPI(lat, lng) {
             `type=doctor&` +
             `key=${process.env.GOOGLE_MAPS_API_KEY}`;
         
-        const response = await axios.get(legacyUrl);
+        const response = await axios.get(legacyUrl, {
+            timeout: 6000 // Reduced timeout
+        });
         
         if (response.data.results && response.data.results.length > 0) {
             const gps = response.data.results
@@ -339,7 +364,7 @@ async function findGPsLegacyAPI(lat, lng) {
     }
 }
 
-// Analyze walking route using Directions API (precise walking calculations)
+// ✅ KEEP FULL WALKING ROUTE ANALYSIS - This was working well
 async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
     try {
         console.log(`Calculating precise walking route to ${gpName} using Directions API`);
@@ -356,7 +381,7 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
         console.log('Directions API request URL constructed');
         
         const response = await axios.get(directionsUrl, {
-            timeout: 15000
+            timeout: 12000 // Slightly reduced from 15000
         });
         
         if (response.data.routes && response.data.routes.length > 0) {
@@ -470,7 +495,8 @@ async function analyzeWalkingRouteWithRoutesAPI(fromLat, fromLng, toLat, toLng, 
                     'Content-Type': 'application/json',
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
                     'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs'
-                }
+                },
+                timeout: 10000 // Reduced timeout
             }
         );
         
@@ -565,7 +591,7 @@ function calculateGPProximityScore(durationMinutes, routeAccessibilityScore = nu
     return baseScore;
 }
 
-// Enhanced EPC extraction function
+// ✅ KEEP ENHANCED EPC EXTRACTION - But make Vision API load lazily
 async function extractEPCFromRightmoveDropdown(url) {
     try {
         console.log('🔍 Enhanced Rightmove EPC detection...');
@@ -573,7 +599,8 @@ async function extractEPCFromRightmoveDropdown(url) {
         const response = await axios.get(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            }
+            },
+            timeout: 8000 // Reduced timeout
         });
 
         const $ = cheerio.load(response.data);
@@ -632,7 +659,7 @@ async function extractEPCFromRightmoveDropdown(url) {
     }
 }
 
-// Scrape Rightmove property data WITH EPC extraction
+// ✅ KEEP FULL SCRAPING LOGIC - Just optimize EPC extraction
 async function scrapeRightmoveProperty(url) {
     try {
         console.log('Scraping Rightmove URL:', url);
@@ -640,7 +667,8 @@ async function scrapeRightmoveProperty(url) {
         const response = await axios.get(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+            },
+            timeout: 8000 // Reduced from no timeout
         });
 
         const $ = cheerio.load(response.data);
@@ -762,8 +790,8 @@ async function scrapeRightmoveProperty(url) {
             });
         }
 
-        // ✅ Enhanced EPC extraction with dropdown detection + Vision API
-        console.log('👁️ Starting enhanced EPC extraction with dropdown detection...');
+        // ✅ Enhanced EPC extraction with LAZY LOADING of Vision API
+        console.log('👁️ Starting enhanced EPC extraction with lazy loading...');
 
         let epcData = {
             rating: null,
@@ -774,9 +802,6 @@ async function scrapeRightmoveProperty(url) {
         };
 
         try {
-            // Initialize the Vision extractor
-            const epcExtractor = new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
-            
             // Step 1: Advanced Rightmove dropdown detection
             console.log('📂 Searching for EPC in Rightmove dropdown sections...');
             const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
@@ -784,36 +809,43 @@ async function scrapeRightmoveProperty(url) {
             if (epcImageUrls.length > 0) {
                 console.log(`📋 Found ${epcImageUrls.length} EPC images in dropdowns, analyzing with Vision...`);
                 
-                // Try each image until we get a good result
-                for (const imageUrl of epcImageUrls) {
-                    try {
-                        console.log('👁️ Vision analyzing:', imageUrl.substring(0, 80) + '...');
-                        
-                        const visionResult = await epcExtractor.analyzeEPCWithVision(imageUrl);
-                        
-                        if (visionResult.rating && visionResult.confidence > 70) {
-                            epcData = {
-                                rating: visionResult.rating,
-                                score: visionResult.score,
-                                confidence: visionResult.confidence,
-                                reason: `Vision API (dropdown): ${visionResult.reason}`,
-                                numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
-                            };
+                // ✅ LAZY LOAD the Vision extractor only when needed
+                const epcExtractor = getEPCExtractor();
+                
+                if (epcExtractor) {
+                    // Try each image until we get a good result
+                    for (const imageUrl of epcImageUrls) {
+                        try {
+                            console.log('👁️ Vision analyzing:', imageUrl.substring(0, 80) + '...');
                             
-                            console.log('✅ Vision extraction successful from dropdown:', {
-                                rating: epcData.rating,
-                                score: epcData.score,
-                                confidence: epcData.confidence
-                            });
-                            break; // Found good result, stop trying other images
+                            const visionResult = await epcExtractor.analyzeEPCWithVision(imageUrl);
+                            
+                            if (visionResult.rating && visionResult.confidence > 70) {
+                                epcData = {
+                                    rating: visionResult.rating,
+                                    score: visionResult.score,
+                                    confidence: visionResult.confidence,
+                                    reason: `Vision API (dropdown): ${visionResult.reason}`,
+                                    numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
+                                };
+                                
+                                console.log('✅ Vision extraction successful from dropdown:', {
+                                    rating: epcData.rating,
+                                    score: epcData.score,
+                                    confidence: epcData.confidence
+                                });
+                                break; // Found good result, stop trying other images
+                            }
+                            
+                            console.log(`⚠️ Low confidence from image (${visionResult.confidence}%), trying next...`);
+                            
+                        } catch (imageError) {
+                            console.log(`❌ Vision analysis failed for image:`, imageError.message);
+                            continue; // Try next image
                         }
-                        
-                        console.log(`⚠️ Low confidence from image (${visionResult.confidence}%), trying next...`);
-                        
-                    } catch (imageError) {
-                        console.log(`❌ Vision analysis failed for image:`, imageError.message);
-                        continue; // Try next image
                     }
+                } else {
+                    console.log('⚠️ Vision extractor not available, skipping Vision analysis');
                 }
             } else {
                 console.log('📂 No EPC images found in dropdown sections');
@@ -823,18 +855,23 @@ async function scrapeRightmoveProperty(url) {
             if (!epcData.rating) {
                 console.log('🔍 Dropdown detection failed, trying original Vision extraction...');
                 
-                const originalVisionResult = await epcExtractor.extractEPCFromProperty(url);
-                
-                if (originalVisionResult.rating && originalVisionResult.confidence > 50) {
-                    epcData = {
-                        rating: originalVisionResult.rating,
-                        score: originalVisionResult.score,
-                        confidence: originalVisionResult.confidence,
-                        reason: `Vision API (original): ${originalVisionResult.reason}`,
-                        numericalScore: epcExtractor.convertRatingToScore(originalVisionResult.rating, originalVisionResult.score)
-                    };
+                const epcExtractor = getEPCExtractor();
+                if (epcExtractor) {
+                    const originalVisionResult = await epcExtractor.extractEPCFromProperty(url);
                     
-                    console.log('✅ Original Vision extraction successful:', epcData.rating);
+                    if (originalVisionResult.rating && originalVisionResult.confidence > 50) {
+                        epcData = {
+                            rating: originalVisionResult.rating,
+                            score: originalVisionResult.score,
+                            confidence: originalVisionResult.confidence,
+                            reason: `Vision API (original): ${originalVisionResult.reason}`,
+                            numericalScore: epcExtractor.convertRatingToScore(originalVisionResult.rating, originalVisionResult.score)
+                        };
+                        
+                        console.log('✅ Original Vision extraction successful:', epcData.rating);
+                    }
+                } else {
+                    console.log('⚠️ Vision extractor not available for original extraction');
                 }
             }
             
@@ -918,7 +955,7 @@ async function scrapeRightmoveProperty(url) {
                                     score: null,
                                     confidence: confidence,
                                     reason: `Validated text (${source}): "${match[0]}"`,
-                                    numericalScore: epcExtractor.convertRatingToScore(rating)
+                                    numericalScore: epcExtractor ? epcExtractor.convertRatingToScore(rating) : 0
                                 };
                                 
                                 console.log(`✅ Found validated EPC in ${source}: ${rating} (${confidence}% confidence)`);
@@ -986,7 +1023,7 @@ async function scrapeRightmoveProperty(url) {
     }
 }
 
-// Updated analyzePropertyAccessibility function
+// ✅ KEEP FULL ACCESSIBILITY ANALYSIS - This was working well
 async function analyzePropertyAccessibility(property) {
     console.log('Starting comprehensive property analysis...');
     
@@ -1275,6 +1312,8 @@ app.listen(PORT, () => {
     if (!process.env.CLAUDE_API_KEY) {
         console.warn('⚠️  Warning: CLAUDE_API_KEY not set in environment variables');
     }
+    
+    console.log('🚀 Server ready - EPC Vision Extractor will load on first use');
 });
 
 module.exports = app;
