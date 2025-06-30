@@ -1,4 +1,4 @@
-// server.js - Ultra-fast deployment version
+// server.js - Balanced version: Full functionality with deployment optimizations
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -13,53 +13,113 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('.'));
 
-// 🚀 DEPLOYMENT OPTIMIZATION: Completely remove EPC Vision Extractor for now
-// We can add it back as an optional feature after deployment succeeds
-
 // Store for caching results
 const cache = new Map();
 
-// Short timeouts for fast deployment
-const API_TIMEOUT = 6000;
-const DIRECTIONS_TIMEOUT = 8000;
+// 🔧 LAZY LOAD EPC Vision Extractor - Only when needed
+let EPCVisionExtractor = null;
+const getEPCExtractor = () => {
+    if (!EPCVisionExtractor && process.env.CLAUDE_API_KEY) {
+        try {
+            console.log('📡 Loading EPC Vision Extractor on demand...');
+            const { EPCVisionExtractor: ExtractorClass } = require('./epc-vision-extractor');
+            EPCVisionExtractor = ExtractorClass;
+            console.log('✅ EPC Vision Extractor loaded');
+            return new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
+        } catch (error) {
+            console.warn('⚠️ EPC Vision Extractor not available:', error.message);
+            EPCVisionExtractor = false;
+        }
+    }
+    return EPCVisionExtractor ? new EPCVisionExtractor(process.env.CLAUDE_API_KEY) : null;
+};
 
-// Basic coordinate extraction
+// Claude API configuration
+const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
+
+// Try to access dedicated floorplan page
+async function tryFloorplanURL(propertyId) {
+    try {
+        const floorplanURL = `https://www.rightmove.co.uk/properties/${propertyId}#/floorplan?activePlan=1&channel=RES_BUY`;
+        
+        console.log('Trying floorplan URL:', floorplanURL);
+        
+        const response = await axios.get(floorplanURL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            },
+            timeout: 8000 // Reduced timeout
+        });
+
+        const $ = cheerio.load(response.data);
+        
+        const floorplanImages = [];
+        $('img').each((i, img) => {
+            const src = $(img).attr('src') || $(img).attr('data-src');
+            if (src && (src.includes('floorplan') || src.includes('plan') || 
+                       $(img).attr('alt')?.toLowerCase().includes('floorplan'))) {
+                floorplanImages.push(src);
+            }
+        });
+        
+        console.log(`Found ${floorplanImages.length} floorplans on dedicated page`);
+        return floorplanImages.length > 0 ? floorplanImages[0] : null;
+        
+    } catch (error) {
+        console.log('Floorplan URL not accessible:', error.message);
+        return null;
+    }
+}
+
+// Enhanced coordinate extraction using Geocoding API as fallback
 async function getPropertyCoordinates(address, existingCoords) {
     if (existingCoords && existingCoords.lat && existingCoords.lng) {
+        console.log('Using coordinates from property scraping:', existingCoords);
         return existingCoords;
     }
     
-    if (address && address !== 'Address not found' && process.env.GOOGLE_MAPS_API_KEY) {
+    if (address && address !== 'Address not found') {
         try {
+            console.log('Using Geocoding API for address:', address);
+            
             const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?` +
-                `address=${encodeURIComponent(address)}&region=uk&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+                `address=${encodeURIComponent(address)}&` +
+                `region=uk&` +
+                `key=${process.env.GOOGLE_MAPS_API_KEY}`;
             
-            const response = await axios.get(geocodeUrl, { timeout: API_TIMEOUT });
+            const response = await axios.get(geocodeUrl, { timeout: 8000 });
             
-            if (response.data.results?.length > 0) {
+            if (response.data.results && response.data.results.length > 0) {
                 const location = response.data.results[0].geometry.location;
-                return { lat: location.lat, lng: location.lng };
+                console.log('Geocoding API found coordinates:', location);
+                return {
+                    lat: location.lat,
+                    lng: location.lng
+                };
             }
         } catch (error) {
-            console.error('Geocoding error:', error.message);
+            console.error('Geocoding API error:', error.message);
         }
     }
     
+    console.log('No coordinates available for property');
     return null;
 }
 
-// ✅ KEEP FULL GP FILTERING - This is crucial for accuracy
+// ✅ FULL GP FILTERING - Keep all the important exclusions
 async function findNearestGPs(lat, lng) {
-    if (!process.env.GOOGLE_MAPS_API_KEY) {
-        return [];
-    }
-
     try {
+        console.log(`Finding GP surgeries near ${lat}, ${lng} using Places API (New)`);
+        
         const requestBody = {
             includedTypes: ["doctor"],
-            maxResultCount: 15, // Reduced for speed
+            maxResultCount: 20,
             locationRestriction: {
-                circle: { center: { latitude: lat, longitude: lng }, radius: 2000.0 }
+                circle: {
+                    center: { latitude: lat, longitude: lng },
+                    radius: 2000.0
+                }
             },
             rankPreference: "DISTANCE",
             languageCode: "en-GB",
@@ -73,48 +133,76 @@ async function findNearestGPs(lat, lng) {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
-                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.businessStatus'
+                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id,places.businessStatus,places.websiteUri'
                 },
-                timeout: API_TIMEOUT
+                timeout: 8000 // Reduced but still reasonable
             }
         );
+        
+        console.log('Places API response received');
+        console.log('Total places found:', response.data.places?.length || 0);
 
-        if (response.data.places?.length > 0) {
-            // ✅ KEEP ENHANCED FILTERING - This prevents fertility clinics etc.
+        if (response.data.places && response.data.places.length > 0) {
+            // ✅ KEEP FULL ENHANCED FILTERING - This is crucial
             const gps = response.data.places
                 .filter(place => {
                     const name = place.displayName?.text?.toLowerCase() || '';
+                    const types = place.types || [];
                     const businessStatus = place.businessStatus;
                     
-                    if (businessStatus === 'CLOSED_PERMANENTLY') return false;
+                    if (businessStatus === 'CLOSED_PERMANENTLY') {
+                        console.log(`Skipping closed place: ${name}`);
+                        return false;
+                    }
                     
-                    // Strict exclusions
+                    // FULL exclusions list - this is important for accuracy
                     const isDefinitelyNotGP = (
                         name.includes('ear wax') || name.includes('earwax') || name.includes('chiropody') ||
                         name.includes('podiatry') || name.includes('foot care') || name.includes('hearing') ||
-                        name.includes('fertility') || name.includes('acupuncture') || name.includes('chiropractor') ||
-                        name.includes('physiotherapy') || name.includes('physio') || name.includes('osteopath') ||
-                        name.includes('counselling') || name.includes('therapy') || name.includes('beauty') ||
-                        name.includes('aesthetic') || name.includes('cosmetic') || name.includes('laser') ||
+                        name.includes('tree surgery') || name.includes('tree service') || name.includes('landscaping') ||
+                        name.includes('fertility') || name.includes('astrology') || name.includes('acupuncture') ||
+                        name.includes('chiropractor') || name.includes('physiotherapy') || name.includes('physio') ||
+                        name.includes('osteopath') || name.includes('counselling') || name.includes('therapy') ||
+                        name.includes('beauty') || name.includes('aesthetic') || name.includes('cosmetic') ||
+                        name.includes('laser') || name.includes('skin care') || name.includes('botox') ||
                         name.includes('massage') || name.includes('pharmacy') || name.includes('dentist') ||
-                        name.includes('dental') || name.includes('optician') || name.includes('vet') ||
-                        name.includes('veterinary') || name.includes('care home') || name.includes('hospital')
+                        name.includes('dental') || name.includes('optician') || name.includes('eye care') ||
+                        name.includes('vet') || name.includes('veterinary') || name.includes('care home') ||
+                        name.includes('nursing home') || name.includes('mental health') || name.includes('.co.uk') ||
+                        name.includes('.com') || name.includes('www.') || name.includes('royal united hospital') ||
+                        name.includes('ruh') || name.includes('university hospital')
                     );
                     
-                    if (isDefinitelyNotGP) return false;
+                    if (isDefinitelyNotGP) {
+                        console.log(`${name}: Excluded (definitely not GP)`);
+                        return false;
+                    }
                     
-                    // Positive identification
+                    // FULL positive identification
                     const isLikelyGPSurgery = (
                         name.includes('gp surgery') || name.includes('doctors surgery') ||
                         name.includes('medical centre') || name.includes('medical center') ||
                         name.includes('health centre') || name.includes('health center') ||
                         name.includes('family practice') || name.includes('primary care') ||
                         name.includes('group practice') || name.includes('health practice') ||
-                        (name.includes('surgery') && (name.includes('dr ') || name.includes('medical') || name.includes('health'))) ||
-                        (name.includes('medical') && (name.includes('centre') || name.includes('center')) && !name.includes('specialist'))
+                        (name.includes('medical practice') && name.includes('dr ')) ||
+                        (name.includes('surgery') && !name.includes('tree') && !name.includes('plastic') &&
+                         !name.includes('cosmetic') && !name.includes('laser') && !name.includes('aesthetic') &&
+                         (name.includes('dr ') || name.includes('practice') || name.includes('medical') ||
+                          name.includes('health') || name.includes('grosvenor') || name.includes('pulteney') ||
+                          name.includes('batheaston') || name.includes('bath'))) ||
+                        (name.includes('medical') && (name.includes('centre') || name.includes('center')) &&
+                         !name.includes('specialist') && !name.includes('private')) ||
+                        (name.includes('dr ') && (name.includes('surgery') || name.includes('practice') ||
+                         name.includes('medical') || name.includes('health'))) ||
+                        (types.includes('doctor') && !name.includes('specialist') &&
+                         !name.includes('private') && !name.includes('clinic'))
                     );
                     
-                    return isLikelyGPSurgery;
+                    const isValid = isLikelyGPSurgery;
+                    console.log(`${name}: GP=${isLikelyGPSurgery}, Final=${isValid}`);
+                    
+                    return isValid;
                 })
                 .map(place => ({
                     name: place.displayName?.text || 'Medical Practice',
@@ -122,78 +210,278 @@ async function findNearestGPs(lat, lng) {
                     location: {
                         lat: place.location?.latitude,
                         lng: place.location?.longitude
-                    }
+                    },
+                    rating: place.rating || null,
+                    placeId: place.id,
+                    businessStatus: place.businessStatus,
+                    website: place.websiteUri || null
                 }))
-                .slice(0, 3); // Top 3 only for speed
+                .slice(0, 5);
             
-            return gps;
+            console.log(`Found ${gps.length} valid GP surgeries`);
+            
+            if (gps.length > 0) {
+                return gps;
+            }
         }
 
-        return [];
+        // Fallback: Broader search if no results
+        console.log('No GPs found with strict search, trying broader criteria...');
+        return await findGPsBroadSearch(lat, lng);
         
     } catch (error) {
-        console.error('Places API error:', error.message);
+        console.error('Places API (New) error:', error.response?.data || error.message);
+        
+        // Ultimate fallback: Legacy Places API
+        console.log('Falling back to legacy Places API...');
+        return await findGPsLegacyAPI(lat, lng);
+    }
+}
+
+// Broader search using multiple place types
+async function findGPsBroadSearch(lat, lng) {
+    try {
+        const requestBody = {
+            includedTypes: ["doctor", "health", "hospital"],
+            maxResultCount: 30,
+            locationRestriction: {
+                circle: { center: { latitude: lat, longitude: lng }, radius: 3000.0 }
+            },
+            rankPreference: "DISTANCE",
+            languageCode: "en-GB",
+            regionCode: "GB"
+        };
+        
+        const response = await axios.post(
+            'https://places.googleapis.com/v1/places:searchNearby',
+            requestBody,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id'
+                },
+                timeout: 8000
+            }
+        );
+        
+        if (response.data.places && response.data.places.length > 0) {
+            const gps = response.data.places
+                .filter(place => {
+                    const name = place.displayName?.text?.toLowerCase() || '';
+                    return (
+                        (name.includes('surgery') || name.includes('medical') || 
+                         name.includes('gp') || name.includes('doctors')) &&
+                        !name.includes('hospital') &&
+                        !name.includes('pharmacy')
+                    );
+                })
+                .map(place => ({
+                    name: place.displayName?.text || 'Medical Facility',
+                    address: place.formattedAddress || 'Address not available',
+                    location: {
+                        lat: place.location?.latitude,
+                        lng: place.location?.lng
+                    },
+                    rating: place.rating || null,
+                    placeId: place.id
+                }))
+                .slice(0, 3);
+            
+            console.log(`Broad search found ${gps.length} medical facilities`);
+            return gps;
+        }
+        
+        return [];
+    } catch (error) {
+        console.error('Broad Places search failed:', error.message);
         return [];
     }
 }
 
-// Simplified walking route analysis
-async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
-    if (!process.env.GOOGLE_MAPS_API_KEY) return null;
-
+// Legacy API fallback
+async function findGPsLegacyAPI(lat, lng) {
     try {
+        console.log('Using legacy Places API as final fallback...');
+        
+        const legacyUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?` +
+            `location=${lat},${lng}&radius=2000&type=doctor&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+        
+        const response = await axios.get(legacyUrl, { timeout: 8000 });
+        
+        if (response.data.results && response.data.results.length > 0) {
+            const gps = response.data.results
+                .filter(place => {
+                    const name = place.name.toLowerCase();
+                    return (
+                        name.includes('surgery') || name.includes('medical') ||
+                        name.includes('gp') || name.includes('doctors')
+                    );
+                })
+                .map(place => ({
+                    name: place.name,
+                    address: place.vicinity || 'Address not available',
+                    location: {
+                        lat: place.geometry.location.lat,
+                        lng: place.geometry.location.lng
+                    },
+                    rating: place.rating || null,
+                    placeId: place.place_id
+                }))
+                .slice(0, 3);
+            
+            console.log(`Legacy API found ${gps.length} GP surgeries`);
+            return gps;
+        }
+        
+        return [];
+    } catch (error) {
+        console.error('Legacy Places API error:', error.message);
+        return [];
+    }
+}
+
+// ✅ FULL WALKING ROUTE ANALYSIS - Keep detailed analysis
+async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
+    try {
+        console.log(`Calculating precise walking route to ${gpName} using Directions API`);
+        
         const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?` +
-            `origin=${fromLat},${fromLng}&destination=${toLat},${toLng}&mode=walking&units=metric&region=uk&` +
+            `origin=${fromLat},${fromLng}&` +
+            `destination=${toLat},${toLng}&` +
+            `mode=walking&` +
+            `units=metric&` +
+            `region=uk&` +
+            `language=en-GB&` +
             `key=${process.env.GOOGLE_MAPS_API_KEY}`;
         
-        const response = await axios.get(directionsUrl, { timeout: DIRECTIONS_TIMEOUT });
+        const response = await axios.get(directionsUrl, {
+            timeout: 12000 // Slightly reduced
+        });
         
-        if (response.data.routes?.length > 0) {
-            const leg = response.data.routes[0].legs[0];
-            const durationMinutes = Math.ceil(leg.duration.value / 60);
+        if (response.data.routes && response.data.routes.length > 0) {
+            const route = response.data.routes[0];
+            const leg = route.legs[0];
             
-            // Simplified route analysis
-            const steps = leg.steps || [];
-            const hasAccessibilityIssues = steps.some(step => {
-                const instruction = step.html_instructions?.toLowerCase() || '';
-                return instruction.includes('stairs') || instruction.includes('steep') || instruction.includes('hill');
+            console.log('Directions API returned route data:');
+            console.log('- Distance:', leg.distance.text);
+            console.log('- Duration:', leg.duration.text);
+            console.log('- Steps:', leg.steps.length);
+            
+            const steps = leg.steps;
+            const routeWarnings = [];
+            const routeFeatures = {
+                hasStairs: false,
+                hasSteepIncline: false,
+                crossesBusyRoads: false,
+                hasTrafficLights: false
+            };
+            
+            steps.forEach(step => {
+                const instruction = step.html_instructions.toLowerCase();
+                
+                if (instruction.includes('stairs') || instruction.includes('steps')) {
+                    routeWarnings.push('Route includes stairs');
+                    routeFeatures.hasStairs = true;
+                }
+                if (instruction.includes('steep') || instruction.includes('hill') || instruction.includes('incline')) {
+                    routeWarnings.push('Steep incline detected');
+                    routeFeatures.hasSteepIncline = true;
+                }
+                if (instruction.includes('main') || instruction.includes('busy') || instruction.includes('major') || instruction.includes('a road') || instruction.includes('dual carriageway')) {
+                    routeWarnings.push('Crosses busy roads');
+                    routeFeatures.crossesBusyRoads = true;
+                }
+                if (instruction.includes('traffic lights') || instruction.includes('crossing') || instruction.includes('pedestrian crossing')) {
+                    routeFeatures.hasTrafficLights = true;
+                }
             });
             
-            const accessibilityScore = hasAccessibilityIssues ? 
-                Math.max(1, 5 - Math.floor(durationMinutes / 10)) :
-                Math.max(1, 5 - Math.floor(durationMinutes / 8));
+            const durationMinutes = Math.ceil(leg.duration.value / 60);
             
-            let accessibilityNotes = '';
-            if (durationMinutes <= 5) accessibilityNotes = "Excellent proximity - very manageable walk";
-            else if (durationMinutes <= 10) accessibilityNotes = "Good walking distance";
-            else if (durationMinutes <= 20) accessibilityNotes = "Moderate walk - may require rest stops";
-            else accessibilityNotes = "Long walk - consider transport alternatives";
-            
-            if (hasAccessibilityIssues) {
-                accessibilityNotes += ". Route may include stairs or steep sections";
-            }
-            
-            return {
+            const result = {
                 distance: leg.distance.text,
                 duration: leg.duration.text,
                 durationMinutes: durationMinutes,
-                accessibilityScore: accessibilityScore,
-                accessibilityNotes: accessibilityNotes,
+                durationSeconds: leg.duration.value,
+                distanceMeters: leg.distance.value,
+                routeWarnings: [...new Set(routeWarnings)],
+                routeFeatures: routeFeatures,
+                accessibilityScore: calculateRouteAccessibilityScore(routeFeatures, durationMinutes),
+                accessibilityNotes: generateAccessibilityNotes(durationMinutes, routeFeatures, routeWarnings),
                 gpName: gpName,
-                routeWarnings: hasAccessibilityIssues ? ['Potential accessibility challenges'] : []
+                steps: steps.length
             };
+            
+            console.log(`Walking route analysis complete:`, {
+                time: result.duration,
+                distance: result.distance,
+                accessibility: result.accessibilityScore
+            });
+            
+            return result;
         }
         
         return null;
         
     } catch (error) {
-        console.error('Directions API error:', error.message);
+        console.error('Directions API error:', error.response?.data || error.message);
         return null;
     }
 }
 
+// Calculate route accessibility score
+function calculateRouteAccessibilityScore(features, durationMinutes) {
+    let score = 5;
+    
+    if (features.hasStairs) score -= 2;
+    if (features.hasSteepIncline) score -= 1.5;
+    if (features.crossesBusyRoads && !features.hasTrafficLights) score -= 1;
+    if (durationMinutes > 15) score -= 1;
+    if (durationMinutes > 25) score -= 1;
+    
+    return Math.max(1, Math.round(score * 10) / 10);
+}
+
+// Generate detailed accessibility notes
+function generateAccessibilityNotes(durationMinutes, features, warnings) {
+    const notes = [];
+    
+    if (durationMinutes <= 5) {
+        notes.push("Excellent proximity - very manageable walk");
+    } else if (durationMinutes <= 10) {
+        notes.push("Good walking distance for most people");
+    } else if (durationMinutes <= 20) {
+        notes.push("Moderate walk - may require rest stops");
+    } else {
+        notes.push("Long walk - consider transport alternatives");
+    }
+    
+    if (features.hasStairs) {
+        notes.push("Route includes stairs - may be challenging for mobility aids");
+    }
+    if (features.hasSteepIncline) {
+        notes.push("Route has steep sections");
+    }
+    if (features.crossesBusyRoads) {
+        if (features.hasTrafficLights) {
+            notes.push("Crosses busy roads but has safe pedestrian crossings");
+        } else {
+            notes.push("Crosses busy roads - extra care needed");
+        }
+    }
+    
+    if (warnings.length === 0 && durationMinutes <= 10) {
+        notes.push("Route appears level and pedestrian-friendly");
+    }
+    
+    return notes.join('. ') + '.';
+}
+
+// Calculate final GP proximity score
 function calculateGPProximityScore(durationMinutes, routeAccessibilityScore = null) {
     let baseScore;
+    
     if (durationMinutes <= 5) baseScore = 5;
     else if (durationMinutes <= 10) baseScore = 4;
     else if (durationMinutes <= 20) baseScore = 3;
@@ -201,118 +489,380 @@ function calculateGPProximityScore(durationMinutes, routeAccessibilityScore = nu
     else baseScore = 1;
     
     if (routeAccessibilityScore !== null) {
-        return Math.round(((baseScore + routeAccessibilityScore) / 2) * 10) / 10;
+        const adjustedScore = (baseScore + routeAccessibilityScore) / 2;
+        return Math.round(adjustedScore * 10) / 10;
     }
+    
     return baseScore;
 }
 
-// 🚀 FAST EPC EXTRACTION - Simple text patterns only for now
-function extractSimpleEPC(description, pageText) {
-    let epcData = {
-        rating: null,
-        confidence: 0,
-        reason: 'Not found',
-        numericalScore: 0
-    };
+// ✅ ENHANCED EPC EXTRACTION with lazy Vision API loading
+async function extractEPCFromRightmoveDropdown(url) {
+    try {
+        console.log('🔍 Enhanced Rightmove EPC detection...');
+        
+        const response = await axios.get(url, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            },
+            timeout: 8000
+        });
 
-    const epcPatterns = [
-        /epc\s*rating[:\s]*([a-g])\b/gi,
-        /energy\s*performance[:\s]*([a-g])\b/gi,
-        /energy\s*rating[:\s]*([a-g])\b/gi,
-        /energy\s*efficiency[:\s]*([a-g])\b/gi
-    ];
-    
-    const searchText = `${description} ${pageText}`.toLowerCase();
-    
-    for (const pattern of epcPatterns) {
-        const match = searchText.match(pattern);
-        if (match) {
-            const rating = match[1].toUpperCase();
-            if (['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
-                // Simple context validation
-                const matchIndex = searchText.indexOf(match[0].toLowerCase());
-                const context = searchText.substring(Math.max(0, matchIndex - 30), matchIndex + 30);
+        const $ = cheerio.load(response.data);
+        const epcImageUrls = [];
+        
+        // Strategy 1: Look for PDF brochures
+        $('a[href*=".pdf"]').each((i, link) => {
+            const href = $(link).attr('href');
+            const text = $(link).text().toLowerCase();
+            
+            if (text.includes('brochure') || text.includes('details') || 
+                text.includes('information') || href.toLowerCase().includes('epc')) {
                 
-                const hasEnergyContext = context.includes('energy') || context.includes('epc');
-                const isFinancialContext = context.includes('council tax') || context.includes('band:');
+                const fullUrl = href.startsWith('http') ? href : 
+                              href.startsWith('//') ? `https:${href}` : 
+                              `https://www.rightmove.co.uk${href}`;
                 
-                if (hasEnergyContext && !isFinancialContext) {
-                    epcData = {
-                        rating: rating,
-                        confidence: 70,
-                        reason: `Text extraction: "${match[0]}"`,
-                        numericalScore: 0
-                    };
-                    break;
-                }
+                epcImageUrls.push(fullUrl);
             }
-        }
-    }
+        });
+        
+        // Strategy 2: Look for direct EPC images
+        const epcUrlPatterns = [
+            /_EPC_/i, /\/epc\//i, /energy[-_]performance/i,
+            /energy[-_]certificate/i, /certificate.*energy/i
+        ];
+        
+        $('*').each((i, element) => {
+            const $el = $(element);
+            ['src', 'data-src', 'data-lazy-src', 'href', 'data-href', 'data-url'].forEach(attr => {
+                const value = $el.attr(attr);
+                if (value && epcUrlPatterns.some(pattern => pattern.test(value))) {
+                    const fullUrl = value.startsWith('http') ? value : 
+                                  value.startsWith('//') ? `https:${value}` : 
+                                  `https://www.rightmove.co.uk${value}`;
+                    
+                    if (!epcImageUrls.includes(fullUrl)) {
+                        epcImageUrls.push(fullUrl);
+                    }
+                }
+            });
+        });
+        
+        console.log(`📊 Total potential EPC sources found: ${epcImageUrls.length}`);
+        return epcImageUrls.filter(url => url && url.startsWith('http'));
 
-    return epcData;
+    } catch (error) {
+        console.error('❌ Error in enhanced EPC detection:', error.message);
+        return [];
+    }
 }
 
-// Streamlined property scraping
+// ✅ FULL PROPERTY SCRAPING - Restore all functionality
 async function scrapeRightmoveProperty(url) {
     try {
+        console.log('Scraping Rightmove URL:', url);
+
         const response = await axios.get(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-            timeout: API_TIMEOUT
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            timeout: 8000
         });
 
         const $ = cheerio.load(response.data);
         const pageText = $('body').text();
+
         const propertyIdMatch = url.match(/properties\/(\d+)/);
-        const propertyId = propertyIdMatch?.[1] || 'unknown';
+        const propertyId = propertyIdMatch ? propertyIdMatch[1] : 'unknown';
 
-        // Extract coordinates (simplified)
+        // Extract coordinates
         let coordinates = null;
-        const scripts = $('script').toArray().slice(0, 5); // Limit script checking
-        
-        for (const script of scripts) {
-            const scriptContent = $(script).html() || '';
-            const latMatch = scriptContent.match(/(?:lat|latitude)["\s]*[:=]\s*([+-]?\d+\.?\d*)/i);
-            const lngMatch = scriptContent.match(/(?:lng|longitude)["\s]*[:=]\s*([+-]?\d+\.?\d*)/i);
+        let address = '';
+        const scripts = $('script').toArray();
 
-            if (latMatch && lngMatch) {
+        scripts.forEach(script => {
+            const scriptContent = $(script).html() || '';
+            const latLngMatch = scriptContent.match(/(?:lat|latitude)["\s]*[:=]\s*([+-]?\d+\.?\d*)/i);
+            const lngMatch = scriptContent.match(/(?:lng|longitude|long)["\s]*[:=]\s*([+-]?\d+\.?\d*)/i);
+
+            if (latLngMatch && lngMatch) {
                 coordinates = {
-                    lat: parseFloat(latMatch[1]),
+                    lat: parseFloat(latLngMatch[1]),
                     lng: parseFloat(lngMatch[1])
                 };
-                break;
+                console.log('Found coordinates in script:', coordinates);
             }
+
+            const addressMatch = scriptContent.match(/(?:address|location)["\s]*[:=]\s*["']([^"']+)["']/i);
+            if (addressMatch && !address) {
+                address = addressMatch[1];
+            }
+        });
+
+        if (!coordinates) {
+            $('[data-lat], [data-latitude]').each((i, el) => {
+                const lat = $(el).attr('data-lat') || $(el).attr('data-latitude');
+                const lng = $(el).attr('data-lng') || $(el).attr('data-longitude') || $(el).attr('data-long');
+                if (lat && lng) {
+                    coordinates = {
+                        lat: parseFloat(lat),
+                        lng: parseFloat(lng)
+                    };
+                    console.log('Found coordinates in data attributes:', coordinates);
+                }
+            });
         }
 
-        // Extract basic info
+        if (!coordinates) {
+            $('iframe[src*="maps"], iframe[src*="google"]').each((i, iframe) => {
+                const src = $(iframe).attr('src');
+                const coordMatch = src.match(/[@!]([+-]?\d+\.?\d*),([+-]?\d+\.?\d*)/);
+                if (coordMatch) {
+                    coordinates = {
+                        lat: parseFloat(coordMatch[1]),
+                        lng: parseFloat(coordMatch[2])
+                    };
+                    console.log('Found coordinates in map iframe:', coordinates);
+                }
+            });
+        }
+
+        // Extract title, price, description
         const fullTitle = $('title').text();
         const titleMatch = fullTitle.match(/(.+?) for sale/i);
-        const title = titleMatch?.[1]?.trim() || fullTitle.split('open-rightmove')[0].trim();
-        
-        const priceMatch = pageText.match(/£[\d,]+/g);
-        const price = priceMatch?.[0] || 'Price not available';
+        const title = titleMatch ? titleMatch[1].trim() : fullTitle.split('open-rightmove')[0].trim();
 
-        // Get description (simplified)
+        const priceMatch = pageText.match(/£[\d,]+/g);
+        const price = priceMatch ? priceMatch[0] : 'Price not available';
+
         let description = '';
-        const descSelectors = ['[data-testid="property-description"]', '.property-description', '[class*="description"]'];
-        
-        for (const selector of descSelectors) {
+        const descriptionSelectors = [
+            '[data-testid="property-description"]',
+            '.property-description',
+            '[class*="description"]',
+            '.PropertyDescription',
+            '[data-test="property-description"]'
+        ];
+
+        for (const selector of descriptionSelectors) {
             const desc = $(selector).text().trim();
-            if (desc?.length > 50) {
+            if (desc && desc.length > 50) {
                 description = desc;
                 break;
             }
         }
 
-        // Extract features
+        if (!description) {
+            const textSections = pageText.split('\n').filter(line =>
+                line.length > 100 &&
+                !line.includes('cookie') &&
+                !line.includes('navigation') &&
+                (line.includes('property') || line.includes('bedroom') || line.includes('kitchen'))
+            );
+            description = textSections[0] || 'No detailed description available';
+        }
+
+        // Extract images and floorplan
+        const images = [];
+        $('img').each((i, img) => {
+            const src = $(img).attr('src') || $(img).attr('data-src');
+            if (src && (
+                src.includes('rightmove') ||
+                src.includes('property') ||
+                src.includes('photo')
+            ) && !src.includes('logo') && !src.includes('icon')) {
+                images.push(src);
+            }
+        });
+
+        let floorplan = await tryFloorplanURL(propertyId);
+        if (!floorplan) {
+            $('img').each((i, img) => {
+                const src = $(img).attr('src') || $(img).attr('data-src') || $(img).attr('data-lazy-src');
+                const alt = $(img).attr('alt') || '';
+                if (src && (alt.toLowerCase().includes('floorplan') ||
+                    alt.toLowerCase().includes('floor plan') ||
+                    src.includes('floorplan'))) {
+                    floorplan = src;
+                }
+            });
+        }
+
+        // ✅ Enhanced EPC extraction with LAZY LOADING Vision API
+        console.log('👁️ Starting enhanced EPC extraction...');
+
+        let epcData = {
+            rating: null,
+            score: null,
+            confidence: 0,
+            reason: 'Not extracted',
+            numericalScore: 0
+        };
+
+        try {
+            // Step 1: Try dropdown detection first
+            const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
+            
+            if (epcImageUrls.length > 0) {
+                console.log(`📋 Found ${epcImageUrls.length} EPC images, trying Vision API...`);
+                
+                // LAZY LOAD Vision API only when we have images to analyze
+                const epcExtractor = getEPCExtractor();
+                
+                if (epcExtractor) {
+                    for (const imageUrl of epcImageUrls.slice(0, 3)) { // Limit to 3 for speed
+                        try {
+                            const visionResult = await epcExtractor.analyzeEPCWithVision(imageUrl);
+                            
+                            if (visionResult.rating && visionResult.confidence > 70) {
+                                epcData = {
+                                    rating: visionResult.rating,
+                                    score: visionResult.score,
+                                    confidence: visionResult.confidence,
+                                    reason: `Vision API: ${visionResult.reason}`,
+                                    numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
+                                };
+                                
+                                console.log('✅ Vision extraction successful:', epcData.rating);
+                                break;
+                            }
+                        } catch (imageError) {
+                            console.log(`❌ Vision analysis failed for image:`, imageError.message);
+                            continue;
+                        }
+                    }
+                } else {
+                    console.log('⚠️ Vision extractor not available');
+                }
+            }
+            
+            // Step 2: Fallback to original Vision approach if dropdown failed
+            if (!epcData.rating) {
+                const epcExtractor = getEPCExtractor();
+                if (epcExtractor) {
+                    console.log('🔍 Trying original Vision extraction...');
+                    const originalVisionResult = await epcExtractor.extractEPCFromProperty(url);
+                    
+                    if (originalVisionResult.rating && originalVisionResult.confidence > 50) {
+                        epcData = {
+                            rating: originalVisionResult.rating,
+                            score: originalVisionResult.score,
+                            confidence: originalVisionResult.confidence,
+                            reason: `Vision API (original): ${originalVisionResult.reason}`,
+                            numericalScore: epcExtractor.convertRatingToScore(originalVisionResult.rating, originalVisionResult.score)
+                        };
+                        
+                        console.log('✅ Original Vision extraction successful:', epcData.rating);
+                    }
+                }
+            }
+            
+            // Step 3: Enhanced text fallback
+            if (!epcData.rating && description && description.length > 0) {
+                console.log('🔍 Using enhanced text extraction fallback...');
+                
+                const fullPageText = $('body').text();
+                const enhancedPatterns = [
+                    /epc\s*rating[:\s]*([a-g])\b/gi,
+                    /energy\s*performance\s*certificate[:\s]*([a-g])\b/gi,
+                    /energy\s*efficiency[:\s]*rating[:\s]*([a-g])\b/gi,
+                    /current\s*energy\s*rating[:\s]*([a-g])\b/gi,
+                    /\bepc[:\s]+([a-g])\b/gi,
+                    /\b([a-g])\s*[-:]\s*\d{1,3}\b/gi
+                ];
+                
+                const searchTexts = [
+                    { text: description, source: 'description' },
+                    { text: fullPageText, source: 'page' }
+                ];
+                
+                searchLoop: for (const { text, source } of searchTexts) {
+                    for (const pattern of enhancedPatterns) {
+                        const matches = [...text.matchAll(pattern)];
+                        
+                        for (const match of matches) {
+                            const rating = match[1].toUpperCase();
+                            
+                            const matchContext = text.substring(
+                                Math.max(0, match.index - 60), 
+                                match.index + 80
+                            ).toLowerCase();
+                            
+                            const hasEnergyContext = (
+                                matchContext.includes('energy performance') ||
+                                matchContext.includes('energy certificate') ||
+                                matchContext.includes('energy efficiency') ||
+                                matchContext.includes('epc rating') ||
+                                matchContext.includes('energy rating')
+                            );
+                            
+                            const isFinancialContext = (
+                                matchContext.includes('deposit') ||
+                                matchContext.includes('mortgage') ||
+                                matchContext.includes('council tax') ||
+                                matchContext.includes('band:')
+                            );
+                            
+                            const isAddressContext = (
+                                matchContext.includes('street') ||
+                                matchContext.includes('road') ||
+                                matchContext.includes('ba2')
+                            );
+                            
+                            const isValidContext = hasEnergyContext && !isFinancialContext && !isAddressContext;
+                            
+                            if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
+                                const epcExtractor = getEPCExtractor();
+                                epcData = {
+                                    rating: rating,
+                                    score: null,
+                                    confidence: 80,
+                                    reason: `Validated text (${source}): "${match[0]}"`,
+                                    numericalScore: epcExtractor ? epcExtractor.convertRatingToScore(rating) : 0
+                                };
+                                
+                                console.log(`✅ Found validated EPC in ${source}: ${rating}`);
+                                break searchLoop;
+                            }
+                        }
+                    }
+                }
+            }
+            
+        } catch (error) {
+            console.error('❌ Enhanced EPC extraction error:', error.message);
+            epcData.reason = `Extraction failed: ${error.message}`;
+        }
+
+        console.log('=== FINAL EPC RESULT ===');
+        console.log('EPC Rating:', epcData.rating);
+        console.log('Confidence:', epcData.confidence);
+        console.log('Method:', epcData.confidence > 80 ? 'Vision API (High)' : 
+                            epcData.confidence > 60 ? 'Vision API (Medium)' : 
+                            epcData.confidence > 50 ? 'Text Extraction' : 'Not Found');
+
+        // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
         const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
+
         const features = [];
-        
         if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
         if (bathroomMatch) features.push(`${bathroomMatch[1]} bathroom${bathroomMatch[1] > 1 ? 's' : ''}`);
 
-        // Extract EPC (simple text only)
-        const epcData = extractSimpleEPC(description, pageText);
+        if (description.toLowerCase().includes('garage')) features.push('garage');
+        if (description.toLowerCase().includes('garden')) features.push('garden');
+        if (description.toLowerCase().includes('parking')) features.push('parking');
+        if (description.toLowerCase().includes('ground floor')) features.push('ground floor accommodation');
+        if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
+        if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
+
+        console.log('Property scraping completed:', {
+            title: title,
+            coordinates: !!coordinates,
+            epc: epcData.rating || 'Not found',
+            features: features.length
+        });
 
         return {
             id: propertyId,
@@ -320,31 +870,40 @@ async function scrapeRightmoveProperty(url) {
             price: price,
             description: description,
             features: features,
-            address: 'Address extraction simplified',
-            coordinates: coordinates,
+            images: images.slice(0, 5),
+            floorplan: floorplan,
             epc: epcData,
-            epcRating: epcData.rating
+            epcRating: epcData.rating,
+            address: address || 'Address not found',
+            coordinates: coordinates
         };
-        
+
     } catch (error) {
         console.error('Scraping error:', error.message);
         throw new Error('Failed to scrape property data');
     }
 }
 
-// Streamlined accessibility analysis
+// ✅ FULL ACCESSIBILITY ANALYSIS - Restore complete functionality
 async function analyzePropertyAccessibility(property) {
-    // Step 1: GP proximity
-    let gpProximity = { score: 2, accessibilityNotes: 'GP analysis unavailable' };
+    console.log('Starting comprehensive property analysis...');
     
+    // Step 1: Analyze GP proximity
+    let gpProximity = null;
     if (property.coordinates) {
+        console.log('Analyzing GP proximity with enhanced search...');
+        
         try {
             const nearbyGPs = await findNearestGPs(property.coordinates.lat, property.coordinates.lng);
             
             if (nearbyGPs.length > 0) {
+                console.log(`Found ${nearbyGPs.length} GP surgeries nearby`);
+                
                 const route = await analyzeWalkingRoute(
-                    property.coordinates.lat, property.coordinates.lng,
-                    nearbyGPs[0].location.lat, nearbyGPs[0].location.lng,
+                    property.coordinates.lat, 
+                    property.coordinates.lng,
+                    nearbyGPs[0].location.lat,
+                    nearbyGPs[0].location.lng,
                     nearbyGPs[0].name
                 );
                 
@@ -355,68 +914,176 @@ async function analyzePropertyAccessibility(property) {
                         walkingTime: route.duration,
                         distance: route.distance,
                         score: calculateGPProximityScore(route.durationMinutes, route.accessibilityScore),
+                        routeAccessibilityScore: route.accessibilityScore,
                         accessibilityNotes: route.accessibilityNotes,
-                        warnings: route.routeWarnings
+                        warnings: route.routeWarnings,
+                        allNearbyGPs: nearbyGPs.slice(0, 3).map(gp => ({
+                            name: gp.name,
+                            address: gp.address
+                        }))
                     };
+                    
+                    console.log('GP proximity analysis complete:', {
+                        gp: gpProximity.nearestGP,
+                        time: gpProximity.walkingTime,
+                        score: gpProximity.score
+                    });
                 } else {
                     gpProximity = {
                         nearestGP: nearbyGPs[0].name,
+                        address: nearbyGPs[0].address,
                         score: 3,
-                        accessibilityNotes: 'GP surgery found nearby'
+                        accessibilityNotes: 'GP surgery found nearby, but walking route could not be calculated',
+                        allNearbyGPs: nearbyGPs.slice(0, 3).map(gp => ({
+                            name: gp.name,
+                            address: gp.address
+                        }))
                     };
                 }
+            } else {
+                gpProximity = {
+                    score: 1,
+                    accessibilityNotes: 'No GP surgeries found within reasonable walking distance'
+                };
             }
         } catch (error) {
-            console.error('GP analysis error:', error.message);
+            console.error('GP proximity analysis failed:', error.message);
+            gpProximity = {
+                score: 2,
+                accessibilityNotes: 'Unable to analyze GP proximity at this time'
+            };
         }
+    } else {
+        gpProximity = {
+            score: 2,
+            accessibilityNotes: 'Property location coordinates not available for GP proximity analysis'
+        };
     }
 
-    // Step 2: EPC Score
+    // Step 2: Calculate EPC Score
     let epcScore = 3;
     let epcDetails = 'EPC rating not specified';
 
-    if (property.epc?.rating) {
+    if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
+        if (property.epc.numericalScore && property.epc.confidence >= 80) {
+            epcScore = Math.max(1, Math.min(5, Math.round((property.epc.numericalScore / 100) * 5)));
+            epcDetails = `Energy rating ${property.epc.rating} (score: ${property.epc.numericalScore}) - ${property.epc.confidence}% confidence via ${property.epc.confidence > 80 ? 'Vision API' : 'Text Search'}`;
+        } else {
+            const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
+            epcScore = letterScores[property.epc.rating] || 3;
+            epcDetails = `Energy rating ${property.epc.rating} (${property.epc.confidence}% confidence) - ${property.epc.reason}`;
+        }
+    } else if (property.epcRating) {
+        const rating = property.epcRating.toUpperCase();
         const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
-        epcScore = letterScores[property.epc.rating] || 3;
-        epcDetails = `Energy rating ${property.epc.rating} (${property.epc.confidence}% confidence)`;
+        epcScore = letterScores[rating] || 3;
+        epcDetails = `Energy rating ${rating} (legacy extraction)`;
     }
     
-    // Step 3: Facilities
+    // Step 3: Analyze internal facilities
     const fullText = `${property.description} ${property.features.join(' ')}`.toLowerCase();
     let facilitiesScore = 0;
     const facilitiesFound = [];
     
-    if (fullText.includes('bedroom')) { facilitiesScore += 1; facilitiesFound.push('bedrooms'); }
-    if (fullText.includes('kitchen')) { facilitiesScore += 1; facilitiesFound.push('kitchen'); }
-    if (fullText.includes('living') || fullText.includes('lounge')) { facilitiesScore += 1; facilitiesFound.push('living area'); }
-    if (fullText.includes('bathroom')) { facilitiesScore += 1; facilitiesFound.push('bathroom'); }
+    const bedroomMatch = fullText.match(/(\d+)\s*bedroom/);
+    if (bedroomMatch && parseInt(bedroomMatch[1]) >= 2) {
+        facilitiesScore += 1;
+        facilitiesFound.push(`${bedroomMatch[1]} bedrooms`);
+    }
+    
+    if (fullText.includes('kitchen')) {
+        facilitiesScore += 1;
+        facilitiesFound.push('kitchen');
+    }
+    
+    if (fullText.includes('living room') || fullText.includes('lounge') || fullText.includes('reception')) {
+        facilitiesScore += 1;
+        facilitiesFound.push('living room');
+    }
+    
+    if (fullText.includes('en suite') || fullText.includes('en-suite') || fullText.includes('ensuite')) {
+        facilitiesScore += 1;
+        facilitiesFound.push('en suite');
+    }
+    
+    if (fullText.includes('bathroom') || fullText.includes('toilet') || fullText.includes('wc')) {
+        facilitiesScore += 1;
+        facilitiesFound.push('bathroom/toilet');
+    }
     
     facilitiesScore = Math.min(facilitiesScore, 5);
+    
+    const facilitiesDetails = facilitiesFound.length > 0 
+        ? `Property includes: ${facilitiesFound.join(', ')}`
+        : 'Limited facility information available';
+
     const overallScore = (gpProximity.score + epcScore + facilitiesScore) / 3;
+    const summary = generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore);
 
     return {
         gpProximity: {
-            score: gpProximity.score,
-            rating: getScoreRating(gpProximity.score),
-            details: gpProximity.accessibilityNotes,
+            score: gpProximity.score || 0,
+            rating: getScoreRating(gpProximity.score || 0),
+            details: gpProximity.accessibilityNotes || 'No details available',
             nearestGP: gpProximity.nearestGP || null,
             walkingTime: gpProximity.walkingTime || null,
-            warnings: gpProximity.warnings || []
+            distance: gpProximity.distance || null,
+            warnings: gpProximity.warnings || [],
+            allNearbyGPs: gpProximity.allNearbyGPs || []
         },
         epcRating: {
-            score: epcScore,
-            rating: getScoreRating(epcScore),
-            details: epcDetails,
-            actualRating: property.epc?.rating || null
+            score: epcScore || 0,
+            rating: getScoreRating(epcScore || 0),
+            details: epcDetails || 'No EPC details available',
+            actualRating: property.epc?.rating || property.epcRating || null,
+            confidence: property.epc?.confidence || 0,
+            method: property.epc?.confidence > 80 ? 'Vision API' : 
+                    property.epc?.confidence > 50 ? 'Text Search' : 'Default'
         },
         internalFacilities: {
-            score: facilitiesScore,
-            rating: getScoreRating(facilitiesScore),
-            details: facilitiesFound.length ? `Property includes: ${facilitiesFound.join(', ')}` : 'Basic facilities'
+            score: facilitiesScore || 0,
+            rating: getScoreRating(facilitiesScore || 0),
+            details: facilitiesDetails || 'No facilities details available',
+            facilitiesFound: facilitiesFound || []
         },
-        overall: Math.round(overallScore * 10) / 10,
-        summary: `Property analysis completed with overall score of ${Math.round(overallScore * 10) / 10}/5`
+        overall: Math.round((overallScore || 0) * 10) / 10,
+        summary: summary || 'Analysis completed successfully'
     };
+}
+
+// Generate comprehensive summary
+function generateComprehensiveSummary(gpProximity, epcScore, facilitiesScore, overallScore) {
+    const summaryParts = [];
+    
+    if (overallScore >= 4) {
+        summaryParts.push("This property shows excellent suitability for older adults");
+    } else if (overallScore >= 3) {
+        summaryParts.push("This property offers good accessibility features for older adults");
+    } else if (overallScore >= 2) {
+        summaryParts.push("This property has some accessibility considerations for older adults");
+    } else {
+        summaryParts.push("This property may present accessibility challenges for older adults");
+    }
+    
+    const strengths = [];
+    if (gpProximity.score >= 4) strengths.push("excellent GP proximity");
+    if (epcScore >= 4) strengths.push("good energy efficiency");
+    if (facilitiesScore >= 4) strengths.push("suitable room configuration");
+    
+    if (strengths.length > 0) {
+        summaryParts.push(`with ${strengths.join(' and ')}`);
+    }
+    
+    const concerns = [];
+    if (gpProximity.score <= 2) concerns.push("limited GP access");
+    if (epcScore <= 2) concerns.push("poor energy efficiency");
+    if (facilitiesScore <= 2) concerns.push("limited facilities");
+    
+    if (concerns.length > 0) {
+        summaryParts.push(`Main concerns include ${concerns.join(' and ')}`);
+    }
+    
+    return summaryParts.join('. ') + '.';
 }
 
 function getScoreRating(score) {
@@ -432,24 +1099,24 @@ app.get('/', (req, res) => {
 });
 
 app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'OK', 
-        timestamp: new Date().toISOString(),
-        version: 'fast-deployment'
-    });
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
 app.post('/api/analyze', async (req, res) => {
     try {
         const { url } = req.body;
 
-        if (!url?.includes('rightmove.co.uk')) {
-            return res.status(400).json({ error: 'Please provide a valid Rightmove property URL' });
+        if (!url || !url.includes('rightmove.co.uk')) {
+            return res.status(400).json({ 
+                error: 'Please provide a valid Rightmove property URL' 
+            });
         }
 
-        // Overall timeout for entire request
+        console.log('Analyzing property:', url);
+
+        // Overall timeout for the request
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Request timeout')), 20000)
+            setTimeout(() => reject(new Error('Analysis timeout')), 30000) // 30 seconds
         );
 
         const analysisPromise = async () => {
@@ -457,8 +1124,12 @@ app.post('/api/analyze', async (req, res) => {
             const analysis = await analyzePropertyAccessibility(property);
             
             return {
-                property: { title: property.title, price: property.price, url },
-                analysis,
+                property: {
+                    title: property.title,
+                    price: property.price,
+                    url: url
+                },
+                analysis: analysis,
                 timestamp: new Date().toISOString()
             };
         };
@@ -468,15 +1139,21 @@ app.post('/api/analyze', async (req, res) => {
 
     } catch (error) {
         console.error('Analysis error:', error.message);
-        res.status(500).json({ error: error.message || 'Failed to analyze property' });
+        res.status(500).json({ 
+            error: error.message || 'Failed to analyze property' 
+        });
     }
 });
 
 // Start server
 app.listen(PORT, () => {
-    console.log(`🚀 FAST Server running on port ${PORT}`);
-    console.log(`📊 Health: http://localhost:${PORT}/health`);
-    console.log('⚡ Optimized for rapid deployment - Vision API disabled');
+    console.log(`🏠 Home Accessibility Score API running on port ${PORT}`);
+    console.log(`📊 Health check: http://localhost:${PORT}/health`);
+    console.log('🎯 Full functionality with deployment optimizations');
+    
+    if (!process.env.CLAUDE_API_KEY) {
+        console.warn('⚠️  Warning: CLAUDE_API_KEY not set - EPC Vision API will be disabled');
+    }
 });
 
 module.exports = app;
