@@ -999,6 +999,7 @@ if (!epcData.rating && description && description.length > 0) {
             break;
         }
     }
+    }     
     
     if (!epcData.rating) {
         console.log('❌ No EPC rating patterns matched');
