@@ -954,7 +954,6 @@ async function extractEPCFromRightmoveDropdown(url) {
         console.error('Scraping error:', error.message);
         throw new Error('Failed to scrape property data');
     }
-}
 
 // Updated analyzePropertyAccessibility function with improved GP integration
 
