@@ -162,7 +162,7 @@ class EPCVisionExtractor {
             const prompt = this.buildEPCAnalysisPrompt();
             
             const response = await axios.post(this.claudeApiUrl, {
-                model: "claude-3-haiku-20240307", // Cost-efficient model
+                model: 'claude-3-5-sonnet-20241022', // Cost-efficient model
                 max_tokens: 300,
                 messages: [{
                     role: "user",
