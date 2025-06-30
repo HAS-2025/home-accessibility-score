@@ -788,7 +788,40 @@ async function scrapeRightmoveProperty(url) {
 
         console.log('Final floorplan result:', !!floorplan);
 
-        // The rest of your EPC extraction and return logic goes here...
+        const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
+        const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
+
+        const features = [];
+        if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
+        if (bathroomMatch) features.push(`${bathroomMatch[1]} bathroom${bathroomMatch[1] > 1 ? 's' : ''}`);
+
+        if (description.toLowerCase().includes('garage')) features.push('garage');
+        if (description.toLowerCase().includes('garden')) features.push('garden');
+        if (description.toLowerCase().includes('parking')) features.push('parking');
+        if (description.toLowerCase().includes('ground floor')) features.push('ground floor accommodation');
+        if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
+        if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
+
+        console.log('Extracted title:', title);
+        console.log('Extracted price:', price);
+        console.log('Description length:', description.length);
+        console.log('Images found:', images.length);
+        console.log('Floorplan found:', !!floorplan);
+        console.log('Features:', features);
+
+        return {
+            id: propertyId,
+            title: title,
+            price: price,
+            description: description,
+            features: features,
+            images: images.slice(0, 5),
+            floorplan: floorplan,
+            epc: {},
+            epcRating: '',
+            address: address || 'Address not found',
+            coordinates: coordinates
+        };
 
     } catch (error) {
         console.error('Scraping error:', error.message);
