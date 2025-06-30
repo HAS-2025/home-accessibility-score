@@ -829,7 +829,8 @@ console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniq
                 type: 'image',
                 source: {
                     type: 'base64',
-                    media_type: 'image/png',
+                    media_type: imageUrl.toLowerCase().includes('.gif') ? 'image/gif' : 
+           imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
                     data: await convertImageToBase64(imageUrl)
                 }
             }]
@@ -1318,7 +1319,8 @@ async function validateAPIKey() {
                         type: 'image',
                         source: {
                             type: 'base64',
-                            media_type: 'image/png',
+                            media_type: imageUrl.toLowerCase().includes('.gif') ? 'image/gif' : 
+           imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
                             data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
                         }
                     }, {
