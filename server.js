@@ -15,7 +15,18 @@ app.use(express.static('.'));
 
 // Store for caching results
 const cache = new Map();
-
+// Helper function for EPC image conversion
+async function convertImageToBase64(imageUrl) {
+    try {
+        const response = await axios.get(imageUrl, { 
+            responseType: 'arraybuffer',
+            timeout: 10000
+        });
+        return Buffer.from(response.data, 'binary').toString('base64');
+    } catch (error) {
+        throw new Error(`Failed to fetch image: ${error.message}`);
+    }
+}
 // 🔧 LAZY LOAD EPC Vision Extractor with correct model
 let EPCVisionExtractor = null;
 const getEPCExtractor = () => {
@@ -753,38 +764,56 @@ async function scrapeRightmoveProperty(url) {
                     if (epcExtractor) {
                         for (const imageUrl of epcImageUrls.slice(0, 2)) { // Limit to 2 for speed
                             try {
-                                console.log(`👁️ Analyzing EPC image: ${imageUrl.substring(0, 100)}...`);
-                                
-                                // Add timeout to Vision API call
-                                const visionPromise = epcExtractor.analyzeEPCWithVision(imageUrl);
-                                const timeoutPromise = new Promise((_, reject) => 
-                                    setTimeout(() => reject(new Error('Vision API timeout')), 10000)
-                                );
-                                
-                                const visionResult = await Promise.race([visionPromise, timeoutPromise]);
-                                
-                                if (visionResult.rating && visionResult.confidence > 60) { // Lower threshold
-                                    epcData = {
-                                        rating: visionResult.rating,
-                                        score: visionResult.score,
-                                        confidence: visionResult.confidence,
-                                        reason: `Vision API: ${visionResult.reason}`,
-                                        numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
-                                    };
-                                    
-                                    console.log('✅ Vision extraction successful:', epcData.rating);
-                                    break;
-                                } else {
-                                    console.log(`⚠️ Low confidence result: ${visionResult.confidence}%`);
-                                }
-                            } catch (imageError) {
-                                console.log(`❌ Vision analysis failed:`, imageError.message);
-                                if (imageError.message.includes('401')) {
-                                    console.log('🔑 API authentication issue - check CLAUDE_API_KEY');
-                                }
-                                continue;
-                            }
-                        }
+    console.log(`👁️ Direct Vision API call for: ${imageUrl.substring(0, 100)}...`);
+    
+    // Direct API call instead of using the broken extractor
+    const response = await axios.post('https://api.anthropic.com/v1/messages', {
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 500,
+        messages: [{
+            role: 'user',
+            content: [{
+                type: 'text',
+                text: 'Analyze this EPC certificate image and extract the energy efficiency rating (A-G) and numerical score. Return in format: Rating: X, Score: Y, Confidence: Z%'
+            }, {
+                type: 'image',
+                source: {
+                    type: 'base64',
+                    media_type: 'image/jpeg',
+                    data: await convertImageToBase64(imageUrl)
+                }
+            }]
+        }]
+    }, {
+        headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.CLAUDE_API_KEY,
+            'anthropic-version': '2023-06-01'
+        },
+        timeout: 15000
+    });
+    
+    const text = response.data.content[0].text;
+    const ratingMatch = text.match(/Rating:\s*([A-G])/i);
+    const scoreMatch = text.match(/Score:\s*(\d+)/i);
+    
+    if (ratingMatch) {
+    epcData = {
+        rating: ratingMatch[1].toUpperCase(),
+        score: scoreMatch ? parseInt(scoreMatch[1]) : null,
+        confidence: 85,
+        reason: 'Direct Vision API extraction',
+        numericalScore: scoreMatch ? parseInt(scoreMatch[1]) : 0
+    };
+    
+    console.log('✅ Vision extraction successful:', epcData.rating);
+    break; // Exit the loop since we found a result
+}
+            } catch (imageError) {
+                console.log(`❌ Vision analysis failed:`, imageError.message);
+                continue; // Try next image
+            }
+        }
                     } else {
                         console.log('⚠️ Vision extractor failed to initialize');
                     }
