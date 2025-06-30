@@ -895,21 +895,7 @@ try {
         
         // Get full page text for comprehensive search
         const fullPageText = $('body').text();
-        // Enhanced text patterns with much stricter validation
-const enhancedPatterns = [
-    // Only very explicit EPC patterns
-    /epc\s*rating[:\s]*([a-g])\b/gi,
-    /energy\s*performance\s*certificate[:\s]*([a-g])\b/gi,
-    /energy\s*efficiency[:\s]*rating[:\s]*([a-g])\b/gi,
-    /current\s*energy\s*rating[:\s]*([a-g])\b/gi,
-    
-    // Pattern for "EPC: D" or similar
-    /\bepc[:\s]+([a-g])\b/gi,
-    
-    // Only match single letters followed by numbers (EPC format)
-    /\b([a-g])\s*[-:]\s*\d{1,3}\b/gi // "D-59", "D: 59", "D 59"
-];
-
+  
 // Enhanced text extraction with proper loop labels
 const searchTexts = [
     { text: description, source: 'description' },
