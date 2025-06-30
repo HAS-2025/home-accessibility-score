@@ -952,7 +952,7 @@ if (!epcData.rating && description && description.length > 0) {
     console.log('🔍 Final fallback: Searching description for "EPC Rating: X" format...');
     
     // Very specific pattern: "EPC Rating:" followed by a letter
-    const epcRatingPattern = /EPC\s+Rating:\s*([A-G])\b/gi;
+    const epcRatingPattern = /EPC\s+RATING[:\s]*([A-G])\b/gi;
     const match = description.match(epcRatingPattern);
     
     if (match) {
