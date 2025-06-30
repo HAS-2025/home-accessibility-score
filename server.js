@@ -947,7 +947,32 @@ console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniq
                     }
                 }
             }
+            // Step 4: FINAL FALLBACK - Search description for explicit "EPC Rating: X" format
+if (!epcData.rating && description && description.length > 0) {
+    console.log('🔍 Final fallback: Searching description for "EPC Rating: X" format...');
+    
+    // Very specific pattern: "EPC Rating:" followed by a letter
+    const epcRatingPattern = /EPC\s+Rating:\s*([A-G])\b/gi;
+    const match = description.match(epcRatingPattern);
+    
+    if (match) {
+        const rating = match[0].match(/([A-G])\b/i)[1].toUpperCase();
+        
+        if (['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
+            epcData = {
+                rating: rating,
+                score: null,
+                confidence: 75,
+                reason: `Description text: "${match[0]}"`,
+                numericalScore: 0
+            };
             
+            console.log(`✅ Found EPC in description: ${rating} from "${match[0]}"`);
+        }
+    } else {
+        console.log('❌ No "EPC Rating: X" format found in description');
+    }
+}
         } catch (error) {
             console.error('❌ Enhanced EPC extraction error:', error.message);
             epcData.reason = `Extraction failed: ${error.message}`;
