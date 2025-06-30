@@ -980,9 +980,6 @@ searchLoop: for (const { text, source } of searchTexts) {
        }
    }
 }
-}
-
-} catch (error) {
     
 } catch (error) {
     console.error('❌ Enhanced EPC extraction error:', error.message);
