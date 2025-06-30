@@ -975,11 +975,14 @@ searchLoop: for (const { text, source } of searchTexts) {
                 console.log(`✅ Found validated EPC in ${source}: ${rating} (${confidence}% confidence)`);
                 break searchLoop; // Now this will work!
             } else {
-                console.log(`❌ Rejected "${match[0]}" - Energy: ${hasEnergyContext}, Financial: ${isFinancialContext}, Address: ${isAddressContext}`);
-            }
-        }
-    }
+       console.log(`❌ Rejected "${match[0]}" - Energy: ${hasEnergyContext}, Financial: ${isFinancialContext}, Address: ${isAddressContext}`);
+           }
+       }
+   }
 }
+}
+
+} catch (error) {
     
 } catch (error) {
     console.error('❌ Enhanced EPC extraction error:', error.message);
