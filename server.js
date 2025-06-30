@@ -1066,8 +1066,6 @@ async function extractEPCFromRightmoveDropdown(url) {
         console.log('📜 Strategy 3: Checking JavaScript for EPC data...');
         $('script').each((i, script) => {
             const scriptContent = $(script).html() || '';
-            
-            // Look for EPC-related URLs in JavaScript
             const epcMatches = scriptContent.match(/['"](https?:\/\/[^'"]*(?:epc|energy)[^'"]*\.(jpg|jpeg|png|pdf))['"]/gi);
             if (epcMatches) {
                 epcMatches.forEach(match => {
@@ -1079,40 +1077,36 @@ async function extractEPCFromRightmoveDropdown(url) {
                 });
             }
         });
-        
+
         // Strategy 4: Check property reference for EPC lookup
         console.log('🏷️ Strategy 4: Looking for property reference...');
         const propertyRefMatch = response.data.match(/property reference (\d+)/i);
         if (propertyRefMatch) {
             const propertyRef = propertyRefMatch[1];
             console.log('🏷️ Found property reference:', propertyRef);
-            
-            // Try common EPC URL patterns with property reference
             const potentialEpcUrls = [
                 `https://media.rightmove.co.uk/${propertyRef}_EPC.jpg`,
                 `https://media.rightmove.co.uk/${propertyRef}_EPC.pdf`,
                 `https://docs.rightmove.co.uk/${propertyRef}_EPC.pdf`
             ];
-            
+
             for (const url of potentialEpcUrls) {
                 console.log('🔍 Checking potential EPC URL:', url);
                 try {
-                    // Quick check if URL exists (head request)
                     const headResponse = await axios.head(url, { timeout: 5000 });
                     if (headResponse.status === 200) {
                         epcImageUrls.push(url);
                         console.log('✅ Found working EPC URL:', url);
                     }
                 } catch (error) {
-                    // URL doesn't exist, continue
+                    // Continue if request fails
                 }
             }
         }
-        
+
         console.log(`📊 Total potential EPC sources found: ${epcImageUrls.length}`);
-        
         return epcImageUrls.filter(url => url && url.startsWith('http'));
-        
+
     } catch (error) {
         console.error('❌ Error in enhanced EPC detection:', error.message);
         return [];
