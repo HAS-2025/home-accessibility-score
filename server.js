@@ -1113,14 +1113,15 @@ async function extractEPCFromRightmoveDropdown(url) {
     }
 }
 
+       try {
         // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
         const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
-        
+
         const features = [];
         if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
         if (bathroomMatch) features.push(`${bathroomMatch[1]} bathroom${bathroomMatch[1] > 1 ? 's' : ''}`);
-        
+
         // Look for more features in description
         if (description.toLowerCase().includes('garage')) features.push('garage');
         if (description.toLowerCase().includes('garden')) features.push('garden');
@@ -1128,14 +1129,14 @@ async function extractEPCFromRightmoveDropdown(url) {
         if (description.toLowerCase().includes('ground floor')) features.push('ground floor accommodation');
         if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
         if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
-        
+
         console.log('Extracted title:', title);
         console.log('Extracted price:', price);
         console.log('Description length:', description.length);
         console.log('Images found:', images.length);
         console.log('Floorplan found:', !!floorplan);
         console.log('Features:', features);
-        
+
         return {
             id: propertyId,
             title: title,
@@ -1149,7 +1150,7 @@ async function extractEPCFromRightmoveDropdown(url) {
             address: address || 'Address not found',
             coordinates: coordinates
         };
-        
+
     } catch (error) {
         console.error('Scraping error:', error.message);
         throw new Error('Failed to scrape property data');
