@@ -910,15 +910,30 @@ const enhancedPatterns = [
     /\b([a-g])\s*[-:]\s*\d{1,3}\b/gi // "D-59", "D: 59", "D 59"
 ];
 
-// Much stricter context validation
-for (const { text, source } of searchTexts) {
+// Enhanced text extraction with proper loop labels
+const searchTexts = [
+    { text: description, source: 'description' },
+    { text: fullPageText, source: 'page' }
+];
+
+// Enhanced patterns with much stricter validation
+const enhancedPatterns = [
+    /epc\s*rating[:\s]*([a-g])\b/gi,
+    /energy\s*performance\s*certificate[:\s]*([a-g])\b/gi,
+    /energy\s*efficiency[:\s]*rating[:\s]*([a-g])\b/gi,
+    /current\s*energy\s*rating[:\s]*([a-g])\b/gi,
+    /\bepc[:\s]+([a-g])\b/gi,
+    /\b([a-g])\s*[-:]\s*\d{1,3}\b/gi
+];
+
+// Add the searchLoop label here
+searchLoop: for (const { text, source } of searchTexts) {
     for (const pattern of enhancedPatterns) {
         const matches = [...text.matchAll(pattern)];
         
         for (const match of matches) {
             const rating = match[1].toUpperCase();
             
-            // Get larger context for better validation
             const matchContext = text.substring(
                 Math.max(0, match.index - 60), 
                 match.index + 80
@@ -926,7 +941,7 @@ for (const { text, source } of searchTexts) {
             
             console.log(`🔍 Checking: "${match[0]}" in context: "${matchContext.trim()}"`);
             
-            // Much stricter validation - must have explicit energy context
+            // Much stricter validation
             const hasEnergyContext = (
                 matchContext.includes('energy performance') ||
                 matchContext.includes('energy certificate') ||
@@ -935,7 +950,6 @@ for (const { text, source } of searchTexts) {
                 matchContext.includes('energy rating')
             );
             
-            // Exclude financial/measurement contexts
             const isFinancialContext = (
                 matchContext.includes('deposit') ||
                 matchContext.includes('mortgage') ||
@@ -949,7 +963,6 @@ for (const { text, source } of searchTexts) {
                 matchContext.includes('band:')
             );
             
-            // Exclude address contexts
             const isAddressContext = (
                 matchContext.includes('bathampton') ||
                 matchContext.includes('street') ||
@@ -960,11 +973,10 @@ for (const { text, source } of searchTexts) {
                 matchContext.includes('bath,')
             );
             
-            // Must have energy context AND not be financial/address
             const isValidContext = hasEnergyContext && !isFinancialContext && !isAddressContext;
             
             if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
-                const confidence = 80; // Higher confidence for validated context
+                const confidence = 80;
                 
                 epcData = {
                     rating: rating,
@@ -975,7 +987,7 @@ for (const { text, source } of searchTexts) {
                 };
                 
                 console.log(`✅ Found validated EPC in ${source}: ${rating} (${confidence}% confidence)`);
-                break searchLoop;
+                break searchLoop; // Now this will work!
             } else {
                 console.log(`❌ Rejected "${match[0]}" - Energy: ${hasEnergyContext}, Financial: ${isFinancialContext}, Address: ${isAddressContext}`);
             }
