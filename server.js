@@ -1,4 +1,5 @@
-// server.js - Optimized initialization while keeping full functionality
+const { EPCVisionExtractor } = require('./epc-vision-extractor');
+// server.js - Node.js Backend for Home Accessibility Score
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -16,26 +17,6 @@ app.use(express.static('.'));
 // Store for caching results
 const cache = new Map();
 
-// ✅ LAZY LOAD EPCVisionExtractor - This was the main timeout culprit
-let EPCVisionExtractor = null;
-let epcExtractorInstance = null;
-
-const getEPCExtractor = () => {
-    if (!EPCVisionExtractor && process.env.CLAUDE_API_KEY) {
-        try {
-            console.log('🔄 Lazy loading EPC Vision Extractor...');
-            const { EPCVisionExtractor: ExtractorClass } = require('./epc-vision-extractor');
-            EPCVisionExtractor = ExtractorClass;
-            epcExtractorInstance = new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
-            console.log('✅ EPC Vision Extractor loaded successfully');
-        } catch (error) {
-            console.warn('⚠️ EPC Vision Extractor not available:', error.message);
-            EPCVisionExtractor = false; // Mark as failed to avoid retrying
-        }
-    }
-    return epcExtractorInstance;
-};
-
 // Claude API configuration
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
@@ -50,8 +31,7 @@ async function tryFloorplanURL(propertyId) {
         const response = await axios.get(floorplanURL, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            timeout: 8000 // Slightly reduced from original
+            }
         });
 
         const $ = cheerio.load(response.data);
@@ -93,9 +73,7 @@ async function getPropertyCoordinates(address, existingCoords) {
                 `region=uk&` +  // Bias results to UK
                 `key=${process.env.GOOGLE_MAPS_API_KEY}`;
             
-            const response = await axios.get(geocodeUrl, {
-                timeout: 6000 // Reduced from 10000
-            });
+            const response = await axios.get(geocodeUrl);
             
             if (response.data.results && response.data.results.length > 0) {
                 const location = response.data.results[0].geometry.location;
@@ -114,7 +92,7 @@ async function getPropertyCoordinates(address, existingCoords) {
     return null;
 }
 
-// ✅ KEEP FULL GP FILTERING - This was important for accuracy
+// Find nearest GPs using Places API (New) - optimized for UK GP surgeries
 async function findNearestGPs(lat, lng) {
     try {
         console.log(`Finding GP surgeries near ${lat}, ${lng} using Places API (New)`);
@@ -148,7 +126,7 @@ async function findNearestGPs(lat, lng) {
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
                     'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id,places.businessStatus,places.websiteUri'
                 },
-                timeout: 8000 // Reduced from 10000
+                timeout: 10000 // 10 second timeout
             }
         );
         
@@ -156,7 +134,7 @@ async function findNearestGPs(lat, lng) {
         console.log('Total places found:', response.data.places?.length || 0);
 
         if (response.data.places && response.data.places.length > 0) {
-            // ✅ KEEP ENHANCED FILTERING - This was crucial for ruling out fertility clinics etc.
+            // Enhanced filtering for UK GP surgeries - balanced approach
             const gps = response.data.places
                 .filter(place => {
                     const name = place.displayName?.text?.toLowerCase() || '';
@@ -278,8 +256,7 @@ async function findGPsBroadSearch(lat, lng) {
                     'Content-Type': 'application/json',
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
                     'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id'
-                },
-                timeout: 8000 // Reduced timeout
+                }
             }
         );
         
@@ -317,7 +294,7 @@ async function findGPsBroadSearch(lat, lng) {
     }
 }
 
-// Legacy API fallback
+// Legacy API fallback (still uses your enabled APIs)
 async function findGPsLegacyAPI(lat, lng) {
     try {
         console.log('Using legacy Places API as final fallback...');
@@ -328,9 +305,7 @@ async function findGPsLegacyAPI(lat, lng) {
             `type=doctor&` +
             `key=${process.env.GOOGLE_MAPS_API_KEY}`;
         
-        const response = await axios.get(legacyUrl, {
-            timeout: 6000 // Reduced timeout
-        });
+        const response = await axios.get(legacyUrl);
         
         if (response.data.results && response.data.results.length > 0) {
             const gps = response.data.results
@@ -364,7 +339,7 @@ async function findGPsLegacyAPI(lat, lng) {
     }
 }
 
-// ✅ KEEP FULL WALKING ROUTE ANALYSIS - This was working well
+// Analyze walking route using Directions API (precise walking calculations)
 async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
     try {
         console.log(`Calculating precise walking route to ${gpName} using Directions API`);
@@ -381,7 +356,7 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
         console.log('Directions API request URL constructed');
         
         const response = await axios.get(directionsUrl, {
-            timeout: 12000 // Slightly reduced from 15000
+            timeout: 15000 // 15 second timeout
         });
         
         if (response.data.routes && response.data.routes.length > 0) {
@@ -495,8 +470,7 @@ async function analyzeWalkingRouteWithRoutesAPI(fromLat, fromLng, toLat, toLng, 
                     'Content-Type': 'application/json',
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
                     'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.legs'
-                },
-                timeout: 10000 // Reduced timeout
+                }
             }
         );
         
@@ -591,102 +565,35 @@ function calculateGPProximityScore(durationMinutes, routeAccessibilityScore = nu
     return baseScore;
 }
 
-// ✅ KEEP ENHANCED EPC EXTRACTION - But make Vision API load lazily
-async function extractEPCFromRightmoveDropdown(url) {
-    try {
-        console.log('🔍 Enhanced Rightmove EPC detection...');
-        
-        const response = await axios.get(url, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            timeout: 8000 // Reduced timeout
-        });
-
-        const $ = cheerio.load(response.data);
-        const epcImageUrls = [];
-        
-        // Strategy 1: Look for PDF brochures that might contain EPC
-        console.log('📄 Strategy 1: Checking PDF brochures for EPC...');
-        $('a[href*=".pdf"]').each((i, link) => {
-            const href = $(link).attr('href');
-            const text = $(link).text().toLowerCase();
-            
-            console.log(`📄 Found PDF: "${text}" -> ${href}`);
-            
-            if (text.includes('brochure') || text.includes('details') || 
-                text.includes('information') || href.toLowerCase().includes('epc')) {
-                
-                const fullUrl = href.startsWith('http') ? href : 
-                              href.startsWith('//') ? `https:${href}` : 
-                              `https://www.rightmove.co.uk${href}`;
-                
-                console.log('📋 PDF might contain EPC, adding for analysis:', fullUrl);
-                epcImageUrls.push(fullUrl);
-            }
-        });
-        
-        // Strategy 2: Look for direct EPC image patterns in HTML
-        console.log('🖼️ Strategy 2: Looking for direct EPC images...');
-        const epcUrlPatterns = [
-            /_EPC_/i, /\/epc\//i, /energy[-_]performance/i,
-            /energy[-_]certificate/i, /certificate.*energy/i
-        ];
-        
-        $('*').each((i, element) => {
-            const $el = $(element);
-            ['src', 'data-src', 'data-lazy-src', 'href', 'data-href', 'data-url'].forEach(attr => {
-                const value = $el.attr(attr);
-                if (value && epcUrlPatterns.some(pattern => pattern.test(value))) {
-                    const fullUrl = value.startsWith('http') ? value : 
-                                  value.startsWith('//') ? `https:${value}` : 
-                                  `https://www.rightmove.co.uk${value}`;
-                    
-                    if (!epcImageUrls.includes(fullUrl)) {
-                        epcImageUrls.push(fullUrl);
-                        console.log('🎯 Found direct EPC URL:', fullUrl);
-                    }
-                }
-            });
-        });
-        
-        console.log(`📊 Total potential EPC sources found: ${epcImageUrls.length}`);
-        return epcImageUrls.filter(url => url && url.startsWith('http'));
-
-    } catch (error) {
-        console.error('❌ Error in enhanced EPC detection:', error.message);
-        return [];
-    }
-}
-
-// ✅ KEEP FULL SCRAPING LOGIC - Just optimize EPC extraction
+// Scrape Rightmove property data
 async function scrapeRightmoveProperty(url) {
     try {
         console.log('Scraping Rightmove URL:', url);
-
+        
         const response = await axios.get(url, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            },
-            timeout: 8000 // Reduced from no timeout
+            }
         });
 
         const $ = cheerio.load(response.data);
         const pageText = $('body').text();
-
+        
         const propertyIdMatch = url.match(/properties\/(\d+)/);
         const propertyId = propertyIdMatch ? propertyIdMatch[1] : 'unknown';
 
-        // Extract coordinates
+        // Extract location coordinates from map data
         let coordinates = null;
         let address = '';
+
         const scripts = $('script').toArray();
 
         scripts.forEach(script => {
             const scriptContent = $(script).html() || '';
+            
             const latLngMatch = scriptContent.match(/(?:lat|latitude)["\s]*[:=]\s*([+-]?\d+\.?\d*)/i);
             const lngMatch = scriptContent.match(/(?:lng|longitude|long)["\s]*[:=]\s*([+-]?\d+\.?\d*)/i);
-
+            
             if (latLngMatch && lngMatch) {
                 coordinates = {
                     lat: parseFloat(latLngMatch[1]),
@@ -694,7 +601,7 @@ async function scrapeRightmoveProperty(url) {
                 };
                 console.log('Found coordinates in script:', coordinates);
             }
-
+            
             const addressMatch = scriptContent.match(/(?:address|location)["\s]*[:=]\s*["']([^"']+)["']/i);
             if (addressMatch && !address) {
                 address = addressMatch[1];
@@ -705,6 +612,7 @@ async function scrapeRightmoveProperty(url) {
             $('[data-lat], [data-latitude]').each((i, el) => {
                 const lat = $(el).attr('data-lat') || $(el).attr('data-latitude');
                 const lng = $(el).attr('data-lng') || $(el).attr('data-longitude') || $(el).attr('data-long');
+                
                 if (lat && lng) {
                     coordinates = {
                         lat: parseFloat(lat),
@@ -729,23 +637,29 @@ async function scrapeRightmoveProperty(url) {
             });
         }
 
-        // Extract title, price, description
+        console.log('Extracted coordinates:', coordinates);
+        console.log('Extracted address:', address);
+        
+        // Extract title from page title tag
         const fullTitle = $('title').text();
         const titleMatch = fullTitle.match(/(.+?) for sale/i);
         const title = titleMatch ? titleMatch[1].trim() : fullTitle.split('open-rightmove')[0].trim();
-
+        
+        // Look for price patterns
         const priceMatch = pageText.match(/£[\d,]+/g);
         const price = priceMatch ? priceMatch[0] : 'Price not available';
-
+        
+        // Extract property description
         let description = '';
+        
         const descriptionSelectors = [
             '[data-testid="property-description"]',
-            '.property-description',
+            '.property-description', 
             '[class*="description"]',
             '.PropertyDescription',
             '[data-test="property-description"]'
         ];
-
+        
         for (const selector of descriptionSelectors) {
             const desc = $(selector).text().trim();
             if (desc && desc.length > 50) {
@@ -753,45 +667,49 @@ async function scrapeRightmoveProperty(url) {
                 break;
             }
         }
-
+        
         if (!description) {
-            const textSections = pageText.split('\n').filter(line =>
-                line.length > 100 &&
-                !line.includes('cookie') &&
+            const textSections = pageText.split('\n').filter(line => 
+                line.length > 100 && 
+                !line.includes('cookie') && 
                 !line.includes('navigation') &&
                 (line.includes('property') || line.includes('bedroom') || line.includes('kitchen'))
             );
             description = textSections[0] || 'No detailed description available';
         }
-
-        // Extract images and floorplan
+        
+        // Extract images
         const images = [];
         $('img').each((i, img) => {
             const src = $(img).attr('src') || $(img).attr('data-src');
             if (src && (
-                src.includes('rightmove') ||
-                src.includes('property') ||
+                src.includes('rightmove') || 
+                src.includes('property') || 
                 src.includes('photo')
             ) && !src.includes('logo') && !src.includes('icon')) {
                 images.push(src);
             }
         });
-
+        
+        // Enhanced floorplan detection
         let floorplan = await tryFloorplanURL(propertyId);
+
         if (!floorplan) {
             $('img').each((i, img) => {
                 const src = $(img).attr('src') || $(img).attr('data-src') || $(img).attr('data-lazy-src');
                 const alt = $(img).attr('alt') || '';
-                if (src && (alt.toLowerCase().includes('floorplan') ||
-                    alt.toLowerCase().includes('floor plan') ||
-                    src.includes('floorplan'))) {
+                if (src && (alt.toLowerCase().includes('floorplan') || 
+                           alt.toLowerCase().includes('floor plan') ||
+                           src.includes('floorplan'))) {
                     floorplan = src;
                 }
             });
         }
 
-        // ✅ Enhanced EPC extraction with LAZY LOADING of Vision API
-        console.log('👁️ Starting enhanced EPC extraction with lazy loading...');
+        console.log('Final floorplan result:', !!floorplan);
+
+        // Extract EPC using Claude Vision API
+        console.log('👁️ Starting Vision-based EPC extraction...');
 
         let epcData = {
             rating: null,
@@ -802,207 +720,85 @@ async function scrapeRightmoveProperty(url) {
         };
 
         try {
-            // Step 1: Advanced Rightmove dropdown detection
-            console.log('📂 Searching for EPC in Rightmove dropdown sections...');
-            const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
+            const epcExtractor = new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
+            const visionResult = await epcExtractor.extractEPCFromProperty(url);
             
-            if (epcImageUrls.length > 0) {
-                console.log(`📋 Found ${epcImageUrls.length} EPC images in dropdowns, analyzing with Vision...`);
+            if (visionResult.rating && visionResult.confidence > 50) {
+                epcData = {
+                    rating: visionResult.rating,
+                    score: visionResult.score,
+                    confidence: visionResult.confidence,
+                    reason: visionResult.reason,
+                    numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
+                };
                 
-                // ✅ LAZY LOAD the Vision extractor only when needed
-                const epcExtractor = getEPCExtractor();
-                
-                if (epcExtractor) {
-                    // Try each image until we get a good result
-                    for (const imageUrl of epcImageUrls) {
-                        try {
-                            console.log('👁️ Vision analyzing:', imageUrl.substring(0, 80) + '...');
-                            
-                            const visionResult = await epcExtractor.analyzeEPCWithVision(imageUrl);
-                            
-                            if (visionResult.rating && visionResult.confidence > 70) {
-                                epcData = {
-                                    rating: visionResult.rating,
-                                    score: visionResult.score,
-                                    confidence: visionResult.confidence,
-                                    reason: `Vision API (dropdown): ${visionResult.reason}`,
-                                    numericalScore: epcExtractor.convertRatingToScore(visionResult.rating, visionResult.score)
-                                };
-                                
-                                console.log('✅ Vision extraction successful from dropdown:', {
-                                    rating: epcData.rating,
-                                    score: epcData.score,
-                                    confidence: epcData.confidence
-                                });
-                                break; // Found good result, stop trying other images
-                            }
-                            
-                            console.log(`⚠️ Low confidence from image (${visionResult.confidence}%), trying next...`);
-                            
-                        } catch (imageError) {
-                            console.log(`❌ Vision analysis failed for image:`, imageError.message);
-                            continue; // Try next image
-                        }
-                    }
-                } else {
-                    console.log('⚠️ Vision extractor not available, skipping Vision analysis');
-                }
-            } else {
-                console.log('📂 No EPC images found in dropdown sections');
+                console.log('✅ Vision EPC extraction successful:', {
+                    rating: epcData.rating,
+                    score: epcData.score,
+                    confidence: epcData.confidence
+                });
             }
             
-            // Step 2: If dropdown vision failed, try the original Vision approach
-            if (!epcData.rating) {
-                console.log('🔍 Dropdown detection failed, trying original Vision extraction...');
-                
-                const epcExtractor = getEPCExtractor();
-                if (epcExtractor) {
-                    const originalVisionResult = await epcExtractor.extractEPCFromProperty(url);
-                    
-                    if (originalVisionResult.rating && originalVisionResult.confidence > 50) {
-                        epcData = {
-                            rating: originalVisionResult.rating,
-                            score: originalVisionResult.score,
-                            confidence: originalVisionResult.confidence,
-                            reason: `Vision API (original): ${originalVisionResult.reason}`,
-                            numericalScore: epcExtractor.convertRatingToScore(originalVisionResult.rating, originalVisionResult.score)
-                        };
-                        
-                        console.log('✅ Original Vision extraction successful:', epcData.rating);
-                    }
-                } else {
-                    console.log('⚠️ Vision extractor not available for original extraction');
-                }
-            }
-            
-            // Step 3: Enhanced text fallback if Vision completely failed
+            // Fallback: Try to find explicit mentions in description if Vision failed
             if (!epcData.rating && description && description.length > 0) {
-                console.log('🔍 Vision failed, using enhanced text extraction fallback...');
+                console.log('🔍 Fallback: Searching description for explicit EPC mentions...');
                 
-                // Get full page text for comprehensive search
-                const fullPageText = $('body').text();
-                
-                // Enhanced patterns with context validation
-                const enhancedPatterns = [
-                    /epc\s*rating[:\s]*([a-g])\b/gi,
-                    /energy\s*performance\s*certificate[:\s]*([a-g])\b/gi,
-                    /energy\s*efficiency[:\s]*rating[:\s]*([a-g])\b/gi,
-                    /current\s*energy\s*rating[:\s]*([a-g])\b/gi,
-                    /\bepc[:\s]+([a-g])\b/gi,
-                    /\b([a-g])\s*[-:]\s*\d{1,3}\b/gi
+                const epcPatterns = [
+                    /epc\s*rating[:\s]*([a-g])/i,
+                    /energy\s*performance[:\s]*([a-g])/i,
+                    /energy\s*efficiency[:\s]*([a-g])/i
                 ];
                 
-                // Search both description and full page
-                const searchTexts = [
-                    { text: description, source: 'description' },
-                    { text: fullPageText, source: 'page' }
-                ];
-                
-                // Add the searchLoop label here
-                searchLoop: for (const { text, source } of searchTexts) {
-                    for (const pattern of enhancedPatterns) {
-                        const matches = [...text.matchAll(pattern)];
-                        
-                        for (const match of matches) {
-                            const rating = match[1].toUpperCase();
-                            
-                            const matchContext = text.substring(
-                                Math.max(0, match.index - 60), 
-                                match.index + 80
-                            ).toLowerCase();
-                            
-                            console.log(`🔍 Checking: "${match[0]}" in context: "${matchContext.trim()}"`);
-                            
-                            // Much stricter validation
-                            const hasEnergyContext = (
-                                matchContext.includes('energy performance') ||
-                                matchContext.includes('energy certificate') ||
-                                matchContext.includes('energy efficiency') ||
-                                matchContext.includes('epc rating') ||
-                                matchContext.includes('energy rating')
-                            );
-                            
-                            const isFinancialContext = (
-                                matchContext.includes('deposit') ||
-                                matchContext.includes('mortgage') ||
-                                matchContext.includes('payment') ||
-                                matchContext.includes('interest') ||
-                                matchContext.includes('rate%') ||
-                                matchContext.includes('percentage') ||
-                                matchContext.includes('years') ||
-                                matchContext.includes('months') ||
-                                matchContext.includes('council tax') ||
-                                matchContext.includes('band:')
-                            );
-                            
-                            const isAddressContext = (
-                                matchContext.includes('bathampton') ||
-                                matchContext.includes('street') ||
-                                matchContext.includes('road') ||
-                                matchContext.includes('avenue') ||
-                                matchContext.includes('hill') ||
-                                matchContext.includes('ba2') ||
-                                matchContext.includes('bath,')
-                            );
-                            
-                            const isValidContext = hasEnergyContext && !isFinancialContext && !isAddressContext;
-                            
-                            if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
-                                const confidence = 80;
-                                
-                                epcData = {
-                                    rating: rating,
-                                    score: null,
-                                    confidence: confidence,
-                                    reason: `Validated text (${source}): "${match[0]}"`,
-                                    numericalScore: epcExtractor ? epcExtractor.convertRatingToScore(rating) : 0
-                                };
-                                
-                                console.log(`✅ Found validated EPC in ${source}: ${rating} (${confidence}% confidence)`);
-                                break searchLoop;
-                            } else {
-                                console.log(`❌ Rejected "${match[0]}" - Energy: ${hasEnergyContext}, Financial: ${isFinancialContext}, Address: ${isAddressContext}`);
-                            }
-                        }
+                for (const pattern of epcPatterns) {
+                    const match = description.match(pattern);
+                    if (match) {
+                        epcData = {
+                            rating: match[1].toUpperCase(),
+                            score: null,
+                            confidence: 60,
+                            reason: `Found in description: "${match[0]}"`,
+                            numericalScore: epcExtractor.convertRatingToScore(match[1].toUpperCase())
+                        };
+                        console.log('✅ Found EPC in description:', epcData.rating);
+                        break;
                     }
                 }
             }
             
         } catch (error) {
-            console.error('❌ Enhanced EPC extraction error:', error.message);
+            console.error('❌ EPC extraction error:', error.message);
             epcData.reason = `Extraction failed: ${error.message}`;
         }
 
         console.log('=== FINAL EPC RESULT ===');
         console.log('EPC Rating:', epcData.rating);
         console.log('Confidence:', epcData.confidence);
-        console.log('Method:', epcData.confidence > 80 ? 'Vision API (High)' : 
-                            epcData.confidence > 60 ? 'Vision API (Medium)' : 
-                            epcData.confidence > 50 ? 'Text Extraction' : 'Not Found');
-        console.log('Details:', epcData.reason);
+        console.log('Method:', epcData.confidence > 80 ? 'Vision API' : epcData.confidence > 50 ? 'Text Fallback' : 'Not Found');
+
+        const epcRating = epcData.rating;
 
         // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
         const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
-
+        
         const features = [];
         if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
         if (bathroomMatch) features.push(`${bathroomMatch[1]} bathroom${bathroomMatch[1] > 1 ? 's' : ''}`);
-
+        
         if (description.toLowerCase().includes('garage')) features.push('garage');
         if (description.toLowerCase().includes('garden')) features.push('garden');
         if (description.toLowerCase().includes('parking')) features.push('parking');
         if (description.toLowerCase().includes('ground floor')) features.push('ground floor accommodation');
         if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
         if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
-
+        
         console.log('Extracted title:', title);
         console.log('Extracted price:', price);
         console.log('Description length:', description.length);
         console.log('Images found:', images.length);
         console.log('Floorplan found:', !!floorplan);
         console.log('Features:', features);
-
+        
         return {
             id: propertyId,
             title: title,
@@ -1011,19 +807,19 @@ async function scrapeRightmoveProperty(url) {
             features: features,
             images: images.slice(0, 5),
             floorplan: floorplan,
-            epc: epcData, // Full EPC data with confidence scores
-            epcRating: epcData.rating, // For backward compatibility
+            epc: epcData,
+            epcRating: epcData.rating,
             address: address || 'Address not found',
             coordinates: coordinates
         };
-
+        
     } catch (error) {
         console.error('Scraping error:', error.message);
         throw new Error('Failed to scrape property data');
     }
 }
 
-// ✅ KEEP FULL ACCESSIBILITY ANALYSIS - This was working well
+// Updated analyzePropertyAccessibility function
 async function analyzePropertyAccessibility(property) {
     console.log('Starting comprehensive property analysis...');
     
@@ -1312,8 +1108,6 @@ app.listen(PORT, () => {
     if (!process.env.CLAUDE_API_KEY) {
         console.warn('⚠️  Warning: CLAUDE_API_KEY not set in environment variables');
     }
-    
-    console.log('🚀 Server ready - EPC Vision Extractor will load on first use');
 });
 
 module.exports = app;
