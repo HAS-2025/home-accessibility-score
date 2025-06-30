@@ -16,7 +16,7 @@ app.use(express.static('.'));
 // Store for caching results
 const cache = new Map();
 
-// 🔧 LAZY LOAD EPC Vision Extractor - Only when needed
+// 🔧 LAZY LOAD EPC Vision Extractor with correct model
 let EPCVisionExtractor = null;
 const getEPCExtractor = () => {
     if (!EPCVisionExtractor && process.env.CLAUDE_API_KEY) {
@@ -25,7 +25,17 @@ const getEPCExtractor = () => {
             const { EPCVisionExtractor: ExtractorClass } = require('./epc-vision-extractor');
             EPCVisionExtractor = ExtractorClass;
             console.log('✅ EPC Vision Extractor loaded');
-            return new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
+            
+            // Create instance with updated configuration
+            const instance = new EPCVisionExtractor(process.env.CLAUDE_API_KEY);
+            
+            // Override the model if the extractor has outdated model
+            if (instance.model && instance.model.includes('claude-3-sonnet-20240229')) {
+                console.log('🔄 Updating EPC extractor to use newer model...');
+                instance.model = 'claude-3-5-sonnet-20241022';
+            }
+            
+            return instance;
         } catch (error) {
             console.warn('⚠️ EPC Vision Extractor not available:', error.message);
             EPCVisionExtractor = false;
