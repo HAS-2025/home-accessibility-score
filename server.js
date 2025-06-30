@@ -962,11 +962,12 @@ if (!epcData.rating && description && description.length > 0) {
     
     // Try multiple patterns
     const patterns = [
-        /EPC\s+RATING\s+([A-G])\b/gi,
-        /EPC\s+Rating\s+([A-G])\b/gi,
-        /EPC\s*:\s*([A-G])\b/gi,
-        /EPC\s+([A-G])\b/gi
-    ];
+    /EPC\s+RATING\s+([A-G])\b/gi,           // Normal: "EPC RATING D"
+    /EPC\s+RATING\s*([A-G])(?=[A-Z])/gi,    // Run together: "EPC RATING DCOUNCIL"
+    /EPC\s+Rating\s+([A-G])\b/gi,           // Mixed case
+    /EPC\s*:\s*([A-G])\b/gi,                // With colon
+    /EPC\s+([A-G])\b/gi                     // Simple format
+];
     
     for (const pattern of patterns) {
         const match = description.match(pattern);
