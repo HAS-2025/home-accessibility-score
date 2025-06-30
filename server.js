@@ -912,75 +912,75 @@ const enhancedPatterns = [
     /\b([a-g])\s*[-:]\s*\d{1,3}\b/gi
 ];
 
-// Add the searchLoop label here
-searchLoop: for (const { text, source } of searchTexts) {
-    for (const pattern of enhancedPatterns) {
-        const matches = [...text.matchAll(pattern)];
-        
-        for (const match of matches) {
-            const rating = match[1].toUpperCase();
+try {
+    // Add the searchLoop label here
+    searchLoop: for (const { text, source } of searchTexts) {
+        for (const pattern of enhancedPatterns) {
+            const matches = [...text.matchAll(pattern)];
             
-            const matchContext = text.substring(
-                Math.max(0, match.index - 60), 
-                match.index + 80
-            ).toLowerCase();
-            
-            console.log(`🔍 Checking: "${match[0]}" in context: "${matchContext.trim()}"`);
-            
-            // Much stricter validation
-            const hasEnergyContext = (
-                matchContext.includes('energy performance') ||
-                matchContext.includes('energy certificate') ||
-                matchContext.includes('energy efficiency') ||
-                matchContext.includes('epc rating') ||
-                matchContext.includes('energy rating')
-            );
-            
-            const isFinancialContext = (
-                matchContext.includes('deposit') ||
-                matchContext.includes('mortgage') ||
-                matchContext.includes('payment') ||
-                matchContext.includes('interest') ||
-                matchContext.includes('rate%') ||
-                matchContext.includes('percentage') ||
-                matchContext.includes('years') ||
-                matchContext.includes('months') ||
-                matchContext.includes('council tax') ||
-                matchContext.includes('band:')
-            );
-            
-            const isAddressContext = (
-                matchContext.includes('bathampton') ||
-                matchContext.includes('street') ||
-                matchContext.includes('road') ||
-                matchContext.includes('avenue') ||
-                matchContext.includes('hill') ||
-                matchContext.includes('ba2') ||
-                matchContext.includes('bath,')
-            );
-            
-            const isValidContext = hasEnergyContext && !isFinancialContext && !isAddressContext;
-            
-            if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
-                const confidence = 80;
+            for (const match of matches) {
+                const rating = match[1].toUpperCase();
                 
-                epcData = {
-                    rating: rating,
-                    score: null,
-                    confidence: confidence,
-                    reason: `Validated text (${source}): "${match[0]}"`,
-                    numericalScore: epcExtractor.convertRatingToScore(rating)
-                };
+                const matchContext = text.substring(
+                    Math.max(0, match.index - 60), 
+                    match.index + 80
+                ).toLowerCase();
                 
-                console.log(`✅ Found validated EPC in ${source}: ${rating} (${confidence}% confidence)`);
-                break searchLoop; // Now this will work!
-            } else {
-       console.log(`❌ Rejected "${match[0]}" - Energy: ${hasEnergyContext}, Financial: ${isFinancialContext}, Address: ${isAddressContext}`);
-           }
-       }
-   }
-}
-    
+                console.log(`🔍 Checking: "${match[0]}" in context: "${matchContext.trim()}"`);
+                
+                // Much stricter validation
+                const hasEnergyContext = (
+                    matchContext.includes('energy performance') ||
+                    matchContext.includes('energy certificate') ||
+                    matchContext.includes('energy efficiency') ||
+                    matchContext.includes('epc rating') ||
+                    matchContext.includes('energy rating')
+                );
+                
+                const isFinancialContext = (
+                    matchContext.includes('deposit') ||
+                    matchContext.includes('mortgage') ||
+                    matchContext.includes('payment') ||
+                    matchContext.includes('interest') ||
+                    matchContext.includes('rate%') ||
+                    matchContext.includes('percentage') ||
+                    matchContext.includes('years') ||
+                    matchContext.includes('months') ||
+                    matchContext.includes('council tax') ||
+                    matchContext.includes('band:')
+                );
+                
+                const isAddressContext = (
+                    matchContext.includes('bathampton') ||
+                    matchContext.includes('street') ||
+                    matchContext.includes('road') ||
+                    matchContext.includes('avenue') ||
+                    matchContext.includes('hill') ||
+                    matchContext.includes('ba2') ||
+                    matchContext.includes('bath,')
+                );
+                
+                const isValidContext = hasEnergyContext && !isFinancialContext && !isAddressContext;
+                
+                if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
+                    const confidence = 80;
+                    
+                    epcData = {
+                        rating: rating,
+                        score: null,
+                        confidence: confidence,
+                        reason: `Validated text (${source}): "${match[0]}"`,
+                        numericalScore: epcExtractor.convertRatingToScore(rating)
+                    };
+                    
+                    console.log(`✅ Found validated EPC in ${source}: ${rating} (${confidence}% confidence)`);
+                    break searchLoop; // Now this will work!
+                } else {
+                    console.log(`❌ Rejected "${match[0]}" - Energy: ${hasEnergyContext}, Financial: ${isFinancialContext}, Address: ${isAddressContext}`);
+                }
+            }
+        }
+    }
 } catch (error) {
     console.error('❌ Enhanced EPC extraction error:', error.message);
     epcData.reason = `Extraction failed: ${error.message}`;
