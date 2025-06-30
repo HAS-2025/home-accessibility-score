@@ -829,7 +829,7 @@ console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniq
                 type: 'image',
                 source: {
                     type: 'base64',
-                    media_type: 'image/jpeg',
+                    media_type: 'image/png',
                     data: await convertImageToBase64(imageUrl)
                 }
             }]
