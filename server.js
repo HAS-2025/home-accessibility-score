@@ -194,7 +194,7 @@ async function findNearestGPs(lat, lng) {
                         name.includes('ruh') || name.includes('university hospital') || name.includes('podiatrist') || 
                         name.includes('spa') || name.includes('spamedica') || 
                         name.includes('hair restoration') || name.includes('hair transplant') ||
-                        name.includes('physico') || name.includes('physiotherapy') ||
+                        name.includes('physico') || name.includes('physiotherapy')
                     );
                     
                     if (isDefinitelyNotGP) {
