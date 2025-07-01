@@ -286,18 +286,64 @@
             margin: 0.25rem 0;
         }
 
-        .facilities-list {
+        /* NEW: Accessible Features Styling */
+        .accessible-features-list {
             margin-top: 0.5rem;
         }
 
-        .facility-item {
+        .accessible-feature-item {
             background: #ecfdf5;
             color: #059669;
-            padding: 0.25rem 0.5rem;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            margin: 0.25rem 0.25rem 0.25rem 0;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin: 0.3rem 0.3rem 0.3rem 0;
             display: inline-block;
+            border-left: 3px solid #10b981;
+        }
+
+        .accessibility-criteria {
+            background: #f0f9ff;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .accessibility-criteria h4 {
+            color: #1e40af;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .accessibility-criteria ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .accessibility-criteria li {
+            font-size: 0.8rem;
+            color: #374151;
+            padding: 0.2rem 0;
+            padding-left: 1rem;
+            position: relative;
+        }
+
+        .accessibility-criteria li:before {
+            content: "•";
+            color: #3b82f6;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+
+        .no-features-found {
+            color: #6b7280;
+            font-style: italic;
+            padding: 1rem;
+            text-align: center;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 2px dashed #d1d5db;
         }
 
         .summary-section {
@@ -373,7 +419,7 @@
             <div class="spinner"></div>
             <p>Analyzing property accessibility...</p>
             <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
-                Finding nearby GP surgeries, analyzing walking routes, and assessing property features
+                Finding nearby GP surgeries, analyzing walking routes, and assessing accessible features
             </p>
         </div>
 
@@ -412,15 +458,15 @@
                     <div class="score-details" id="epcDetails"></div>
                 </div>
 
-                <!-- Internal Facilities Card -->
+                <!-- UPDATED: Accessible Features Card (was Internal Facilities) -->
                 <div class="score-card">
                     <div class="score-header">
                         <span class="score-icon">🏠</span>
-                        <span class="score-title">Internal Facilities</span>
+                        <span class="score-title">Accessible Features</span>
                     </div>
-                    <div class="score-value" id="facilitiesScore"></div>
-                    <div class="score-description" id="facilitiesDescription"></div>
-                    <div class="score-details" id="facilitiesDetails"></div>
+                    <div class="score-value" id="accessibleFeaturesScore"></div>
+                    <div class="score-description" id="accessibleFeaturesDescription"></div>
+                    <div class="score-details" id="accessibleFeaturesDetails"></div>
                 </div>
             </div>
 
@@ -497,8 +543,8 @@
             // EPC Rating
             displayEPCRating(analysis.epcRating);
             
-            // Internal Facilities
-            displayInternalFacilities(analysis.internalFacilities);
+            // UPDATED: Accessible Features (was Internal Facilities)
+            displayAccessibleFeatures(analysis.accessibleFeatures);
 
             // Summary
             document.getElementById('summaryText').textContent = analysis.summary;
@@ -560,21 +606,48 @@
             document.getElementById('epcDetails').innerHTML = detailsHtml;
         }
 
-        function displayInternalFacilities(facilities) {
-            document.getElementById('facilitiesScore').textContent = facilities.rating;
-            document.getElementById('facilitiesScore').className = `score-value ${facilities.rating.toLowerCase()}`;
-            document.getElementById('facilitiesDescription').textContent = facilities.details;
+        // NEW: Updated function for Accessible Features (replaces displayInternalFacilities)
+        function displayAccessibleFeatures(accessibleFeatures) {
+            document.getElementById('accessibleFeaturesScore').textContent = `${accessibleFeatures.score}/5`;
+            
+            // Set score color based on score value
+            let scoreClass = 'poor';
+            if (accessibleFeatures.score >= 4) scoreClass = 'excellent';
+            else if (accessibleFeatures.score >= 3) scoreClass = 'good';
+            else if (accessibleFeatures.score >= 2) scoreClass = 'fair';
+            
+            document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
+            document.getElementById('accessibleFeaturesDescription').textContent = 
+                `${accessibleFeatures.percentage}% - ${accessibleFeatures.score} out of 5 accessible features found`;
             
             let detailsHtml = '';
-            if (facilities.facilitiesFound && facilities.facilitiesFound.length > 0) {
-                detailsHtml += '<div class="facilities-list">';
-                facilities.facilitiesFound.forEach(facility => {
-                    detailsHtml += `<span class="facility-item">✓ ${facility}</span>`;
+            
+            // Show found features
+            if (accessibleFeatures.features && accessibleFeatures.features.length > 0) {
+                detailsHtml += '<div class="accessible-features-list">';
+                accessibleFeatures.features.forEach(feature => {
+                    detailsHtml += `<span class="accessible-feature-item">✓ ${feature}</span>`;
                 });
                 detailsHtml += '</div>';
+            } else {
+                detailsHtml += '<div class="no-features-found">No accessible features detected in property description</div>';
             }
             
-            document.getElementById('facilitiesDetails').innerHTML = detailsHtml;
+            // Show scoring criteria
+            detailsHtml += `
+                <div class="accessibility-criteria">
+                    <h4>Scoring Criteria (1 point each):</h4>
+                    <ul>
+                        <li>Lateral living/single floor (ground level only)</li>
+                        <li>Downstairs bedroom</li>
+                        <li>Downstairs bathroom/WC</li>
+                        <li>Level/ramp access to property</li>
+                        <li>Off-street or private parking</li>
+                    </ul>
+                </div>
+            `;
+            
+            document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
         }
 
         // Allow Enter key to trigger analysis
