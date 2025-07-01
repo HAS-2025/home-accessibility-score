@@ -194,7 +194,25 @@ async function findNearestGPs(lat, lng) {
                         name.includes('ruh') || name.includes('university hospital') || name.includes('podiatrist') || 
                         name.includes('spa') || name.includes('spamedica') || 
                         name.includes('hair restoration') || name.includes('hair transplant') ||
-                        name.includes('physico') || name.includes('physiotherapy')
+                        name.includes('physico') || name.includes('physiotherapy') ||
+
+                        // NOW CHECK ADDRESS TOO:
+                        address.includes('spamedica') || address.includes('spa') ||
+                        address.includes('aesthetic') || address.includes('cosmetic') ||
+                        address.includes('hair restoration') || address.includes('beauty') ||
+                        address.includes('ear wax') || address.includes('earwax') || address.includes('chiropody') ||
+                        address.includes('podiatry') || address.includes('podiatrist') || address.includes('foot care') || address.includes('hearing') ||
+                        address.includes('tree surgery') || address.includes('tree service') || address.includes('landscaping') ||
+                        address.includes('fertility') || address.includes('astrology') || address.includes('acupuncture') ||
+                        address.includes('chiropractor') || address.includes('physiotherapy') || address.includes('physio') ||
+                        address.includes('osteopath') || address.includes('counselling') || address.includes('therapy') ||
+                        address.includes('laser') || address.includes('skin care') || address.includes('botox') ||
+                        address.includes('massage') || address.includes('pharmacy') || address.includes('dentist') ||
+                        address.includes('dental') || address.includes('optician') || address.includes('eye care') ||
+                        address.includes('vet') || address.includes('veterinary') || address.includes('care home') ||
+                        address.includes('nursing home') || address.includes('mental health') ||
+                        address.includes('hair transplant') || address.includes('physico')
+                    
                     );
                     
                     if (isDefinitelyNotGP) {
