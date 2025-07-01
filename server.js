@@ -61,7 +61,7 @@ const getEPCExtractor = () => {
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// NEW: Accessible Features Analysis Function
+// IMPROVED: Enhanced Accessible Features Detection Logic
 function calculateAccessibleFeaturesScore(propertyData) {
     let score = 0;
     const features = [];
@@ -73,40 +73,53 @@ function calculateAccessibleFeaturesScore(propertyData) {
     const fullText = `${title} ${description} ${propertyFeatures}`;
     
     console.log('🏠 Analyzing accessible features for property...');
-    console.log('📝 Text being analyzed (first 200 chars):', fullText.substring(0, 200));
+    console.log('📝 Full text being analyzed (first 500 chars):', fullText.substring(0, 500));
     
     // 1. LATERAL LIVING / SINGLE FLOOR PROPERTIES (Ground level only)
     const lateralLivingKeywords = [
         'lateral living', 'single floor', 'all on one level', 'one level living',
         'ground floor flat', 'ground floor apartment', 'ground floor maisonette',
         'bungalow', 'dormer bungalow', 'detached bungalow', 'semi-detached bungalow',
-        'chalet bungalow', 'ranch style', 'single storey', 'single story'
+        'chalet bungalow', 'ranch style', 'single storey', 'single story',
+        'all on one floor', 'single level', 'one storey', 'one story'
     ];
     
     // Exclusions for properties above ground level
     const upperFloorExclusions = [
         'first floor', 'second floor', 'third floor', 'fourth floor', 'fifth floor',
         'upper floor', 'top floor', 'penthouse', 'mezzanine',
-        'apartment on floor', 'flat on floor', 'level 1', 'level 2', 'level 3'
+        'apartment on floor', 'flat on floor', 'level 1', 'level 2', 'level 3',
+        'floor 1', 'floor 2', 'floor 3'
     ];
     
     const hasLateralLiving = lateralLivingKeywords.some(keyword => fullText.includes(keyword));
     const isUpperFloor = upperFloorExclusions.some(exclusion => fullText.includes(exclusion));
     
+    let isSingleFloorProperty = false;
     if (hasLateralLiving && !isUpperFloor) {
         score += 1;
         features.push('Lateral living/single floor (ground level)');
+        isSingleFloorProperty = true;
         console.log('✓ Found lateral living/single floor property (ground level)');
     }
     
-    // 2. DOWNSTAIRS BEDROOM
+    // 2. DOWNSTAIRS BEDROOM - Enhanced Logic
     const downstairsBedroomKeywords = [
         'downstairs bedroom', 'ground floor bedroom', 'bedroom downstairs',
         'bedroom on ground floor', 'ground floor bed', 'downstairs bed',
         'bedroom ground level'
     ];
     
-    const hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
+    let hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
+    
+    // IMPROVED: If it's a single floor property with bedrooms, automatically count as downstairs bedroom
+    if (!hasDownstairsBedroom && isSingleFloorProperty) {
+        const hasBedroomMention = fullText.includes('bedroom') || fullText.includes('bed');
+        if (hasBedroomMention) {
+            hasDownstairsBedroom = true;
+            console.log('✓ Inferred downstairs bedroom from single floor property with bedrooms');
+        }
+    }
     
     if (hasDownstairsBedroom) {
         score += 1;
@@ -114,7 +127,7 @@ function calculateAccessibleFeaturesScore(propertyData) {
         console.log('✓ Found downstairs bedroom');
     }
     
-    // 3. DOWNSTAIRS BATHROOM
+    // 3. DOWNSTAIRS BATHROOM - Enhanced Logic
     const downstairsBathroomKeywords = [
         'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
         'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
@@ -122,7 +135,18 @@ function calculateAccessibleFeaturesScore(propertyData) {
         'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom'
     ];
     
-    const hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
+    let hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
+    
+    // IMPROVED: If it's a single floor property with bathroom facilities, automatically count
+    if (!hasDownstairsBathroom && isSingleFloorProperty) {
+        const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
+                                  fullText.includes('toilet') || fullText.includes('wc') || 
+                                  fullText.includes('en suite') || fullText.includes('ensuite');
+        if (hasBathroomMention) {
+            hasDownstairsBathroom = true;
+            console.log('✓ Inferred downstairs bathroom from single floor property with bathroom facilities');
+        }
+    }
     
     if (hasDownstairsBathroom) {
         score += 1;
@@ -130,12 +154,13 @@ function calculateAccessibleFeaturesScore(propertyData) {
         console.log('✓ Found downstairs bathroom/WC');
     }
     
-    // 4. LEVEL AND/OR RAMP ACCESS
+    // 4. LEVEL AND/OR RAMP ACCESS - Enhanced Keywords
     const levelAccessKeywords = [
         'level access', 'step-free access', 'step free access', 'no steps',
         'wheelchair accessible', 'ramp access', 'ramped access', 'access ramp',
         'disabled access', 'mobility access', 'easy access', 'ground level access',
-        'flat access', 'level entry', 'step-free entry', 'barrier-free access'
+        'flat access', 'level entry', 'step-free entry', 'barrier-free access',
+        'accessible entrance', 'level entrance', 'no step access'
     ];
     
     const hasLevelAccess = levelAccessKeywords.some(keyword => fullText.includes(keyword));
@@ -146,19 +171,21 @@ function calculateAccessibleFeaturesScore(propertyData) {
         console.log('✓ Found level/ramp access');
     }
     
-    // 5. OFF-STREET OR PRIVATE PARKING
+    // 5. OFF-STREET OR PRIVATE PARKING - Enhanced Detection
     const parkingKeywords = [
         'private parking', 'off-street parking', 'off street parking',
         'designated parking', 'allocated parking', 'residents parking',
         'driveway', 'garage', 'car port', 'carport', 'parking space',
         'parking bay', 'secure parking', 'covered parking', 'underground parking',
-        'gated parking', 'private garage', 'double garage', 'single garage'
+        'gated parking', 'private garage', 'double garage', 'single garage',
+        'own parking', 'dedicated parking', 'assigned parking', 'ev charger',
+        'electric vehicle charger', 'charging point'
     ];
     
     // Exclusions for on-street parking
     const parkingExclusions = [
         'on-street parking', 'on street parking', 'street parking',
-        'roadside parking', 'permit parking', 'resident permit'
+        'roadside parking', 'permit parking', 'resident permit only'
     ];
     
     const hasPrivateParking = parkingKeywords.some(keyword => fullText.includes(keyword));
@@ -172,6 +199,7 @@ function calculateAccessibleFeaturesScore(propertyData) {
     
     console.log(`🏠 Accessible Features Score: ${score}/5`);
     console.log('✅ Features found:', features);
+    console.log('🔍 Single floor property detected:', isSingleFloorProperty);
     
     return {
         score: score,
@@ -183,7 +211,8 @@ function calculateAccessibleFeaturesScore(propertyData) {
             downstairsBedroom: hasDownstairsBedroom,
             downstairsBathroom: hasDownstairsBathroom,
             levelAccess: hasLevelAccess,
-            privateParking: hasPrivateParking && !hasOnStreetOnly
+            privateParking: hasPrivateParking && !hasOnStreetOnly,
+            isSingleFloorProperty: isSingleFloorProperty
         }
     };
 }
@@ -917,8 +946,8 @@ async function scrapeRightmoveProperty(url) {
             });
         }
 
-        // ✅ Enhanced EPC extraction with better error handling
-        console.log('👁️ Starting enhanced EPC extraction...');
+        // ✅ IMPROVED: Enhanced EPC extraction with text priority
+        console.log('👁️ Starting comprehensive EPC extraction...');
 
         let epcData = {
             rating: null,
@@ -929,109 +958,155 @@ async function scrapeRightmoveProperty(url) {
         };
 
         try {
-            // Step 1: Try dropdown detection first
-            const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
-
-            // Additional EPC image search - look for actual EPC images
-            console.log('🔍 Searching for direct EPC images in page source...');
-            const pageHTML = response.data;
-            const epcImageMatches = pageHTML.match(/https?:\/\/[^"'\s]*EPC[^"'\s]*\.(png|jpg|jpeg)/gi);
-            if (epcImageMatches) {
-                console.log(`🎯 Found ${epcImageMatches.length} EPC images in page source:`, epcImageMatches);
-                epcImageUrls.push(...epcImageMatches);
-            }
-
-            // Also search for media.rightmove.co.uk EPC patterns
-            const rightmoveEPCMatches = pageHTML.match(/https?:\/\/media\.rightmove\.co\.uk[^"'\s]*EPC[^"'\s]*/gi);
-            if (rightmoveEPCMatches) {
-                console.log(`🎯 Found ${rightmoveEPCMatches.length} Rightmove EPC URLs:`, rightmoveEPCMatches);
-                epcImageUrls.push(...rightmoveEPCMatches);
-            }
-
-            // Remove duplicates
-            const uniqueEpcUrls = [...new Set(epcImageUrls)];
-            console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniqueEpcUrls);
+            // STEP 1: Look for CLEAR text declarations first (highest priority)
+            console.log('🔍 Step 1: Checking for clear EPC declarations in text...');
             
-            if (epcImageUrls.length > 0) {
-                console.log(`📋 Found ${epcImageUrls.length} EPC images:`, epcImageUrls);
+            const clearDeclarations = [
+                /epc\s*[-:]\s*([a-g])\b/gi,           // "EPC - A" or "EPC: A"
+                /epc\s+([a-g])\b/gi,                  // "EPC A"
+                /energy\s+rating\s*[-:]\s*([a-g])\b/gi, // "Energy Rating - A"
+                /([a-g])\s+rated/gi                   // "A Rated"
+            ];
+
+            const fullText = `${title} ${description} ${features.join(' ')}`.toLowerCase();
+            console.log('📝 Searching in text (first 200 chars):', fullText.substring(0, 200));
+
+            for (const pattern of clearDeclarations) {
+                const matches = [...fullText.matchAll(pattern)];
                 
-                // Check if we have a valid API key before attempting Vision API
-                if (process.env.CLAUDE_API_KEY && process.env.CLAUDE_API_KEY.length > 10) {
+                for (const match of matches) {
+                    const rating = match[1].toUpperCase();
+                    const context = fullText.substring(
+                        Math.max(0, match.index - 50), 
+                        match.index + match[0].length + 50
+                    );
+                    
+                    console.log(`🎯 Found potential EPC declaration: "${match[0]}" in context: "${context}"`);
+                    
+                    // Validate it's really about EPC
+                    if (context.includes('epc') || context.includes('energy') || context.includes('rating')) {
+                        epcData = {
+                            rating: rating,
+                            score: null,
+                            confidence: 95, // High confidence for clear declarations
+                            reason: `Clear text declaration: "${match[0]}"`,
+                            numericalScore: 0
+                        };
+                        
+                        console.log(`✅ HIGH CONFIDENCE EPC from clear text: ${rating}`);
+                        break; // Exit both loops
+                    }
+                }
+                if (epcData.rating) break; // Exit outer loop if found
+            }
+
+            // STEP 2: Try Vision API on EPC images (only if no clear text found)
+            if (!epcData.rating) {
+                console.log('🔍 Step 2: No clear text found, trying Vision API...');
+                
+                const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
+
+                // Additional EPC image search
+                console.log('🔍 Searching for direct EPC images in page source...');
+                const pageHTML = response.data;
+                const epcImageMatches = pageHTML.match(/https?:\/\/[^"'\s]*EPC[^"'\s]*\.(png|jpg|jpeg)/gi);
+                if (epcImageMatches) {
+                    console.log(`🎯 Found ${epcImageMatches.length} EPC images in page source:`, epcImageMatches);
+                    epcImageUrls.push(...epcImageMatches);
+                }
+
+                const rightmoveEPCMatches = pageHTML.match(/https?:\/\/media\.rightmove\.co\.uk[^"'\s]*EPC[^"'\s]*/gi);
+                if (rightmoveEPCMatches) {
+                    console.log(`🎯 Found ${rightmoveEPCMatches.length} Rightmove EPC URLs:`, rightmoveEPCMatches);
+                    epcImageUrls.push(...rightmoveEPCMatches);
+                }
+
+                const uniqueEpcUrls = [...new Set(epcImageUrls)];
+                console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniqueEpcUrls);
+                
+                if (uniqueEpcUrls.length > 0 && process.env.CLAUDE_API_KEY && process.env.CLAUDE_API_KEY.length > 10) {
                     console.log('🔑 Claude API key available, trying Vision API...');
                     
-                    const epcExtractor = getEPCExtractor();
-                    
-                    if (epcExtractor) {
-                        for (const imageUrl of epcImageUrls.slice(0, 2)) { // Limit to 2 for speed
-                            try {
-                                console.log(`👁️ Direct Vision API call for: ${imageUrl.substring(0, 100)}...`);
-                                
-                                // Direct API call instead of using the broken extractor
-                                const response = await axios.post('https://api.anthropic.com/v1/messages', {
-                                    model: 'claude-3-5-sonnet-20241022',
-                                    max_tokens: 500,
-                                    messages: [{
-                                        role: 'user',
-                                        content: [{
-                                            type: 'text',
-                                            text: 'Analyze this EPC certificate image and extract the energy efficiency rating (A-G) and numerical score. Return in format: Rating: X, Score: Y, Confidence: Z%'
-                                        }, {
-                                            type: 'image',
-                                            source: {
-                                                type: 'base64',
-                                                media_type: imageUrl.toLowerCase().includes('.gif') ? 'image/gif' : 
-                               imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
-                                                data: await convertImageToBase64(imageUrl)
-                                            }
-                                        }]
+                    for (const imageUrl of uniqueEpcUrls.slice(0, 2)) {
+                        try {
+                            console.log(`👁️ Enhanced Vision API call for: ${imageUrl.substring(0, 100)}...`);
+                            
+                            const response = await axios.post('https://api.anthropic.com/v1/messages', {
+                                model: 'claude-3-5-sonnet-20241022',
+                                max_tokens: 500,
+                                messages: [{
+                                    role: 'user',
+                                    content: [{
+                                        type: 'text',
+                                        text: `Analyze this EPC certificate image very carefully.
+
+Look specifically at:
+1. Where exactly the arrow or pointer is positioned on the A-G scale
+2. Which colored band (A=green, B=light green, C=yellow, etc.) is highlighted
+3. The numerical score if visible
+
+Be extremely precise about the arrow position. The bands are:
+- A (92-100): Dark green at top
+- B (81-91): Light green  
+- C (69-80): Yellow
+- D (55-68): Light orange
+- E (39-54): Orange
+- F (21-38): Red
+- G (1-20): Dark red at bottom
+
+Return format: Rating: [LETTER], Score: [NUMBER], Confidence: [PERCENTAGE]%
+
+Focus on the exact arrow tip position relative to the letter bands.`
+                                    }, {
+                                        type: 'image',
+                                        source: {
+                                            type: 'base64',
+                                            media_type: imageUrl.toLowerCase().includes('.gif') ? 'image/gif' : 
+                                                      imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
+                                            data: await convertImageToBase64(imageUrl)
+                                        }
                                     }]
-                                }, {
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'x-api-key': process.env.CLAUDE_API_KEY,
-                                        'anthropic-version': '2023-06-01'
-                                    },
-                                    timeout: 15000
-                                });
+                                }]
+                            }, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'x-api-key': process.env.CLAUDE_API_KEY,
+                                    'anthropic-version': '2023-06-01'
+                                },
+                                timeout: 15000
+                            });
+                            
+                            const text = response.data.content[0].text;
+                            console.log('🔍 Enhanced Vision API response:', text);
+                            
+                            const ratingMatch = text.match(/Rating:\s*([A-G])/i);
+                            const scoreMatch = text.match(/Score:\s*(\d+)/i);
+                            
+                            if (ratingMatch) {
+                                epcData = {
+                                    rating: ratingMatch[1].toUpperCase(),
+                                    score: scoreMatch ? parseInt(scoreMatch[1]) : null,
+                                    confidence: 75, // Lower confidence than clear text
+                                    reason: 'Enhanced Vision API analysis',
+                                    numericalScore: scoreMatch ? parseInt(scoreMatch[1]) : 0
+                                };
                                 
-                                const text = response.data.content[0].text;
-                                const ratingMatch = text.match(/Rating:\s*([A-G])/i);
-                                const scoreMatch = text.match(/Score:\s*(\d+)/i);
-                                
-                                if (ratingMatch) {
-                                    epcData = {
-                                        rating: ratingMatch[1].toUpperCase(),
-                                        score: scoreMatch ? parseInt(scoreMatch[1]) : null,
-                                        confidence: 85,
-                                        reason: 'Direct Vision API extraction',
-                                        numericalScore: scoreMatch ? parseInt(scoreMatch[1]) : 0
-                                    };
-                                    
-                                    console.log('✅ Vision extraction successful:', epcData.rating);
-                                    console.log('🔍 Vision API raw response:', text);
-                                    console.log('🔍 Rating match found:', ratingMatch);
-                                    console.log('🔍 Score match found:', scoreMatch);
-                                    break; // Exit the loop since we found a result
-                                }
-                            } catch (imageError) {
-                                console.log(`❌ Vision analysis failed:`, imageError.message);
-                                continue; // Try next image
+                                console.log(`✅ Vision API result: ${epcData.rating} (score: ${epcData.score})`);
+                                break;
                             }
+                        } catch (imageError) {
+                            console.log(`❌ Vision analysis failed: ${imageError.message}`);
+                            continue;
                         }
-                    } else {
-                        console.log('⚠️ Vision extractor failed to initialize');
                     }
                 } else {
-                    console.log('⚠️ No valid Claude API key found - skipping Vision API');
+                    console.log('⚠️ No valid Claude API key or no EPC images found - skipping Vision API');
                 }
             }
             
-            // Step 2: Skip original Vision approach if API key issues
-            // (since it would fail with the same 401 error)
-            
-            // Step 3: Enhanced text fallback
+            // STEP 3: Enhanced text patterns (if Vision API also failed)
             if (!epcData.rating && description && description.length > 0) {
-                console.log('🔍 Using enhanced text extraction fallback...');
+                console.log('🔍 Step 3: Using enhanced text pattern matching...');
                 
                 const fullPageText = $('body').text();
                 const enhancedPatterns = [
@@ -1084,13 +1159,12 @@ async function scrapeRightmoveProperty(url) {
                             const isValidContext = hasEnergyContext && !isFinancialContext && !isAddressContext;
                             
                             if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
-                                const epcExtractor = getEPCExtractor();
                                 epcData = {
                                     rating: rating,
                                     score: null,
-                                    confidence: 80,
-                                    reason: `Validated text (${source}): "${match[0]}"`,
-                                    numericalScore: epcExtractor ? epcExtractor.convertRatingToScore(rating) : 0
+                                    confidence: 70,
+                                    reason: `Enhanced text pattern (${source}): "${match[0]}"`,
+                                    numericalScore: 0
                                 };
                                 
                                 console.log(`✅ Found validated EPC in ${source}: ${rating}`);
@@ -1100,51 +1174,36 @@ async function scrapeRightmoveProperty(url) {
                     }
                 }
             }
+            
             // Step 4: FINAL FALLBACK - Search description for explicit "EPC RATING X" format
             if (!epcData.rating && description && description.length > 0) {
                 console.log('🔍 Final fallback: Searching description for EPC rating...');
-                console.log('📝 Description text (first 300 chars):', description.substring(0, 300));
                 
-                // Show any EPC mentions
-                const epcMentions = description.match(/[^.]*epc[^.]*/gi);
-                if (epcMentions) {
-                    console.log('🎯 Found EPC mentions:', epcMentions);
-                } else {
-                    console.log('❌ No EPC mentions found in description');
-                }
-                
-                // Try multiple patterns
                 const patterns = [
-                    /EPC\s+RATING\s+([A-G])\b/gi,           // Normal: "EPC RATING D"
-                    /EPC\s+RATING\s*([A-G])(?=[A-Z])/gi,    // Run together: "EPC RATING DCOUNCIL"
-                    /EPC\s+Rating\s+([A-G])\b/gi,           // Mixed case
-                    /EPC\s*:\s*([A-G])\b/gi,                // With colon
-                    /EPC\s+([A-G])\b/gi                     // Simple format
+                    /EPC\s+RATING\s+([A-G])\b/gi,
+                    /EPC\s+RATING\s*([A-G])(?=[A-Z])/gi,
+                    /EPC\s+Rating\s+([A-G])\b/gi,
+                    /EPC\s*:\s*([A-G])\b/gi,
+                    /EPC\s+([A-G])\b/gi
                 ];
                 
                 for (const pattern of patterns) {
                     const match = description.match(pattern);
                     if (match) {
-                        console.log(`🎯 Pattern matched: "${match[0]}" using ${pattern}`);
-                        console.log(`🔍 Full match object:`, match); // Debug the match
-                        
-                        // Extract rating more carefully
                         let rating;
                         if (match[1]) {
                             rating = match[1].toUpperCase();
                         } else {
-                            // Fallback: extract from the matched string
                             const ratingMatch = match[0].match(/RATING\s*([A-G])/i);
                             rating = ratingMatch ? ratingMatch[1].toUpperCase() : null;
                         }
                         
                         if (rating && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
-                                
                             epcData = {
                                 rating: rating,
                                 score: null,
-                                confidence: 75,
-                                reason: `Description text: "${match[0]}"`,
+                                confidence: 65,
+                                reason: `Final fallback pattern: "${match[0]}"`,
                                 numericalScore: 0
                             };
                             
@@ -1152,10 +1211,6 @@ async function scrapeRightmoveProperty(url) {
                             break;
                         }
                     }
-                }     
-                
-                if (!epcData.rating) {
-                    console.log('❌ No EPC rating patterns matched');
                 }
             }
         } catch (error) {
@@ -1166,9 +1221,10 @@ async function scrapeRightmoveProperty(url) {
         console.log('=== FINAL EPC RESULT ===');
         console.log('EPC Rating:', epcData.rating);
         console.log('Confidence:', epcData.confidence);
-        console.log('Method:', epcData.confidence > 80 ? 'Vision API (High)' : 
-                            epcData.confidence > 60 ? 'Vision API (Medium)' : 
-                            epcData.confidence > 50 ? 'Text Extraction' : 'Not Found');
+        console.log('Method:', epcData.confidence > 90 ? 'Clear Text (High)' : 
+                            epcData.confidence > 70 ? 'Vision API (Medium)' : 
+                            epcData.confidence > 60 ? 'Text Pattern (Medium)' : 'Not Found');
+        console.log('Reason:', epcData.reason);
 
         // Extract basic features
         const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
