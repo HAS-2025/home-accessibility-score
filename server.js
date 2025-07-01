@@ -75,33 +75,53 @@ function calculateAccessibleFeaturesScore(propertyData) {
     console.log('🏠 Analyzing accessible features for property...');
     console.log('📝 Full text being analyzed (first 500 chars):', fullText.substring(0, 500));
     
-    // 1. LATERAL LIVING / SINGLE FLOOR PROPERTIES (Ground level only)
-    const lateralLivingKeywords = [
-        'lateral living', 'single floor', 'all on one level', 'one level living',
-        'ground floor flat', 'ground floor apartment', 'ground floor maisonette',
-        'bungalow', 'dormer bungalow', 'detached bungalow', 'semi-detached bungalow',
-        'chalet bungalow', 'ranch style', 'single storey', 'single story',
-        'all on one floor', 'single level', 'one storey', 'one story'
-    ];
-    
-    // Exclusions for properties above ground level
-    const upperFloorExclusions = [
-        'first floor', 'second floor', 'third floor', 'fourth floor', 'fifth floor',
-        'upper floor', 'top floor', 'penthouse', 'mezzanine',
-        'apartment on floor', 'flat on floor', 'level 1', 'level 2', 'level 3',
-        'floor 1', 'floor 2', 'floor 3'
-    ];
-    
-    const hasLateralLiving = lateralLivingKeywords.some(keyword => fullText.includes(keyword));
-    const isUpperFloor = upperFloorExclusions.some(exclusion => fullText.includes(exclusion));
-    
-    let isSingleFloorProperty = false;
-    if (hasLateralLiving && !isUpperFloor) {
-        score += 1;
-        features.push('Lateral living/single floor (ground level)');
-        isSingleFloorProperty = true;
-        console.log('✓ Found lateral living/single floor property (ground level)');
-    }
+    // FIXED: Enhanced single floor detection in calculateAccessibleFeaturesScore()
+// Replace the lateral living section (around lines 115-135) with this:
+
+// 1. LATERAL LIVING / SINGLE FLOOR PROPERTIES (Ground level only)
+const lateralLivingKeywords = [
+    'lateral living', 'single floor', 'all on one level', 'one level living',
+    'ground floor flat', 'ground floor apartment', 'ground floor maisonette',
+    'bungalow', 'dormer bungalow', 'detached bungalow', 'semi-detached bungalow',
+    'chalet bungalow', 'ranch style', 'single storey', 'single story',
+    'all on one floor', 'single level', 'one storey', 'one story'
+];
+
+// Exclusions for properties above ground level
+const upperFloorExclusions = [
+    'first floor', 'second floor', 'third floor', 'fourth floor', 'fifth floor',
+    'upper floor', 'top floor', 'penthouse', 'mezzanine',
+    'apartment on floor', 'flat on floor', 'level 1', 'level 2', 'level 3',
+    'floor 1', 'floor 2', 'floor 3'
+];
+
+// NEW: Multi-level indicators (properties that have multiple internal levels)
+const multiLevelIndicators = [
+    'upstairs', 'upstairs bedroom', 'upstairs bathroom', 'upstairs room',
+    'first floor bedroom', 'first floor bathroom', 'bedroom upstairs',
+    'bathroom upstairs', 'stairs to', 'staircase', 'stairway',
+    'upper level', 'upper floor', 'loft room', 'loft bedroom',
+    'attic room', 'converted loft', 'stairs leading to',
+    'two storey', 'two story', 'duplex', 'split level',
+    'mezzanine level', 'gallery level', 'raised area'
+];
+
+const hasLateralLiving = lateralLivingKeywords.some(keyword => fullText.includes(keyword));
+const isUpperFloor = upperFloorExclusions.some(exclusion => fullText.includes(exclusion));
+const hasMultipleLevels = multiLevelIndicators.some(indicator => fullText.includes(indicator));
+
+let isSingleFloorProperty = false;
+if (hasLateralLiving && !isUpperFloor && !hasMultipleLevels) {
+    score += 1;
+    features.push('Lateral living/single floor (ground level)');
+    isSingleFloorProperty = true;
+    console.log('✓ Found lateral living/single floor property (ground level)');
+} else if (hasLateralLiving && hasMultipleLevels) {
+    console.log('✗ Property has lateral living keywords but also has multiple levels - NOT awarding lateral living point');
+    console.log('  Multi-level indicators found:', multiLevelIndicators.filter(indicator => fullText.includes(indicator)));
+} else if (hasLateralLiving && isUpperFloor) {
+    console.log('✗ Property has lateral living keywords but is on upper floor - NOT awarding lateral living point');
+}
     
     // 2. DOWNSTAIRS BEDROOM - Enhanced Logic
     const downstairsBedroomKeywords = [
