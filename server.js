@@ -123,56 +123,102 @@ if (hasLateralLiving && !isUpperFloor && !hasMultipleLevels) {
     console.log('✗ Property has lateral living keywords but is on upper floor - NOT awarding lateral living point');
 }
     
-    // 2. DOWNSTAIRS BEDROOM - Enhanced Logic
-    const downstairsBedroomKeywords = [
-        'downstairs bedroom', 'ground floor bedroom', 'bedroom downstairs',
-        'bedroom on ground floor', 'ground floor bed', 'downstairs bed',
-        'bedroom ground level'
-    ];
-    
-    let hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
-    
-    // IMPROVED: If it's a single floor property with bedrooms, automatically count as downstairs bedroom
-    if (!hasDownstairsBedroom && isSingleFloorProperty) {
-        const hasBedroomMention = fullText.includes('bedroom') || fullText.includes('bed');
-        if (hasBedroomMention) {
-            hasDownstairsBedroom = true;
-            console.log('✓ Inferred downstairs bedroom from single floor property with bedrooms');
-        }
-    }
-    
+    // ENHANCED: Downstairs bedroom and bathroom detection
+// Replace the existing downstairs bedroom and bathroom sections with this:
+
+// 2. DOWNSTAIRS BEDROOM - Enhanced Logic for Multi-level Properties
+const downstairsBedroomKeywords = [
+    'downstairs bedroom', 'ground floor bedroom', 'bedroom downstairs',
+    'bedroom on ground floor', 'ground floor bed', 'downstairs bed',
+    'bedroom ground level', 'ground floor comprises', 'ground floor has',
+    'ground floor features', 'ground floor includes'
+];
+
+// Enhanced patterns for multi-level properties
+const groundFloorBedroomPatterns = [
+    /ground floor.*?bedroom/gi,
+    /ground floor.*?bed/gi,
+    /bedroom.*?ground floor/gi,
+    /comprises.*?bedroom/gi,
+    /includes.*?bedroom/gi,
+    /features.*?bedroom/gi,
+    /ground floor.*?double bedroom/gi,
+    /ground floor.*?single bedroom/gi,
+    /ground floor.*?master bedroom/gi
+];
+
+let hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
+
+// If no explicit keyword found, check patterns for ground floor bedroom mentions
+if (!hasDownstairsBedroom) {
+    hasDownstairsBedroom = groundFloorBedroomPatterns.some(pattern => pattern.test(fullText));
     if (hasDownstairsBedroom) {
-        score += 1;
-        features.push('Downstairs bedroom');
-        console.log('✓ Found downstairs bedroom');
+        console.log('✓ Found downstairs bedroom via pattern matching');
     }
-    
-    // 3. DOWNSTAIRS BATHROOM - Enhanced Logic
-    const downstairsBathroomKeywords = [
-        'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
-        'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
-        'downstairs toilet', 'ground floor toilet', 'downstairs shower room',
-        'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom'
-    ];
-    
-    let hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
-    
-    // IMPROVED: If it's a single floor property with bathroom facilities, automatically count
-    if (!hasDownstairsBathroom && isSingleFloorProperty) {
-        const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
-                                  fullText.includes('toilet') || fullText.includes('wc') || 
-                                  fullText.includes('en suite') || fullText.includes('ensuite');
-        if (hasBathroomMention) {
-            hasDownstairsBathroom = true;
-            console.log('✓ Inferred downstairs bathroom from single floor property with bathroom facilities');
-        }
+}
+
+// If it's a single floor property with bedrooms, automatically count as downstairs bedroom
+if (!hasDownstairsBedroom && isSingleFloorProperty) {
+    const hasBedroomMention = fullText.includes('bedroom') || fullText.includes('bed');
+    if (hasBedroomMention) {
+        hasDownstairsBedroom = true;
+        console.log('✓ Inferred downstairs bedroom from single floor property with bedrooms');
     }
-    
+}
+
+if (hasDownstairsBedroom) {
+    score += 1;
+    features.push('Downstairs bedroom');
+    console.log('✓ Found downstairs bedroom');
+}
+
+// 3. DOWNSTAIRS BATHROOM - Enhanced Logic for Multi-level Properties
+const downstairsBathroomKeywords = [
+    'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
+    'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
+    'downstairs toilet', 'ground floor toilet', 'downstairs shower room',
+    'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom'
+];
+
+// Enhanced patterns for multi-level properties
+const groundFloorBathroomPatterns = [
+    /ground floor.*?bathroom/gi,
+    /ground floor.*?wc/gi,
+    /ground floor.*?toilet/gi,
+    /ground floor.*?shower/gi,
+    /ground floor.*?cloakroom/gi,
+    /bathroom.*?ground floor/gi,
+    /comprises.*?bathroom/gi,
+    /includes.*?bathroom/gi,
+    /features.*?bathroom/gi
+];
+
+let hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
+
+// If no explicit keyword found, check patterns for ground floor bathroom mentions
+if (!hasDownstairsBathroom) {
+    hasDownstairsBathroom = groundFloorBathroomPatterns.some(pattern => pattern.test(fullText));
     if (hasDownstairsBathroom) {
-        score += 1;
-        features.push('Downstairs bathroom/WC');
-        console.log('✓ Found downstairs bathroom/WC');
+        console.log('✓ Found downstairs bathroom via pattern matching');
     }
+}
+
+// If it's a single floor property with bathroom facilities, automatically count
+if (!hasDownstairsBathroom && isSingleFloorProperty) {
+    const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
+                              fullText.includes('toilet') || fullText.includes('wc') || 
+                              fullText.includes('en suite') || fullText.includes('ensuite');
+    if (hasBathroomMention) {
+        hasDownstairsBathroom = true;
+        console.log('✓ Inferred downstairs bathroom from single floor property with bathroom facilities');
+    }
+}
+
+if (hasDownstairsBathroom) {
+    score += 1;
+    features.push('Downstairs bathroom/WC');
+    console.log('✓ Found downstairs bathroom/WC');
+}
     
     // 4. LEVEL AND/OR RAMP ACCESS - Enhanced Keywords
     const levelAccessKeywords = [
