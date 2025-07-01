@@ -962,8 +962,8 @@ async function scrapeRightmoveProperty(url) {
         if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
         if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
 
-        // ✅ SIMPLE EPC EXTRACTION - After features are declared
-        console.log('👁️ Starting simple EPC extraction...');
+        // ✅ RESTORED: Enhanced EPC extraction with comprehensive approach
+        console.log('👁️ Starting comprehensive EPC extraction...');
 
         let epcData = {
             rating: null,
@@ -974,132 +974,283 @@ async function scrapeRightmoveProperty(url) {
         };
 
         try {
-            // STEP 1: Look for clear EPC declarations in text
-            console.log('🔍 Looking for clear EPC declarations...');
+            // STEP 1: Look for CLEAR text declarations first (highest priority)
+            console.log('🔍 Step 1: Checking for clear EPC declarations in text...');
             
-            const allText = `${title} ${description} ${features.join(' ')}`.toLowerCase();
-            console.log('📝 Searching in text (first 200 chars):', allText.substring(0, 200));
-
-            // Simple patterns for clear declarations
-            const clearPatterns = [
-                /epc\s*[-:]\s*([a-g])\b/gi,           // "EPC - A"
+            const clearDeclarations = [
+                /epc\s*[-:]\s*([a-g])\b/gi,           // "EPC - A" or "EPC: A"
                 /epc\s+([a-g])\b/gi,                  // "EPC A"
-                /energy\s+rating\s*[-:]\s*([a-g])\b/gi // "Energy Rating - A"
+                /energy\s+rating\s*[-:]\s*([a-g])\b/gi, // "Energy Rating - A"
+                /([a-g])\s+rated/gi                   // "A Rated"
             ];
 
-            let foundRating = null;
-            let foundContext = '';
+            // FIXED: Include ALL text sources including page HTML
+            const pageHTML = response.data;
+            const fullPageText = $('body').text();
+            const allTextSources = `${title} ${description} ${features.join(' ')} ${fullPageText}`.toLowerCase();
+            
+            console.log('📝 Searching in combined text (first 300 chars):', allTextSources.substring(0, 300));
+            console.log('🔍 Looking for "epc" mentions:', allTextSources.match(/[^.]*epc[^.]*/gi)?.slice(0, 3) || 'None found');
 
-            for (const pattern of clearPatterns) {
-                const match = allText.match(pattern);
-                if (match) {
-                    const rating = match[1] ? match[1].toUpperCase() : 
-                                  match[0].match(/([A-G])/i)?.[1]?.toUpperCase();
+            for (const pattern of clearDeclarations) {
+                const matches = [...allTextSources.matchAll(pattern)];
+                
+                for (const match of matches) {
+                    const rating = match[1].toUpperCase();
+                    const context = allTextSources.substring(
+                        Math.max(0, match.index - 50), 
+                        match.index + match[0].length + 50
+                    );
                     
-                    if (rating && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
-                        // Get context around the match
-                        const matchIndex = allText.indexOf(match[0]);
-                        foundContext = allText.substring(
-                            Math.max(0, matchIndex - 30), 
-                            matchIndex + match[0].length + 30
-                        );
+                    console.log(`🎯 Found potential EPC declaration: "${match[0]}" in context: "${context}"`);
+                    
+                    // Validate it's really about EPC
+                    if (context.includes('epc') || context.includes('energy') || context.includes('rating')) {
+                        epcData = {
+                            rating: rating,
+                            score: null,
+                            confidence: 95, // High confidence for clear declarations
+                            reason: `Clear text declaration: "${match[0]}"`,
+                            numericalScore: 0
+                        };
                         
-                        console.log(`🎯 Found clear EPC: "${match[0]}" → Rating: ${rating}`);
-                        console.log(`📍 Context: "${foundContext}"`);
-                        
-                        foundRating = rating;
-                        break;
+                        console.log(`✅ HIGH CONFIDENCE EPC from clear text: ${rating}`);
+                        break; // Exit both loops
                     }
                 }
+                if (epcData.rating) break; // Exit outer loop if found
             }
 
-            if (foundRating) {
-                epcData = {
-                    rating: foundRating,
-                    score: null,
-                    confidence: 95,
-                    reason: `Clear text declaration in context: "${foundContext}"`,
-                    numericalScore: 0
-                };
-                console.log(`✅ HIGH CONFIDENCE EPC from text: ${foundRating}`);
-            } else {
-                console.log('❌ No clear EPC declaration found in text');
+            // STEP 2: Try Vision API on EPC images (only if no clear text found)
+            if (!epcData.rating) {
+                console.log('🔍 Step 2: No clear text found, trying Vision API...');
                 
-                // STEP 2: Try Vision API as fallback
-                console.log('🔍 Trying Vision API fallback...');
+                const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
+
+                // ENHANCED: Additional EPC image search
+                console.log('🔍 Searching for direct EPC images in page source...');
+                const epcImageMatches = pageHTML.match(/https?:\/\/[^"'\s]*EPC[^"'\s]*\.(png|jpg|jpeg|gif)/gi);
+                if (epcImageMatches) {
+                    console.log(`🎯 Found ${epcImageMatches.length} EPC images in page source:`, epcImageMatches);
+                    epcImageUrls.push(...epcImageMatches);
+                }
+
+                const rightmoveEPCMatches = pageHTML.match(/https?:\/\/media\.rightmove\.co\.uk[^"'\s]*EPC[^"'\s]*/gi);
+                if (rightmoveEPCMatches) {
+                    console.log(`🎯 Found ${rightmoveEPCMatches.length} Rightmove EPC URLs:`, rightmoveEPCMatches);
+                    epcImageUrls.push(...rightmoveEPCMatches);
+                }
+
+                // ENHANCED: Look for any image URLs containing energy/certificate keywords
+                const energyImageMatches = pageHTML.match(/https?:\/\/[^"'\s]*(?:energy|certificate|performance)[^"'\s]*\.(png|jpg|jpeg|gif)/gi);
+                if (energyImageMatches) {
+                    console.log(`🎯 Found ${energyImageMatches.length} energy-related images:`, energyImageMatches);
+                    epcImageUrls.push(...energyImageMatches);
+                }
+
+                const uniqueEpcUrls = [...new Set(epcImageUrls)];
+                console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniqueEpcUrls);
                 
-                // Keep your existing Vision API code here, but add error handling
-                try {
-                    const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
+                if (uniqueEpcUrls.length > 0 && process.env.CLAUDE_API_KEY && process.env.CLAUDE_API_KEY.length > 10) {
+                    console.log('🔑 Claude API key available, trying Vision API...');
                     
-                    if (epcImageUrls.length > 0 && process.env.CLAUDE_API_KEY) {
-                        console.log(`📋 Found ${epcImageUrls.length} EPC images for Vision analysis`);
-                        
-                        for (const imageUrl of epcImageUrls.slice(0, 1)) { // Just try first image
-                            try {
-                                console.log(`👁️ Vision API call for: ${imageUrl.substring(0, 80)}...`);
-                                
-                                const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
-                                    model: 'claude-3-5-sonnet-20241022',
-                                    max_tokens: 500,
-                                    messages: [{
-                                        role: 'user',
-                                        content: [{
-                                            type: 'text',
-                                            text: 'Analyze this EPC certificate and extract the energy efficiency rating (A-G). Return format: Rating: X'
-                                        }, {
-                                            type: 'image',
-                                            source: {
-                                                type: 'base64',
-                                                media_type: imageUrl.toLowerCase().includes('.gif') ? 'image/gif' : 
-                                                          imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
-                                                data: await convertImageToBase64(imageUrl)
-                                            }
-                                        }]
+                    for (const imageUrl of uniqueEpcUrls.slice(0, 2)) {
+                        try {
+                            console.log(`👁️ IMPROVED Vision API call for: ${imageUrl.substring(0, 100)}...`);
+                            
+                            const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
+                                model: 'claude-3-5-sonnet-20241022',
+                                max_tokens: 600,
+                                messages: [{
+                                    role: 'user',
+                                    content: [{
+                                        type: 'text',
+                                        text: `You are analyzing an EPC (Energy Performance Certificate) image. This is CRITICAL - I need you to be extremely precise about the arrow position.
+
+IMPORTANT: Look at where the arrow tip or pointer is positioned on the A-G rating scale. The bands should be:
+- A (Most efficient): Usually at the TOP of the scale
+- B, C, D, E, F, G: Going down the scale
+- G (Least efficient): Usually at the BOTTOM
+
+Please examine:
+1. The exact position of the arrow tip relative to the letter bands
+2. Which letter the arrow is clearly pointing to
+3. Any numerical score visible (usually 1-100)
+
+Focus specifically on the arrow tip position. Sometimes the arrow shaft might cross multiple bands, but what matters is where the TIP points.
+
+If you see an arrow pointing to the A band (top of scale), it's an A rating.
+If you see an arrow pointing to the B band (second from top), it's a B rating.
+
+Return ONLY this format: Rating: [LETTER], Score: [NUMBER if visible], Confidence: [PERCENTAGE]%
+
+Be extremely careful about A vs B distinction.`
+                                    }, {
+                                        type: 'image',
+                                        source: {
+                                            type: 'base64',
+                                            media_type: imageUrl.toLowerCase().includes('.gif') ? 'image/gif' : 
+                                                      imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
+                                            data: await convertImageToBase64(imageUrl)
+                                        }
                                     }]
-                                }, {
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'x-api-key': process.env.CLAUDE_API_KEY,
-                                        'anthropic-version': '2023-06-01'
-                                    },
-                                    timeout: 15000
-                                });
+                                }]
+                            }, {
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'x-api-key': process.env.CLAUDE_API_KEY,
+                                    'anthropic-version': '2023-06-01'
+                                },
+                                timeout: 15000
+                            });
+                            
+                            const text = visionResponse.data.content[0].text;
+                            console.log('🔍 IMPROVED Vision API response:', text);
+                            
+                            const ratingMatch = text.match(/Rating:\s*([A-G])/i);
+                            const scoreMatch = text.match(/Score:\s*(\d+)/i);
+                            
+                            if (ratingMatch) {
+                                epcData = {
+                                    rating: ratingMatch[1].toUpperCase(),
+                                    score: scoreMatch ? parseInt(scoreMatch[1]) : null,
+                                    confidence: 75, // Lower confidence than clear text
+                                    reason: 'Improved Vision API analysis',
+                                    numericalScore: scoreMatch ? parseInt(scoreMatch[1]) : 0
+                                };
                                 
-                                const text = visionResponse.data.content[0].text;
-                                const ratingMatch = text.match(/Rating:\s*([A-G])/i);
+                                console.log(`✅ Vision API result: ${epcData.rating} (score: ${epcData.score})`);
+                                break;
+                            }
+                        } catch (imageError) {
+                            console.log(`❌ Vision analysis failed: ${imageError.message}`);
+                            continue;
+                        }
+                    }
+                } else {
+                    console.log('⚠️ No valid Claude API key or no EPC images found - skipping Vision API');
+                }
+            }
+            
+            // STEP 3: Enhanced text patterns (if Vision API also failed)
+            if (!epcData.rating && description && description.length > 0) {
+                console.log('🔍 Step 3: Using enhanced text pattern matching...');
+                
+                const enhancedPatterns = [
+                    /epc\s*rating[:\s]*([a-g])\b/gi,
+                    /energy\s*performance\s*certificate[:\s]*([a-g])\b/gi,
+                    /energy\s*efficiency[:\s]*rating[:\s]*([a-g])\b/gi,
+                    /current\s*energy\s*rating[:\s]*([a-g])\b/gi,
+                    /\bepc[:\s]+([a-g])\b/gi,
+                    /\b([a-g])\s*[-:]\s*\d{1,3}\b/gi
+                ];
+                
+                const searchTexts = [
+                    { text: description, source: 'description' },
+                    { text: fullPageText, source: 'page' }
+                ];
+                
+                searchLoop: for (const { text, source } of searchTexts) {
+                    for (const pattern of enhancedPatterns) {
+                        const matches = [...text.matchAll(pattern)];
+                        
+                        for (const match of matches) {
+                            const rating = match[1].toUpperCase();
+                            
+                            const matchContext = text.substring(
+                                Math.max(0, match.index - 60), 
+                                match.index + 80
+                            ).toLowerCase();
+                            
+                            const hasEnergyContext = (
+                                matchContext.includes('energy performance') ||
+                                matchContext.includes('energy certificate') ||
+                                matchContext.includes('energy efficiency') ||
+                                matchContext.includes('epc rating') ||
+                                matchContext.includes('energy rating')
+                            );
+                            
+                            const isFinancialContext = (
+                                matchContext.includes('deposit') ||
+                                matchContext.includes('mortgage') ||
+                                matchContext.includes('council tax') ||
+                                matchContext.includes('band:')
+                            );
+                            
+                            const isAddressContext = (
+                                matchContext.includes('street') ||
+                                matchContext.includes('road') ||
+                                matchContext.includes('ba2')
+                            );
+                            
+                            const isValidContext = hasEnergyContext && !isFinancialContext && !isAddressContext;
+                            
+                            if (isValidContext && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
+                                epcData = {
+                                    rating: rating,
+                                    score: null,
+                                    confidence: 70,
+                                    reason: `Enhanced text pattern (${source}): "${match[0]}"`,
+                                    numericalScore: 0
+                                };
                                 
-                                if (ratingMatch) {
-                                    epcData = {
-                                        rating: ratingMatch[1].toUpperCase(),
-                                        score: null,
-                                        confidence: 75,
-                                        reason: 'Vision API analysis',
-                                        numericalScore: 0
-                                    };
-                                    console.log(`✅ Vision API result: ${epcData.rating}`);
-                                    break;
-                                }
-                            } catch (imageError) {
-                                console.log(`❌ Vision analysis failed: ${imageError.message}`);
+                                console.log(`✅ Found validated EPC in ${source}: ${rating}`);
+                                break searchLoop;
                             }
                         }
                     }
-                } catch (visionError) {
-                    console.log(`❌ Vision API step failed: ${visionError.message}`);
                 }
             }
-
+            
+            // Step 4: FINAL FALLBACK - Search description for explicit "EPC RATING X" format
+            if (!epcData.rating && description && description.length > 0) {
+                console.log('🔍 Final fallback: Searching description for EPC rating...');
+                
+                const patterns = [
+                    /EPC\s+RATING\s+([A-G])\b/gi,
+                    /EPC\s+RATING\s*([A-G])(?=[A-Z])/gi,
+                    /EPC\s+Rating\s+([A-G])\b/gi,
+                    /EPC\s*:\s*([A-G])\b/gi,
+                    /EPC\s+([A-G])\b/gi
+                ];
+                
+                for (const pattern of patterns) {
+                    const match = description.match(pattern);
+                    if (match) {
+                        let rating;
+                        if (match[1]) {
+                            rating = match[1].toUpperCase();
+                        } else {
+                            const ratingMatch = match[0].match(/RATING\s*([A-G])/i);
+                            rating = ratingMatch ? ratingMatch[1].toUpperCase() : null;
+                        }
+                        
+                        if (rating && ['A', 'B', 'C', 'D', 'E', 'F', 'G'].includes(rating)) {
+                            epcData = {
+                                rating: rating,
+                                score: null,
+                                confidence: 65,
+                                reason: `Final fallback pattern: "${match[0]}"`,
+                                numericalScore: 0
+                            };
+                            
+                            console.log(`✅ Found EPC in description: ${rating}`);
+                            break;
+                        }
+                    }
+                }
+            }
         } catch (error) {
-            console.error('❌ Simple EPC extraction error:', error.message);
+            console.error('❌ Enhanced EPC extraction error:', error.message);
             epcData.reason = `Extraction failed: ${error.message}`;
         }
 
         console.log('=== FINAL EPC RESULT ===');
-        console.log('EPC Rating:', epcData.rating || 'Not found');
+        console.log('EPC Rating:', epcData.rating);
         console.log('Confidence:', epcData.confidence);
         console.log('Method:', epcData.confidence > 90 ? 'Clear Text (High)' : 
-                            epcData.confidence > 70 ? 'Vision API (Medium)' : 'Not Found');
+                            epcData.confidence > 70 ? 'Vision API (Medium)' : 
+                            epcData.confidence > 60 ? 'Text Pattern (Medium)' : 'Not Found');
         console.log('Reason:', epcData.reason);
 
         console.log('Property scraping completed:', {
