@@ -61,17 +61,16 @@ const getEPCExtractor = () => {
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// IMPROVED: Enhanced Accessible Features Detection Logic
+// FIXED: Enhanced Accessible Features Detection Logic
 function calculateAccessibleFeaturesScore(propertyData) {
     let score = 0;
     const features = [];
     
-    // Extract relevant text for analysis
+    // Extract relevant text for analysis - FIXED variable references
     const description = (propertyData.description || '').toLowerCase();
     const title = (propertyData.title || '').toLowerCase();
     const propertyFeatures = (propertyData.features || []).join(' ').toLowerCase();
-    const epcFeatures = (features && features.length > 0) ? features : [];
-    const fullText = `${title} ${description} ${(features || []).join(' ')}`.toLowerCase();
+    const fullText = `${title} ${description} ${propertyFeatures}`.toLowerCase();
     
     console.log('🏠 Analyzing accessible features for property...');
     console.log('📝 Full text being analyzed (first 500 chars):', fullText.substring(0, 500));
