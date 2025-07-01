@@ -520,114 +520,37 @@
             }
         }
 
-        // FIXED: Replace your displayAccessibleFeatures function with this one
+        function displayResults(data) {
+            console.log('🎯 displayResults called with data:', data);
+            
+            const { property, analysis } = data;
+            
+            // Hide loading, show results
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('results').classList.add('show');
 
-function displayAccessibleFeatures(accessibleFeatures) {
-    console.log('🏠 displayAccessibleFeatures called with:', accessibleFeatures);
-    
-    // Handle case where accessibleFeatures might be undefined
-    if (!accessibleFeatures) {
-        console.error('❌ Accessible features data not found in response');
-        document.getElementById('accessibleFeaturesScore').textContent = '0/5';
-        document.getElementById('accessibleFeaturesScore').className = 'score-value poor';
-        document.getElementById('accessibleFeaturesDescription').textContent = 'Accessible features data not available';
-        document.getElementById('accessibleFeaturesDetails').innerHTML = '<div class="no-features-found">Unable to analyze accessible features</div>';
-        return;
-    }
-    
-    console.log('✅ Accessible features data found:', {
-        score: accessibleFeatures.score,
-        features: accessibleFeatures.features,
-        percentage: accessibleFeatures.percentage
-    });
-    
-    // Set the score display
-    document.getElementById('accessibleFeaturesScore').textContent = `${accessibleFeatures.score || 0}/5`;
-    
-    // Set score color based on score value
-    let scoreClass = 'poor';
-    const score = accessibleFeatures.score || 0;
-    if (score >= 4) scoreClass = 'excellent';
-    else if (score >= 3) scoreClass = 'good';
-    else if (score >= 2) scoreClass = 'fair';
-    
-    document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
-    
-    // Set the description
-    const percentage = accessibleFeatures.percentage || 0;
-    document.getElementById('accessibleFeaturesDescription').textContent = 
-        `${percentage}% - ${score} out of 5 accessible features found`;
-    
-    let detailsHtml = '';
-    
-    // Show found features
-    if (accessibleFeatures.features && accessibleFeatures.features.length > 0) {
-        detailsHtml += '<div class="accessible-features-list">';
-        accessibleFeatures.features.forEach(feature => {
-            detailsHtml += `<span class="accessible-feature-item">✓ ${feature}</span>`;
-        });
-        detailsHtml += '</div>';
-        console.log(`✅ Displaying ${accessibleFeatures.features.length} accessible features`);
-    } else {
-        detailsHtml += '<div class="no-features-found">No accessible features detected in property description</div>';
-        console.log('ℹ️ No accessible features found to display');
-    }
-    
-    // Show scoring criteria
-    detailsHtml += `
-        <div class="accessibility-criteria">
-            <h4>Scoring Criteria (1 point each):</h4>
-            <ul>
-                <li>Lateral living/single floor (ground level only)</li>
-                <li>Downstairs bedroom</li>
-                <li>Downstairs bathroom/WC</li>
-                <li>Level/ramp access to property</li>
-                <li>Off-street or private parking</li>
-            </ul>
-        </div>
-    `;
-    
-    document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
-    console.log('✅ Accessible features display updated successfully');
-}
+            // Property info
+            document.getElementById('propertyTitle').textContent = property.title;
+            document.getElementById('propertyPrice').textContent = property.price;
 
-// ALSO: Add more debugging to your displayResults function
-function displayResults(data) {
-    console.log('🎯 displayResults called with data:', data);
-    
-    const { property, analysis } = data;
-    
-    // Hide loading, show results
-    document.getElementById('loading').classList.remove('show');
-    document.getElementById('results').classList.add('show');
+            // Overall score
+            document.getElementById('overallScore').textContent = analysis.overall;
+            
+            // Star rating
+            displayStarRating(analysis.overall);
 
-    // Property info
-    document.getElementById('propertyTitle').textContent = property.title;
-    document.getElementById('propertyPrice').textContent = property.price;
+            // GP Proximity
+            displayGPProximity(analysis.gpProximity);
+            
+            // EPC Rating
+            displayEPCRating(analysis.epcRating);
+            
+            // UPDATED: Accessible Features (was Internal Facilities)
+            displayAccessibleFeatures(analysis.accessibleFeatures);
 
-    // Overall score
-    document.getElementById('overallScore').textContent = analysis.overall;
-    
-    // Star rating
-    displayStarRating(analysis.overall);
-
-    // GP Proximity
-    console.log('📍 Calling displayGPProximity with:', analysis.gpProximity);
-    displayGPProximity(analysis.gpProximity);
-    
-    // EPC Rating
-    console.log('⚡ Calling displayEPCRating with:', analysis.epcRating);
-    displayEPCRating(analysis.epcRating);
-    
-    // UPDATED: Accessible Features (was Internal Facilities)
-    console.log('🏠 Calling displayAccessibleFeatures with:', analysis.accessibleFeatures);
-    displayAccessibleFeatures(analysis.accessibleFeatures);
-
-    // Summary
-    document.getElementById('summaryText').textContent = analysis.summary;
-    
-    console.log('✅ All display functions completed');
-}
+            // Summary
+            document.getElementById('summaryText').textContent = analysis.summary;
+        }
 
         function displayStarRating(score) {
             const starContainer = document.getElementById('starRating');
@@ -685,76 +608,56 @@ function displayResults(data) {
             document.getElementById('epcDetails').innerHTML = detailsHtml;
         }
 
-        // FIXED: Replace your displayAccessibleFeatures function with this one
-
-function displayAccessibleFeatures(accessibleFeatures) {
-    console.log('🏠 displayAccessibleFeatures called with:', accessibleFeatures);
-    
-    // Handle case where accessibleFeatures might be undefined
-    if (!accessibleFeatures) {
-        console.error('❌ Accessible features data not found in response');
-        document.getElementById('accessibleFeaturesScore').textContent = '0/5';
-        document.getElementById('accessibleFeaturesScore').className = 'score-value poor';
-        document.getElementById('accessibleFeaturesDescription').textContent = 'Accessible features data not available';
-        document.getElementById('accessibleFeaturesDetails').innerHTML = '<div class="no-features-found">Unable to analyze accessible features</div>';
-        return;
-    }
-    
-    console.log('✅ Accessible features data found:', {
-        score: accessibleFeatures.score,
-        features: accessibleFeatures.features,
-        percentage: accessibleFeatures.percentage
-    });
-    
-    // Set the score display
-    document.getElementById('accessibleFeaturesScore').textContent = `${accessibleFeatures.score || 0}/5`;
-    
-    // Set score color based on score value
-    let scoreClass = 'poor';
-    const score = accessibleFeatures.score || 0;
-    if (score >= 4) scoreClass = 'excellent';
-    else if (score >= 3) scoreClass = 'good';
-    else if (score >= 2) scoreClass = 'fair';
-    
-    document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
-    
-    // Set the description
-    const percentage = accessibleFeatures.percentage || 0;
-    document.getElementById('accessibleFeaturesDescription').textContent = 
-        `${percentage}% - ${score} out of 5 accessible features found`;
-    
-    let detailsHtml = '';
-    
-    // Show found features
-    if (accessibleFeatures.features && accessibleFeatures.features.length > 0) {
-        detailsHtml += '<div class="accessible-features-list">';
-        accessibleFeatures.features.forEach(feature => {
-            detailsHtml += `<span class="accessible-feature-item">✓ ${feature}</span>`;
-        });
-        detailsHtml += '</div>';
-        console.log(`✅ Displaying ${accessibleFeatures.features.length} accessible features`);
-    } else {
-        detailsHtml += '<div class="no-features-found">No accessible features detected in property description</div>';
-        console.log('ℹ️ No accessible features found to display');
-    }
-    
-    // Show scoring criteria
-    detailsHtml += `
-        <div class="accessibility-criteria">
-            <h4>Scoring Criteria (1 point each):</h4>
-            <ul>
-                <li>Lateral living/single floor (ground level only)</li>
-                <li>Downstairs bedroom</li>
-                <li>Downstairs bathroom/WC</li>
-                <li>Level/ramp access to property</li>
-                <li>Off-street or private parking</li>
-            </ul>
-        </div>
-    `;
-    
-    document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
-    console.log('✅ Accessible features display updated successfully');
-}
+        function displayAccessibleFeatures(accessibleFeatures) {
+            console.log('🏠 displayAccessibleFeatures called with:', accessibleFeatures);
+            
+            // Handle case where accessibleFeatures might be undefined
+            if (!accessibleFeatures) {
+                console.error('❌ Accessible features data not found in response');
+                document.getElementById('accessibleFeaturesScore').textContent = '0/5';
+                document.getElementById('accessibleFeaturesScore').className = 'score-value poor';
+                document.getElementById('accessibleFeaturesDescription').textContent = 'Accessible features data not available';
+                document.getElementById('accessibleFeaturesDetails').innerHTML = '<div class="no-features-found">Unable to analyze accessible features</div>';
+                return;
+            }
+            
+            console.log('✅ Accessible features data found:', {
+                score: accessibleFeatures.score,
+                features: accessibleFeatures.features,
+                percentage: accessibleFeatures.percentage
+            });
+            
+            // Set the score display
+            document.getElementById('accessibleFeaturesScore').textContent = `${accessibleFeatures.score || 0}/5`;
+            
+            // Set score color based on score value
+            let scoreClass = 'poor';
+            const score = accessibleFeatures.score || 0;
+            if (score >= 4) scoreClass = 'excellent';
+            else if (score >= 3) scoreClass = 'good';
+            else if (score >= 2) scoreClass = 'fair';
+            
+            document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
+            
+            // Set the description
+            const percentage = accessibleFeatures.percentage || 0;
+            document.getElementById('accessibleFeaturesDescription').textContent = 
+                `${percentage}% - ${score} out of 5 accessible features found`;
+            
+            let detailsHtml = '';
+            
+            // Show found features
+            if (accessibleFeatures.features && accessibleFeatures.features.length > 0) {
+                detailsHtml += '<div class="accessible-features-list">';
+                accessibleFeatures.features.forEach(feature => {
+                    detailsHtml += `<span class="accessible-feature-item">✓ ${feature}</span>`;
+                });
+                detailsHtml += '</div>';
+                console.log(`✅ Displaying ${accessibleFeatures.features.length} accessible features`);
+            } else {
+                detailsHtml += '<div class="no-features-found">No accessible features detected in property description</div>';
+                console.log('ℹ️ No accessible features found to display');
+            }
             
             // Show scoring criteria
             detailsHtml += `
@@ -771,6 +674,7 @@ function displayAccessibleFeatures(accessibleFeatures) {
             `;
             
             document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
+            console.log('✅ Accessible features display updated successfully');
         }
 
         // Allow Enter key to trigger analysis
