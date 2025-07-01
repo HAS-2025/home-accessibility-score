@@ -190,9 +190,11 @@ async function findNearestGPs(lat, lng) {
                         name.includes('massage') || name.includes('pharmacy') || name.includes('dentist') ||
                         name.includes('dental') || name.includes('optician') || name.includes('eye care') ||
                         name.includes('vet') || name.includes('veterinary') || name.includes('care home') ||
-                        name.includes('nursing home') || name.includes('mental health') || name.includes('.co.uk') ||
-                        name.includes('.com') || name.includes('www.') || name.includes('royal united hospital') ||
-                        name.includes('ruh') || name.includes('university hospital')
+                        name.includes('nursing home') || name.includes('mental health') || name.includes('royal united hospital') ||
+                        name.includes('ruh') || name.includes('university hospital') || name.includes('podiatrist') || 
+                        name.includes('spa') || name.includes('spamedica') || 
+                        name.includes('hair restoration') || name.includes('hair transplant') ||
+                        name.includes('physico') || name.includes('physiotherapy') ||
                     );
                     
                     if (isDefinitelyNotGP) {
