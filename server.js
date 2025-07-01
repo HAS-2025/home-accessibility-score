@@ -858,6 +858,9 @@ console.log(`📊 Total unique EPC sources found: ${uniqueEpcUrls.length}`, uniq
     };
     
     console.log('✅ Vision extraction successful:', epcData.rating);
+    console.log('🔍 Vision API raw response:', text);
+    console.log('🔍 Rating match found:', ratingMatch);
+    console.log('🔍 Score match found:', scoreMatch);
     break; // Exit the loop since we found a result
 }
             } catch (imageError) {
