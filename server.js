@@ -70,8 +70,8 @@ function calculateAccessibleFeaturesScore(propertyData) {
     const description = (propertyData.description || '').toLowerCase();
     const title = (propertyData.title || '').toLowerCase();
     const propertyFeatures = (propertyData.features || []).join(' ').toLowerCase();
-    const propertyFeatures = (features && features.length > 0) ? features : [];
-    const fullText = `${title} ${description} ${propertyFeatures.join(' ')}`.toLowerCase();
+    const epcFeatures = (features && features.length > 0) ? features : [];
+    const fullText = `${title} ${description} ${epcFeatures.join(' ')}`.toLowerCase();
     
     console.log('🏠 Analyzing accessible features for property...');
     console.log('📝 Full text being analyzed (first 500 chars):', fullText.substring(0, 500));
