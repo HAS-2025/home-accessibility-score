@@ -286,7 +286,6 @@
             margin: 0.25rem 0;
         }
 
-        /* NEW: Accessible Features Styling */
         .accessible-features-list {
             margin-top: 0.5rem;
         }
@@ -436,7 +435,6 @@
             </div>
 
             <div class="detailed-scores">
-                <!-- GP Proximity Card -->
                 <div class="score-card">
                     <div class="score-header">
                         <span class="score-icon">🏥</span>
@@ -447,7 +445,6 @@
                     <div class="score-details" id="gpDetails"></div>
                 </div>
 
-                <!-- EPC Rating Card -->
                 <div class="score-card">
                     <div class="score-header">
                         <span class="score-icon">⚡</span>
@@ -458,7 +455,6 @@
                     <div class="score-details" id="epcDetails"></div>
                 </div>
 
-                <!-- UPDATED: Accessible Features Card (was Internal Facilities) -->
                 <div class="score-card">
                     <div class="score-header">
                         <span class="score-icon">🏠</span>
@@ -486,7 +482,6 @@
                 return;
             }
 
-            // Show loading state
             document.getElementById('loading').classList.add('show');
             document.getElementById('results').classList.remove('show');
             document.querySelector('.analyze-btn').disabled = true;
@@ -521,34 +516,19 @@
         }
 
         function displayResults(data) {
-            console.log('🎯 displayResults called with data:', data);
-            
             const { property, analysis } = data;
             
-            // Hide loading, show results
             document.getElementById('loading').classList.remove('show');
             document.getElementById('results').classList.add('show');
 
-            // Property info
             document.getElementById('propertyTitle').textContent = property.title;
             document.getElementById('propertyPrice').textContent = property.price;
-
-            // Overall score
             document.getElementById('overallScore').textContent = analysis.overall;
             
-            // Star rating
             displayStarRating(analysis.overall);
-
-            // GP Proximity
             displayGPProximity(analysis.gpProximity);
-            
-            // EPC Rating
             displayEPCRating(analysis.epcRating);
-            
-            // UPDATED: Accessible Features (was Internal Facilities)
             displayAccessibleFeatures(analysis.accessibleFeatures);
-
-            // Summary
             document.getElementById('summaryText').textContent = analysis.summary;
         }
 
@@ -609,11 +589,7 @@
         }
 
         function displayAccessibleFeatures(accessibleFeatures) {
-            console.log('🏠 displayAccessibleFeatures called with:', accessibleFeatures);
-            
-            // Handle case where accessibleFeatures might be undefined
             if (!accessibleFeatures) {
-                console.error('❌ Accessible features data not found in response');
                 document.getElementById('accessibleFeaturesScore').textContent = '0/5';
                 document.getElementById('accessibleFeaturesScore').className = 'score-value poor';
                 document.getElementById('accessibleFeaturesDescription').textContent = 'Accessible features data not available';
@@ -621,16 +597,8 @@
                 return;
             }
             
-            console.log('✅ Accessible features data found:', {
-                score: accessibleFeatures.score,
-                features: accessibleFeatures.features,
-                percentage: accessibleFeatures.percentage
-            });
-            
-            // Set the score display
             document.getElementById('accessibleFeaturesScore').textContent = `${accessibleFeatures.score || 0}/5`;
             
-            // Set score color based on score value
             let scoreClass = 'poor';
             const score = accessibleFeatures.score || 0;
             if (score >= 4) scoreClass = 'excellent';
@@ -639,27 +607,22 @@
             
             document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
             
-            // Set the description
             const percentage = accessibleFeatures.percentage || 0;
             document.getElementById('accessibleFeaturesDescription').textContent = 
                 `${percentage}% - ${score} out of 5 accessible features found`;
             
             let detailsHtml = '';
             
-            // Show found features
             if (accessibleFeatures.features && accessibleFeatures.features.length > 0) {
                 detailsHtml += '<div class="accessible-features-list">';
                 accessibleFeatures.features.forEach(feature => {
                     detailsHtml += `<span class="accessible-feature-item">✓ ${feature}</span>`;
                 });
                 detailsHtml += '</div>';
-                console.log(`✅ Displaying ${accessibleFeatures.features.length} accessible features`);
             } else {
                 detailsHtml += '<div class="no-features-found">No accessible features detected in property description</div>';
-                console.log('ℹ️ No accessible features found to display');
             }
             
-            // Show scoring criteria
             detailsHtml += `
                 <div class="accessibility-criteria">
                     <h4>Scoring Criteria (1 point each):</h4>
@@ -674,10 +637,8 @@
             `;
             
             document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
-            console.log('✅ Accessible features display updated successfully');
         }
 
-        // Allow Enter key to trigger analysis
         document.getElementById('propertyUrl').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 analyzeProperty();
