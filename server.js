@@ -169,6 +169,7 @@ async function findNearestGPs(lat, lng) {
             const gps = response.data.places
                 .filter(place => {
                     const name = place.displayName?.text?.toLowerCase() || '';
+                    const address = (place.formattedAddress || '').toLowerCase();
                     const types = place.types || [];
                     const businessStatus = place.businessStatus;
                     
