@@ -70,7 +70,8 @@ function calculateAccessibleFeaturesScore(propertyData) {
     const description = (propertyData.description || '').toLowerCase();
     const title = (propertyData.title || '').toLowerCase();
     const propertyFeatures = (propertyData.features || []).join(' ').toLowerCase();
-    const fullText = `${title} ${description} ${propertyFeatures}`;
+    const propertyFeatures = (features && features.length > 0) ? features : [];
+    const fullText = `${title} ${description} ${propertyFeatures.join(' ')}`.toLowerCase();
     
     console.log('🏠 Analyzing accessible features for property...');
     console.log('📝 Full text being analyzed (first 500 chars):', fullText.substring(0, 500));
@@ -1031,7 +1032,7 @@ async function scrapeRightmoveProperty(url) {
                         try {
                             console.log(`👁️ Enhanced Vision API call for: ${imageUrl.substring(0, 100)}...`);
                             
-                            const response = await axios.post('https://api.anthropic.com/v1/messages', {
+                            const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
                                 model: 'claude-3-5-sonnet-20241022',
                                 max_tokens: 500,
                                 messages: [{
@@ -1076,7 +1077,7 @@ Focus on the exact arrow tip position relative to the letter bands.`
                                 timeout: 15000
                             });
                             
-                            const text = response.data.content[0].text;
+                            const text = visionResponse.data.content[0].text;
                             console.log('🔍 Enhanced Vision API response:', text);
                             
                             const ratingMatch = text.match(/Rating:\s*([A-G])/i);
