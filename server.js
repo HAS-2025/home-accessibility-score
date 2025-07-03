@@ -974,14 +974,12 @@ async function scrapeRightmoveProperty(url) {
         
         // Try to find the location heading above the map
         const locationSelectors = [
-            'h2:contains("East Street")', // Direct match if possible
-            'h2[class*="PropertyMapContainer"]', // Above map container
-            'h2 + div[class*="map"], h2 + div[class*="Map"]', // H2 followed by map div
-            'h2', // General H2 elements
-            '[class*="location-title"]',
-            '[class*="property-location"]',
-            'h1 + h2', // H2 that follows H1
-            'h2:last-of-type' // Last H2 on page (often the location)
+            'h2', // Start with all H2 elements
+            'h1', // Also try H1 elements
+            '[class*="location"]', // Any element with "location" in class
+            '[class*="address"]', // Any element with "address" in class
+            '.property-title', // Common class name
+            '.PropertyTitle' // Another common class name
         ];
         
         for (const selector of locationSelectors) {
@@ -996,13 +994,16 @@ async function scrapeRightmoveProperty(url) {
                     !locationText.includes('£') &&
                     !locationText.includes('bedroom') &&
                     !locationText.includes('bathroom') &&
+                    !locationText.includes('Property') &&
+                    !locationText.includes('for sale') &&
                     (locationText.includes('Street') || 
                      locationText.includes('Road') || 
                      locationText.includes('Avenue') || 
                      locationText.includes('Lane') || 
                      locationText.includes('Close') ||
-                     locationText.includes(',') ||
-                     /^[A-Za-z\s,]+$/.test(locationText))) {
+                     locationText.includes('Drive') ||
+                     locationText.includes('Place') ||
+                     locationText.includes(','))) {
                     
                     location = locationText;
                     console.log('Found location:', location);
@@ -1028,7 +1029,15 @@ async function scrapeRightmoveProperty(url) {
                 }
             }
         }
-        
+        // Final fallback: Look for any text that matches "Street, Area" pattern
+        if (!location) {
+            const allText = $('body').text();
+            const locationMatch = allText.match(/([A-Za-z\s]+ (?:Street|Road|Avenue|Lane|Close|Drive|Place),\s*[A-Za-z\s]+)/g);
+            if (locationMatch && locationMatch.length > 0) {
+                location = locationMatch[0];
+                console.log('Found location via pattern match:', location);
+            }
+        }
         // Clean up location if found
         if (location) {
             location = location.replace(/^[,\s]+|[,\s]+$/g, ''); // Remove leading/trailing commas and spaces
