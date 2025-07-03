@@ -265,6 +265,13 @@
             font-weight: 600;
             color: #1e40af;
         }
+        
+        .gp-address {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 0.3rem;
+            line-height: 1.4;
+        }
 
         .gp-time {
             color: #059669;
@@ -584,30 +591,31 @@
 }
 
         function displayGPProximity(gp) {
-            document.getElementById('gpScore').textContent = gp.rating;
-            document.getElementById('gpScore').className = `score-value ${gp.rating.toLowerCase()}`;
-            document.getElementById('gpDescription').textContent = gp.details;
-            
-            let detailsHtml = '';
-            if (gp.nearestGP) {
-                detailsHtml += `
-                    <div class="gp-info">
-                        <div class="gp-name">📍 ${gp.nearestGP}</div>
-                        ${gp.walkingTime ? `<div class="gp-time">🚶 ${gp.walkingTime} walk (${gp.distance})</div>` : ''}
-                    </div>
-                `;
-                
-                if (gp.warnings && gp.warnings.length > 0) {
-                    detailsHtml += '<div class="route-warnings">';
-                    gp.warnings.forEach(warning => {
-                        detailsHtml += `<div class="warning">⚠️ ${warning}</div>`;
-                    });
-                    detailsHtml += '</div>';
-                }
-            }
-            
-            document.getElementById('gpDetails').innerHTML = detailsHtml;
+    document.getElementById('gpScore').textContent = gp.rating;
+    document.getElementById('gpScore').className = `score-value ${gp.rating.toLowerCase()}`;
+    document.getElementById('gpDescription').textContent = gp.details;
+    
+    let detailsHtml = '';
+    if (gp.nearestGP) {
+        detailsHtml += `
+            <div class="gp-info">
+                <div class="gp-name">🏥 ${gp.nearestGP}</div>
+                <div class="gp-address">📍 ${gp.address || 'Address not available'}</div>
+                ${gp.walkingTime ? `<div class="gp-time">🚶 ${gp.walkingTime} walk (${gp.distance})</div>` : ''}
+            </div>
+        `;
+        
+        if (gp.warnings && gp.warnings.length > 0) {
+            detailsHtml += '<div class="route-warnings">';
+            gp.warnings.forEach(warning => {
+                detailsHtml += `<div class="warning">⚠️ ${warning}</div>`;
+            });
+            detailsHtml += '</div>';
         }
+    }
+    
+    document.getElementById('gpDetails').innerHTML = detailsHtml;
+}
 
         function displayEPCRating(epc) {
             document.getElementById('epcScore').textContent = epc.rating;
