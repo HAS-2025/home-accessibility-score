@@ -643,24 +643,17 @@
             if (score >= 4) ratingText = 'Excellent';
             else if (score >= 3) ratingText = 'Good';
             else if (score >= 2) ratingText = 'Fair';
-
+            
             document.getElementById('accessibleFeaturesScore').textContent = `${ratingText} - ${score}/5`;
             
             let scoreClass = 'poor';
-            const score = accessibleFeatures.score || 0;
             if (score >= 4) scoreClass = 'excellent';
             else if (score >= 3) scoreClass = 'good';
             else if (score >= 2) scoreClass = 'fair';
             
             document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
-            
-            let ratingText = 'Poor';
-            if (score >= 4) ratingText = 'Excellent';
-            else if (score >= 3) ratingText = 'Good';
-            else if (score >= 2) ratingText = 'Fair';
-
-            document.getElementById('accessibleFeaturesScore').textContent = `${ratingText} - ${score}/5`;
             document.getElementById('accessibleFeaturesDescription').textContent = '';
+            
             
             let detailsHtml = '<div class="accessible-features-list">';
 
