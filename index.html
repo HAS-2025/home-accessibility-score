@@ -157,47 +157,32 @@
             margin-bottom: 2rem;
         }
 
-        .star-rating {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-
         .star {
             color: #ddd;
             margin: 0 0.2rem;
         }
-
+        
         .star.filled {
             color: #ffd700;
         }
         
-        .quarter-star {
+        .partial-star {
             position: relative;
             display: inline-block;
-            color: #ddd !important;
+            margin: 0 0.2rem;
         }
         
-        .quarter-star::before {
-            content: "★";
+        .star-fill {
             position: absolute;
+            top: 0;
             left: 0;
             color: #ffd700;
             overflow: hidden;
-            clip-path: polygon(0 0, var(--fill-width, 50%) 0, var(--fill-width, 50%) 100%, 0% 100%);
         }
         
-        .quarter-star[data-fill="25"] {
-            --fill-width: 25%;
+        .star-empty {
+            color: #ddd;
         }
-        
-        .quarter-star[data-fill="50"] {
-            --fill-width: 50%;
-        }
-        
-        .quarter-star[data-fill="75"] {
-            --fill-width: 75%;
-        }
-
         .detailed-scores {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -565,7 +550,7 @@
             document.getElementById('summaryText').textContent = analysis.summary;
         }
 
-        function displayStarRating(score) {
+       function displayStarRating(score) {
     const starContainer = document.getElementById('starRating');
     let starsHtml = '';
     
@@ -577,13 +562,13 @@
             starsHtml += '<span class="star filled">★</span>';
         } else if (starValue >= 0.75) {
             // Three-quarter star
-            starsHtml += '<span class="star quarter-star" data-fill="75">★</span>';
+            starsHtml += '<span class="star partial-star"><span class="star-fill" style="width: 75%;">★</span><span class="star-empty">☆</span></span>';
         } else if (starValue >= 0.5) {
-            // Half star
-            starsHtml += '<span class="star quarter-star" data-fill="50">★</span>';
+            // Half star  
+            starsHtml += '<span class="star partial-star"><span class="star-fill" style="width: 50%;">★</span><span class="star-empty">☆</span></span>';
         } else if (starValue >= 0.25) {
             // Quarter star
-            starsHtml += '<span class="star quarter-star" data-fill="25">★</span>';
+            starsHtml += '<span class="star partial-star"><span class="star-fill" style="width: 25%;">★</span><span class="star-empty">☆</span></span>';
         } else {
             // Empty star
             starsHtml += '<span class="star">☆</span>';
