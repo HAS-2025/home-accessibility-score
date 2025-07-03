@@ -170,6 +170,31 @@
         .star.filled {
             color: #ffd700;
         }
+        .quarter-star {
+        position: relative;
+        display: inline-block;
+        color: #ddd !important;
+        }
+        
+        .quarter-star::before {
+            content: "★";
+            position: absolute;
+            left: 0;
+            color: #ffd700;
+            overflow: hidden;
+        }
+        
+        .quarter-star[data-fill="25"]::before {
+            width: 25%;
+        }
+        
+        .quarter-star[data-fill="50"]::before {
+            width: 50%;
+        }
+        
+        .quarter-star[data-fill="75"]::before {
+            width: 75%;
+        }
 
         .detailed-scores {
             display: grid;
@@ -539,22 +564,32 @@
         }
 
         function displayStarRating(score) {
-            const starContainer = document.getElementById('starRating');
-            const fullStars = Math.floor(score);
-            const hasHalfStar = score % 1 >= 0.5;
-            
-            let starsHtml = '';
-            for (let i = 1; i <= 5; i++) {
-                if (i <= fullStars) {
-                    starsHtml += '<span class="star filled">★</span>';
-                } else if (i === fullStars + 1 && hasHalfStar) {
-                    starsHtml += '<span class="star filled">☆</span>';
-                } else {
-                    starsHtml += '<span class="star">☆</span>';
-                }
-            }
-            starContainer.innerHTML = starsHtml;
+    const starContainer = document.getElementById('starRating');
+    let starsHtml = '';
+    
+    for (let i = 1; i <= 5; i++) {
+        const starValue = Math.min(1, Math.max(0, score - (i - 1)));
+        
+        if (starValue >= 1) {
+            // Full star
+            starsHtml += '<span class="star filled">★</span>';
+        } else if (starValue >= 0.75) {
+            // Three-quarter star
+            starsHtml += '<span class="star quarter-star" data-fill="75">★</span>';
+        } else if (starValue >= 0.5) {
+            // Half star
+            starsHtml += '<span class="star quarter-star" data-fill="50">★</span>';
+        } else if (starValue >= 0.25) {
+            // Quarter star
+            starsHtml += '<span class="star quarter-star" data-fill="25">★</span>';
+        } else {
+            // Empty star
+            starsHtml += '<span class="star">☆</span>';
         }
+    }
+    
+    starContainer.innerHTML = starsHtml;
+}
 
         function displayGPProximity(gp) {
             document.getElementById('gpScore').textContent = gp.rating;
