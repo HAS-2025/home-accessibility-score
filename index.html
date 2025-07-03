@@ -591,6 +591,8 @@
 }
 
         function displayGPProximity(gp) {
+    console.log('GP data structure:', gp); // ADD THIS DEBUG LINE
+    
     document.getElementById('gpScore').textContent = gp.rating;
     document.getElementById('gpScore').className = `score-value ${gp.rating.toLowerCase()}`;
     document.getElementById('gpDescription').textContent = gp.details;
