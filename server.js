@@ -1459,7 +1459,7 @@ async function analyzePropertyAccessibility(property) {
     const accessibleFeatures = calculateAccessibleFeaturesScore(property);
     
     const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score) / 3;
-    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, title, property.epcRating);
+    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, property.title, property.epcRating);
     return {
         gpProximity: {
             score: gpProximity.score || 0,
