@@ -969,6 +969,72 @@ async function scrapeRightmoveProperty(url) {
         const titleMatch = fullTitle.match(/(.+?) for sale/i);
         const title = titleMatch ? titleMatch[1].trim() : fullTitle.split('open-rightmove')[0].trim();
 
+        // Extract location (street and area) - appears above the map
+        let location = '';
+        
+        // Try to find the location heading above the map
+        const locationSelectors = [
+            'h2:contains("East Street")', // Direct match if possible
+            'h2[class*="PropertyMapContainer"]', // Above map container
+            'h2 + div[class*="map"], h2 + div[class*="Map"]', // H2 followed by map div
+            'h2', // General H2 elements
+            '[class*="location-title"]',
+            '[class*="property-location"]',
+            'h1 + h2', // H2 that follows H1
+            'h2:last-of-type' // Last H2 on page (often the location)
+        ];
+        
+        for (const selector of locationSelectors) {
+            const locationElements = $(selector);
+            locationElements.each((i, el) => {
+                const locationText = $(el).text().trim();
+                
+                // Check if this looks like a location (has street/area pattern)
+                if (locationText && 
+                    locationText.length > 5 && 
+                    locationText.length < 50 && 
+                    !locationText.includes('£') &&
+                    !locationText.includes('bedroom') &&
+                    !locationText.includes('bathroom') &&
+                    (locationText.includes('Street') || 
+                     locationText.includes('Road') || 
+                     locationText.includes('Avenue') || 
+                     locationText.includes('Lane') || 
+                     locationText.includes('Close') ||
+                     locationText.includes(',') ||
+                     /^[A-Za-z\s,]+$/.test(locationText))) {
+                    
+                    location = locationText;
+                    console.log('Found location:', location);
+                    return false; // Break out of loop
+                }
+            });
+            
+            if (location) break;
+        });
+        
+        // Alternative: Look for location in the immediate vicinity of map-related elements
+        if (!location) {
+            const mapContainer = $('[class*="map"], [class*="Map"], iframe[src*="maps"]').first();
+            if (mapContainer.length) {
+                // Look for headings before the map
+                const prevElements = mapContainer.prevAll('h1, h2, h3').first();
+                if (prevElements.length) {
+                    const locationText = prevElements.text().trim();
+                    if (locationText && locationText.length > 5 && locationText.length < 50) {
+                        location = locationText;
+                        console.log('Found location near map:', location);
+                    }
+                }
+            }
+        }
+        
+        // Clean up location if found
+        if (location) {
+            location = location.replace(/^[,\s]+|[,\s]+$/g, ''); // Remove leading/trailing commas and spaces
+            console.log('Cleaned location:', location);
+        }
+
         const priceMatch = pageText.match(/£[\d,]+/g);
         const price = priceMatch ? priceMatch[0] : 'Price not available';
 
@@ -1341,6 +1407,7 @@ Be extremely careful about A vs B distinction.`
         return {
             id: propertyId,
             title: title,
+            location: location,
             price: price,
             description: description,
             features: features,
@@ -1459,7 +1526,7 @@ async function analyzePropertyAccessibility(property) {
     const accessibleFeatures = calculateAccessibleFeaturesScore(property);
     
     const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score) / 3;
-    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, property.title, property.epcRating);
+    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, property.title, property.epcRating, property.location);
     return {
         gpProximity: {
             score: gpProximity.score || 0,
@@ -1515,7 +1582,11 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     }
     
     // Overall assessment with property details
-    summary += `This ${propertyDescription} `;
+    summary += `This ${propertyDescription}`;
+    if (location) {
+        summary += ` in ${location}`;
+    }
+    summary += ` `;
     
     if (overallScore >= 4) {
         summary += "offers excellent accessibility features for older adults. ";
