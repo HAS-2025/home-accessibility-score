@@ -1452,7 +1452,7 @@ async function analyzePropertyAccessibility(property) {
     const accessibleFeatures = calculateAccessibleFeaturesScore(property);
     
     const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score) / 3;
-    const summary = generateComprehensiveSummary(propertyData, gpProximity, epcAnalysis, accessibleFeatures, overallScore);
+    const summary = generateComprehensiveSummary(property.title, gpProximity, epcAnalysis, accessibleFeatures, overallScore);
 
     return {
         gpProximity: {
@@ -1489,13 +1489,19 @@ async function analyzePropertyAccessibility(property) {
 }
 
 // ENHANCED: Generate detailed structured summary
-function generateComprehensiveSummary(propertyData, gpProximity, epcAnalysis, accessibleFeatures, overallScore) {
+function generateComprehensiveSummary(propertyTitle, gpProximity, epcAnalysis, accessibleFeatures, overallScore) {
     let summary = "";
     
     // Get property details
-    const bedrooms = propertyData.bedrooms || "bedroom";
-    const propertyType = propertyData.propertyType || "property";
-    const postcode = getPostcodeFromCoordinates(propertyData.coordinates); // We'll need to implement this
+    const propertyDetails = propertyTitle.toLowerCase();
+    let propertyDescription = "property";
+    
+    if (propertyDetails.includes("bedroom")) {
+        const bedroomMatch = propertyDetails.match(/(\d+)\s*bedroom/);
+        if (bedroomMatch) {
+            propertyDescription = `${bedroomMatch[1]} bedroom property`;
+        }
+    }
     
     // Opening line with property details
     summary += `This ${bedrooms} ${propertyType}`;
