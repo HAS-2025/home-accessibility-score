@@ -648,7 +648,12 @@
             
             document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
             
-            document.getElementById('accessibleFeaturesDescription').textContent = '';
+            let ratingText = 'Poor';
+            if (score >= 4) ratingText = 'Excellent';
+            else if (score >= 3) ratingText = 'Good';
+            else if (score >= 2) ratingText = 'Fair';
+
+            document.getElementById('accessibleFeaturesDescription').textContent = `${ratingText} - ${score}/5`;
             
             let detailsHtml = '<div class="accessible-features-list">';
 
