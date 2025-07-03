@@ -1489,33 +1489,18 @@ async function analyzePropertyAccessibility(property) {
 }
 
 // ENHANCED: Generate detailed structured summary
-function generateComprehensiveSummary(propertyTitle, gpProximity, epcAnalysis, accessibleFeatures, overallScore) {
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeaturesScore, overallScore) {
     let summary = "";
     
-    // Get property details
-    const propertyDetails = propertyTitle.toLowerCase();
-    let propertyDescription = "property";
-    
-    if (propertyDetails.includes("bedroom")) {
-        const bedroomMatch = propertyDetails.match(/(\d+)\s*bedroom/);
-        if (bedroomMatch) {
-            propertyDescription = `${bedroomMatch[1]} bedroom property`;
-        }
-    }
-    
-    // Opening line with property details
-    summary += `This ${bedrooms} ${propertyType}`;
-    if (postcode) summary += ` in ${postcode}`;
-    
-    // Overall assessment
+    // Overall assessment based on overall score
     if (overallScore >= 4) {
-        summary += " offers excellent accessibility features for older adults. ";
+        summary += "This property offers excellent accessibility features for older adults. ";
     } else if (overallScore >= 3) {
-        summary += " offers good accessibility features for older adults. ";
+        summary += "This property offers good accessibility features for older adults. ";
     } else if (overallScore >= 2) {
-        summary += " has mixed accessibility features for older adults. ";
+        summary += "This property has mixed accessibility features for older adults. ";
     } else {
-        summary += " presents accessibility challenges for older adults. ";
+        summary += "This property presents accessibility challenges for older adults. ";
     }
     
     // GP Proximity details
@@ -1538,52 +1523,19 @@ function generateComprehensiveSummary(propertyTitle, gpProximity, epcAnalysis, a
     summary += ". ";
     
     // EPC Rating details
-    const epcRating = getScoreRating(epcAnalysis.score);
+    const epcRating = getScoreRating(epcScore);
     summary += `The energy efficiency is ${epcRating.toLowerCase()}`;
-    
-    if (epcAnalysis.actualRating) {
-        summary += ` with a ${epcAnalysis.actualRating} rating`;
-    }
     summary += ". ";
     
     // Accessible Features - detailed breakdown
-    const accessibleScore = accessibleFeatures.score || 0;
-    const accessibleRating = getScoreRating(accessibleScore);
+    const accessibleRating = getScoreRating(accessibleFeaturesScore);
     
-    if (accessibleScore >= 4) {
-        summary += "The property excels in accessible features. ";
-    } else if (accessibleScore >= 3) {
-        summary += "The property has good accessible features. ";
+    if (accessibleFeaturesScore >= 4) {
+        summary += "The property excels in accessible features.";
+    } else if (accessibleFeaturesScore >= 3) {
+        summary += "The property has good accessible features.";
     } else {
-        summary += "The main concerns for this property are limited accessible features. ";
-    }
-    
-    // List specific missing features
-    const missingFeatures = [];
-    const foundFeatures = accessibleFeatures.features || [];
-    
-    const allFeatures = {
-        'lateral': 'lateral living',
-        'bedroom': 'downstairs bedroom',
-        'bathroom': 'downstairs bathroom',
-        'access': 'level access to the property',
-        'parking': 'private off-street parking'
-    };
-    
-    Object.entries(allFeatures).forEach(([key, feature]) => {
-        const isFound = foundFeatures.some(found => 
-            found.toLowerCase().includes(key) || 
-            found.toLowerCase().includes(feature.split(' ')[0])
-        );
-        if (!isFound) {
-            missingFeatures.push(feature);
-        }
-    });
-    
-    if (missingFeatures.length > 0) {
-        if (accessibleScore < 3) {
-            summary += `Specifically, there is no ${missingFeatures.join(', no ')}.`;
-        }
+        summary += "The main concerns for this property are limited accessible features.";
     }
     
     return summary;
