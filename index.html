@@ -648,34 +648,27 @@
             
             document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
             
-            const percentage = accessibleFeatures.percentage || 0;
-            document.getElementById('accessibleFeaturesDescription').textContent = 
-                `${percentage}% - ${score} out of 5 accessible features found`;
+            document.getElementById('accessibleFeaturesDescription').textContent = '';
             
-            let detailsHtml = '';
+            let detailsHtml = '<div class="accessible-features-list">';
+
+            const allFeatures = [
+                'Lateral living/single floor (ground level only)',
+                'Downstairs bedroom',
+                'Downstairs bathroom/WC',
+                'Level/ramp access to property',
+                'Off-street or private parking'
+            ];
             
-            if (accessibleFeatures.features && accessibleFeatures.features.length > 0) {
-                detailsHtml += '<div class="accessible-features-list">';
-                accessibleFeatures.features.forEach(feature => {
-                    detailsHtml += `<span class="accessible-feature-item">✓ ${feature}</span>`;
-                });
-                detailsHtml += '</div>';
-            } else {
-                detailsHtml += '<div class="no-features-found">No accessible features detected in property description</div>';
-            }
+            const foundFeatures = accessibleFeatures.features || [];
             
-            detailsHtml += `
-                <div class="accessibility-criteria">
-                    <h4>Scoring Criteria (1 point each):</h4>
-                    <ul>
-                        <li>Lateral living/single floor (ground level only)</li>
-                        <li>Downstairs bedroom</li>
-                        <li>Downstairs bathroom/WC</li>
-                        <li>Level/ramp access to property</li>
-                        <li>Off-street or private parking</li>
-                    </ul>
-                </div>
-            `;
+            allFeatures.forEach(feature => {
+                const isFound = foundFeatures.some(found => found.toLowerCase().includes(feature.toLowerCase().split('/')[0].split(' ')[0]));
+                const icon = isFound ? '✅' : '❌';
+                detailsHtml += `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${feature}</div>`;
+            });
+            
+            detailsHtml += '</div>';
             
             document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
         }
