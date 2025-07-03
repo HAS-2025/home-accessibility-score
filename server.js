@@ -1,3 +1,4 @@
+
 // server.js - Updated with Accessible Features scoring
 const express = require('express');
 const cors = require('cors');
@@ -1451,10 +1452,10 @@ async function analyzePropertyAccessibility(property) {
     return {
         gpProximity: {
             score: gpProximity.score || 0,
+            address: gpProximity.address || null,
             rating: getScoreRating(gpProximity.score || 0),
             details: gpProximity.accessibilityNotes || 'No details available',
             nearestGP: gpProximity.nearestGP || null,
-            address: gpProximity.address || null,  // ← ADD THIS LINE
             walkingTime: gpProximity.walkingTime || null,
             distance: gpProximity.distance || null,
             warnings: gpProximity.warnings || [],
