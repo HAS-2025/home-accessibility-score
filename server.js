@@ -1571,7 +1571,7 @@ async function analyzePropertyAccessibility(property) {
 }
 
 // ENHANCED: Generate detailed structured summary
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, title, epcRating) {
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, title, epcRating, location) {
     let summary = "";
     
     const accessibleFeaturesScore = accessibleFeatures.score || 0;
