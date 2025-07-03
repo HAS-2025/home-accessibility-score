@@ -1011,6 +1011,7 @@ async function scrapeRightmoveProperty(url) {
             });
             
             if (location) break;
+        }
         
         // Alternative: Look for location in the immediate vicinity of map-related elements
         if (!location) {
