@@ -171,28 +171,33 @@
             color: #ffd700;
         }
         .quarter-star {
-        position: relative;
-        display: inline-block;
-        color: #ddd !important;
+            position: relative;
+            display: inline-block;
         }
         
         .quarter-star::before {
+            content: "☆";
+            color: #ddd;
+        }
+        
+        .quarter-star::after {
             content: "★";
             position: absolute;
             left: 0;
+            top: 0;
             color: #ffd700;
             overflow: hidden;
         }
         
-        .quarter-star[data-fill="25"]::before {
+        .quarter-star[data-fill="25"]::after {
             width: 25%;
         }
         
-        .quarter-star[data-fill="50"]::before {
+        .quarter-star[data-fill="50"]::after {
             width: 50%;
         }
         
-        .quarter-star[data-fill="75"]::before {
+        .quarter-star[data-fill="75"]::after {
             width: 75%;
         }
 
