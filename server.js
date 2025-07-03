@@ -1675,7 +1675,7 @@ async function validateAPIKey() {
 }
 
 // Start server
-app.listen(PORT, async () => {
+app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🏠 Home Accessibility Score API running on port ${PORT}`);
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log('🎯 Updated with Accessible Features scoring system');
