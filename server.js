@@ -530,6 +530,12 @@ function calculateStraightLineDistance(lat1, lng1, lat2, lng2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
+// Helper function to get postcode from coordinates
+function getPostcodeFromCoordinates(coordinates) {
+    // This would require a reverse geocoding API call
+    // For now, return null - we can implement this separately
+    return null;
+}
 
 // Broader search using multiple place types
 async function findGPsBroadSearch(lat, lng) {
@@ -1482,46 +1488,99 @@ async function analyzePropertyAccessibility(property) {
     };
 }
 
-// UPDATED: Generate comprehensive summary with accessible features
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeaturesScore, overallScore) {
-    const summaryParts = [];
+// ENHANCED: Generate detailed structured summary
+function generateComprehensiveSummary(propertyData, gpProximity, epcAnalysis, accessibleFeatures, overallScore) {
+    let summary = "";
     
+    // Get property details
+    const bedrooms = propertyData.bedrooms || "bedroom";
+    const propertyType = propertyData.propertyType || "property";
+    const postcode = getPostcodeFromCoordinates(propertyData.coordinates); // We'll need to implement this
+    
+    // Opening line with property details
+    summary += `This ${bedrooms} ${propertyType}`;
+    if (postcode) summary += ` in ${postcode}`;
+    
+    // Overall assessment
     if (overallScore >= 4) {
-        summaryParts.push("This property shows excellent suitability for older adults");
+        summary += " offers excellent accessibility features for older adults. ";
     } else if (overallScore >= 3) {
-        summaryParts.push("This property offers good accessibility features for older adults");
+        summary += " offers good accessibility features for older adults. ";
     } else if (overallScore >= 2) {
-        summaryParts.push("This property has some accessibility considerations for older adults");
+        summary += " has mixed accessibility features for older adults. ";
     } else {
-        summaryParts.push("This property may present accessibility challenges for older adults");
+        summary += " presents accessibility challenges for older adults. ";
     }
     
-    const strengths = [];
-    if (gpProximity.score >= 4) strengths.push("excellent GP proximity");
-    if (epcScore >= 4) strengths.push("good energy efficiency");
-    if (accessibleFeaturesScore >= 4) strengths.push("excellent accessible features");
+    // GP Proximity details
+    const gpRating = getScoreRating(gpProximity.score);
+    summary += `The GP proximity is ${gpRating.toLowerCase()}`;
     
-    if (strengths.length > 0) {
-        summaryParts.push(`with ${strengths.join(' and ')}`);
+    if (gpProximity.score >= 4) {
+        summary += " as the route appears short and pedestrian-friendly";
+    } else if (gpProximity.score >= 3) {
+        summary += " with a reasonable walking distance";
+    } else if (gpProximity.score >= 2) {
+        summary += " though the walking distance may be challenging for some";
+    } else {
+        summary += " due to significant walking distance or accessibility barriers";
     }
     
-    const concerns = [];
-    if (gpProximity.score <= 2) concerns.push("limited GP access");
-    if (epcScore <= 2) concerns.push("poor energy efficiency");
-    if (accessibleFeaturesScore <= 2) concerns.push("limited accessible features");
+    if (gpProximity.nearestGP) {
+        summary += ` to ${gpProximity.nearestGP}`;
+    }
+    summary += ". ";
     
-    if (concerns.length > 0) {
-        summaryParts.push(`Main concerns include ${concerns.join(' and ')}`);
+    // EPC Rating details
+    const epcRating = getScoreRating(epcAnalysis.score);
+    summary += `The energy efficiency is ${epcRating.toLowerCase()}`;
+    
+    if (epcAnalysis.actualRating) {
+        summary += ` with a ${epcAnalysis.actualRating} rating`;
+    }
+    summary += ". ";
+    
+    // Accessible Features - detailed breakdown
+    const accessibleScore = accessibleFeatures.score || 0;
+    const accessibleRating = getScoreRating(accessibleScore);
+    
+    if (accessibleScore >= 4) {
+        summary += "The property excels in accessible features. ";
+    } else if (accessibleScore >= 3) {
+        summary += "The property has good accessible features. ";
+    } else {
+        summary += "The main concerns for this property are limited accessible features. ";
     }
     
-    return summaryParts.join('. ') + '.';
-}
-
-function getScoreRating(score) {
-    if (score >= 4.5) return 'Excellent';
-    if (score >= 3.5) return 'Good';
-    if (score >= 2.5) return 'Fair';
-    return 'Poor';
+    // List specific missing features
+    const missingFeatures = [];
+    const foundFeatures = accessibleFeatures.features || [];
+    
+    const allFeatures = {
+        'lateral': 'lateral living',
+        'bedroom': 'downstairs bedroom',
+        'bathroom': 'downstairs bathroom',
+        'access': 'level access to the property',
+        'parking': 'private off-street parking'
+    };
+    
+    Object.entries(allFeatures).forEach(([key, feature]) => {
+        const isFound = foundFeatures.some(found => 
+            found.toLowerCase().includes(key) || 
+            found.toLowerCase().includes(feature.split(' ')[0])
+        );
+        if (!isFound) {
+            missingFeatures.push(feature);
+        }
+    });
+    
+    if (missingFeatures.length > 0) {
+        if (accessibleScore < 3) {
+            summary += `Specifically, there is no ${missingFeatures.join(', no ')}.`;
+        }
+    }
+    
+    return summary;
 }
 
 // Routes
