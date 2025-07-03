@@ -638,7 +638,13 @@
                 return;
             }
             
-            document.getElementById('accessibleFeaturesScore').textContent = `${accessibleFeatures.score || 0}/5`;
+            let ratingText = 'Poor';
+            const score = accessibleFeatures.score || 0;
+            if (score >= 4) ratingText = 'Excellent';
+            else if (score >= 3) ratingText = 'Good';
+            else if (score >= 2) ratingText = 'Fair';
+
+            document.getElementById('accessibleFeaturesScore').textContent = `${ratingText} - ${score}/5`;
             
             let scoreClass = 'poor';
             const score = accessibleFeatures.score || 0;
@@ -653,7 +659,8 @@
             else if (score >= 3) ratingText = 'Good';
             else if (score >= 2) ratingText = 'Fair';
 
-            document.getElementById('accessibleFeaturesDescription').textContent = `${ratingText} - ${score}/5`;
+            document.getElementById('accessibleFeaturesScore').textContent = `${ratingText} - ${score}/5`;
+            document.getElementById('accessibleFeaturesDescription').textContent = '';
             
             let detailsHtml = '<div class="accessible-features-list">';
 
