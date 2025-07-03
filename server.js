@@ -1459,7 +1459,7 @@ async function analyzePropertyAccessibility(property) {
     const accessibleFeatures = calculateAccessibleFeaturesScore(property);
     
     const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score) / 3;
-    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeaturesScore, overallScore, title, property.epcRating, accessibleFeatures);
+    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, title, property.epcRating);
     return {
         gpProximity: {
             score: gpProximity.score || 0,
@@ -1495,8 +1495,10 @@ async function analyzePropertyAccessibility(property) {
 }
 
 // ENHANCED: Generate detailed structured summary
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeaturesScore, overallScore, title, epcRating, accessibleFeatures) {
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, title, epcRating) {
     let summary = "";
+    
+    const accessibleFeaturesScore = accessibleFeatures.score || 0;
     
     // Extract property details from title
     let propertyDescription = "property";
