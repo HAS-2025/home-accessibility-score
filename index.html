@@ -130,26 +130,7 @@
             display: block;
         }
 
-        .property-info {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-
-        .property-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            color: #333;
-        }
-
-        .property-price {
-            font-size: 1.2rem;
-            color: #667eea;
-            font-weight: 600;
-        }
+        /* REMOVED: .property-info styles - this box is being eliminated */
 
         .score-overview {
             background: white;
@@ -359,6 +340,27 @@
             margin-bottom: 1rem;
         }
 
+        /* NEW: Property info in summary */
+        .property-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .property-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .property-price {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 600;
+        }
+
         .summary-text {
             font-size: 1.1rem;
             line-height: 1.7;
@@ -423,10 +425,7 @@
         </div>
 
         <div class="results" id="results">
-            <div class="property-info" id="propertyInfo">
-                <div class="property-title" id="propertyTitle"></div>
-                <div class="property-price" id="propertyPrice"></div>
-            </div>
+            <!-- REMOVED: Property info box - moved to summary section -->
 
             <div class="score-overview">
                 <div class="overall-score" id="overallScore"></div>
@@ -467,6 +466,12 @@
             </div>
 
             <div class="summary-section">
+                <!-- NEW: Property info moved here -->
+                <div class="property-header">
+                    <div class="property-title" id="propertyTitle"></div>
+                    <div class="property-price" id="propertyPrice"></div>
+                </div>
+                
                 <div class="summary-title">📋 Summary & Recommendations</div>
                 <div class="summary-text" id="summaryText"></div>
             </div>
@@ -521,6 +526,7 @@
             document.getElementById('loading').classList.remove('show');
             document.getElementById('results').classList.add('show');
 
+            // Property info now in summary section
             document.getElementById('propertyTitle').textContent = property.title;
             document.getElementById('propertyPrice').textContent = property.price;
             document.getElementById('overallScore').textContent = analysis.overall;
