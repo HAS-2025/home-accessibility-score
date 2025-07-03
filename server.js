@@ -1454,6 +1454,7 @@ async function analyzePropertyAccessibility(property) {
             rating: getScoreRating(gpProximity.score || 0),
             details: gpProximity.accessibilityNotes || 'No details available',
             nearestGP: gpProximity.nearestGP || null,
+            address: gpProximity.address || null,
             walkingTime: gpProximity.walkingTime || null,
             distance: gpProximity.distance || null,
             warnings: gpProximity.warnings || [],
