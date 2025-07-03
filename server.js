@@ -536,6 +536,13 @@ function getPostcodeFromCoordinates(coordinates) {
     // For now, return null - we can implement this separately
     return null;
 }
+// Helper function to get score rating text
+function getScoreRating(score) {
+    if (score >= 4.5) return 'Excellent';
+    if (score >= 3.5) return 'Good';
+    if (score >= 2.5) return 'Fair';
+    return 'Poor';
+}
 
 // Broader search using multiple place types
 async function findGPsBroadSearch(lat, lng) {
