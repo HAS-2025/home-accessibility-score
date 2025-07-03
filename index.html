@@ -170,35 +170,32 @@
         .star.filled {
             color: #ffd700;
         }
+        
         .quarter-star {
             position: relative;
             display: inline-block;
+            color: #ddd !important;
         }
         
         .quarter-star::before {
-            content: "☆";
-            color: #ddd;
-        }
-        
-        .quarter-star::after {
             content: "★";
             position: absolute;
             left: 0;
-            top: 0;
             color: #ffd700;
             overflow: hidden;
+            clip-path: polygon(0 0, var(--fill-width, 50%) 0, var(--fill-width, 50%) 100%, 0% 100%);
         }
         
-        .quarter-star[data-fill="25"]::after {
-            width: 25%;
+        .quarter-star[data-fill="25"] {
+            --fill-width: 25%;
         }
         
-        .quarter-star[data-fill="50"]::after {
-            width: 50%;
+        .quarter-star[data-fill="50"] {
+            --fill-width: 50%;
         }
         
-        .quarter-star[data-fill="75"]::after {
-            width: 75%;
+        .quarter-star[data-fill="75"] {
+            --fill-width: 75%;
         }
 
         .detailed-scores {
