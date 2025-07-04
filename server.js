@@ -37,7 +37,7 @@ function validateEPCFromDescription(visionText) {
     // Extract information from the description
     const currentMatch = visionText.match(/current rating[:\s]*([a-g])\s*(?:band\s*)?(?:with\s*score\s*)?(\d+)?/i);
     const scoreMatch = visionText.match(/(?:score|points?)[:\s]*(\d+)/i);
-    const orangeArrowMatch = visionText.match/orange arrow.*?([a-g])\s*band/i);
+    const orangeArrowMatch = visionText.match(/orange arrow.*?([a-g])\s*band/i);
     const fBandMatch = visionText.match(/([a-g])\s*band.*?(\d+)/i);
     
     // Try to extract rating from various patterns
