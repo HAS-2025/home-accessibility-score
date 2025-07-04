@@ -1447,9 +1447,17 @@ if (epcResult && epcResult.rating) {
     };
     
     console.log(`✅ Vision API result: ${epcData.rating} (score: ${epcData.score})`);
-    break;
-}
-            
+           break;
+                            }
+                        } catch (imageError) {
+                            console.log(`❌ Vision analysis failed: ${imageError.message}`);
+                            continue;
+                        }
+                    }        // ← ADD THIS: closes the for loop
+                } else {
+                    console.log('⚠️ No valid Claude API key or no EPC images found - skipping Vision API');
+                }
+            }           // ← ADD THIS: closes the if (!epcData.rating)   
             // STEP 3: Enhanced text patterns (if Vision API also failed)
             if (!epcData.rating && description && description.length > 0) {
                 console.log('🔍 Step 3: Using enhanced text pattern matching...');
