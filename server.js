@@ -1415,7 +1415,12 @@ Be extremely careful about A vs B distinction.`
             epc: epcData.rating || 'Not found',
             features: features.length
         });
-
+        
+        console.log('🏠 About to return property data...');
+        console.log('Location variable before return:', location);
+        console.log('Title:', title);
+        console.log('Price:', price);
+        
         return {
             id: propertyId,
             title: title,
