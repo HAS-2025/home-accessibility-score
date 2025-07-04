@@ -1600,13 +1600,13 @@ epcDetails = `Energy rating ${rating} - This property has ${efficiencyLevel} ene
     };
 }
 
-// ENHANCED: Generate detailed structured summary
+// ENHANCED: Generate detailed accessibility-focused summary
 function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, title, epcRating, location) {
     let summary = "";
     
     const accessibleFeaturesScore = accessibleFeatures.score || 0;
     
-    // Extract property details from title
+    // Extract property details from title (keep your existing logic)
     let propertyDescription = "property";
     if (title) {
         const titleLower = title.toLowerCase();
@@ -1620,39 +1620,62 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         }
     }
     
-    // Overall assessment with property details
+    // 1. Property introduction with overall accessibility assessment
     summary += `This ${propertyDescription}`;
     if (location) {
         summary += ` in ${location}`;
     }
-    summary += ` `;
     
-    if (overallScore >= 4) {
-        summary += "offers excellent accessibility features for older adults. ";
-    } else if (overallScore >= 3) {
-        summary += "offers good accessibility features for older adults. ";
-    } else if (overallScore >= 2) {
-        summary += "has mixed accessibility features for older adults. ";
-    } else {
-        summary += "presents accessibility challenges for older adults. ";
+    // Calculate total accessibility score for overall rating
+    const totalScore = gpProximity.score + epcScore + accessibleFeaturesScore;
+    let overallRating = "Limited";
+    if (totalScore >= 13) overallRating = "Excellent";
+    else if (totalScore >= 10) overallRating = "Good"; 
+    else if (totalScore >= 7) overallRating = "Fair";
+    
+    summary += ` offers ${overallRating.toLowerCase()} accessibility features for older adults, with an overall accessibility score of ${Math.round(totalScore)}/15 (${overallRating}). `;
+    
+    // 2. Key accessibility strengths - focus on what works well
+    if (accessibleFeaturesScore >= 3) {
+        summary += "The property's key strength is its accessible design, featuring ";
+        
+        const foundFeatures = accessibleFeatures.features || [];
+        const accessibilityHighlights = [];
+        
+        if (foundFeatures.some(f => f.toLowerCase().includes('lateral') || f.toLowerCase().includes('single floor'))) {
+            accessibilityHighlights.push("complete single-level living that eliminates stairs from daily life");
+        }
+        if (foundFeatures.some(f => f.toLowerCase().includes('bedroom'))) {
+            accessibilityHighlights.push("a downstairs bedroom for flexible sleeping arrangements");
+        }
+        if (foundFeatures.some(f => f.toLowerCase().includes('bathroom'))) {
+            accessibilityHighlights.push("downstairs bathroom facilities");
+        }
+        if (foundFeatures.some(f => f.toLowerCase().includes('parking'))) {
+            accessibilityHighlights.push("private parking that eliminates street parking challenges");
+        }
+        
+        if (accessibilityHighlights.length > 0) {
+            summary += accessibilityHighlights.join(', ') + ". ";
+        }
     }
     
-    // GP Proximity details
-    let gpRating = "poor";
+    // 3. Healthcare access from accessibility perspective
+    let gpRating = "limited";
     if (gpProximity.score >= 4.5) gpRating = "excellent";
     else if (gpProximity.score >= 3.5) gpRating = "good";
     else if (gpProximity.score >= 2.5) gpRating = "fair";
     
-    summary += `The GP proximity is ${gpRating}`;
+    summary += `For healthcare independence, the GP proximity is ${gpRating}`;
     
     if (gpProximity.score >= 4) {
-        summary += " as the route appears short and pedestrian-friendly";
+        summary += " with easy walking access that supports medical independence";
     } else if (gpProximity.score >= 3) {
-        summary += " with a reasonable walking distance";
+        summary += " with reasonable walking distance to maintain healthcare autonomy";
     } else if (gpProximity.score >= 2) {
-        summary += " though the walking distance may be challenging for some";
+        summary += ", though the walking distance may challenge those with mobility limitations";
     } else {
-        summary += " due to significant walking distance or accessibility barriers";
+        summary += " due to significant distance that may require transport assistance";
     }
     
     if (gpProximity.nearestGP) {
@@ -1660,51 +1683,59 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     }
     summary += ". ";
     
-    // EPC Rating details with letter grade
+    // 4. Accessibility considerations and limitations
+    const foundFeatures = accessibleFeatures.features || [];
+    const missingFeatures = [];
+    
+    const allFeatures = [
+        { key: 'lateral', name: 'single-level living', critical: true },
+        { key: 'bedroom', name: 'downstairs bedroom', critical: false },
+        { key: 'bathroom', name: 'downstairs bathroom/WC', critical: true },
+        { key: 'access', name: 'level access to the property', critical: true },
+        { key: 'parking', name: 'off-street parking', critical: false }
+    ];
+    
+    allFeatures.forEach(feature => {
+        const isFound = foundFeatures.some(found => 
+            found.toLowerCase().includes(feature.key) || 
+            found.toLowerCase().includes(feature.name.split(' ')[0])
+        );
+        if (!isFound) {
+            missingFeatures.push(feature);
+        }
+    });
+    
+    if (missingFeatures.length > 0) {
+        const criticalMissing = missingFeatures.filter(f => f.critical);
+        if (criticalMissing.length > 0) {
+            summary += `Important accessibility considerations include the lack of ${criticalMissing.map(f => f.name).join(' and ')}, which may limit suitability for wheelchair users or those with significant mobility challenges. `;
+        }
+    }
+    
+    // 5. Energy efficiency in context of comfort and accessibility
     let epcRatingText = "poor";
     if (epcScore >= 4.5) epcRatingText = "excellent";
     else if (epcScore >= 3.5) epcRatingText = "good";
     else if (epcScore >= 2.5) epcRatingText = "fair";
     
-    summary += `The energy efficiency is ${epcRatingText}`;
-    if (epcRating) {
-        summary += ` with a ${epcRating} rating`;
-    }
-    summary += ". ";
-    
-    // Accessible Features - detailed breakdown with specific missing features
-    if (accessibleFeaturesScore >= 4) {
-        summary += "The property excels in accessible features.";
-    } else if (accessibleFeaturesScore >= 3) {
-        summary += "The property has good accessible features.";
-    } else {
-        summary += "The main concerns for this property are limited accessible features. ";
-        
-        // List specific missing features
-        const foundFeatures = accessibleFeatures.features || [];
-        const missingFeatures = [];
-        
-        const allFeatures = [
-            { key: 'lateral', name: 'lateral living' },
-            { key: 'bedroom', name: 'downstairs bedroom' },
-            { key: 'bathroom', name: 'downstairs bathroom' },
-            { key: 'access', name: 'level access to the property' },
-            { key: 'parking', name: 'private off-street parking' }
-        ];
-        
-        allFeatures.forEach(feature => {
-            const isFound = foundFeatures.some(found => 
-                found.toLowerCase().includes(feature.key) || 
-                found.toLowerCase().includes(feature.name.split(' ')[0])
-            );
-            if (!isFound) {
-                missingFeatures.push(feature.name);
-            }
-        });
-        
-        if (missingFeatures.length > 0) {
-            summary += `Specifically, there is no ${missingFeatures.join(', no ')}.`;
+    if (epcScore < 3) {
+        summary += `The energy efficiency is ${epcRatingText}`;
+        if (epcRating) {
+            summary += ` with a ${epcRating} rating`;
         }
+        summary += ", which may result in higher heating costs that could impact comfort for temperature-sensitive residents. ";
+    }
+    
+    // 6. Final recommendation based on accessibility profile
+    summary += "**Best suited for:** ";
+    if (totalScore >= 13) {
+        summary += "Seniors across a wide range of mobility levels, particularly those planning to age in place. ";
+    } else if (totalScore >= 10) {
+        summary += "Active seniors and those with mild mobility considerations who value accessible features. ";
+    } else if (totalScore >= 7) {
+        summary += "Seniors with good mobility who can adapt to some accessibility limitations. ";
+    } else {
+        summary += "This property may require significant modifications to suit most older adults' accessibility needs. ";
     }
     
     return summary;
