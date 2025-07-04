@@ -1744,6 +1744,7 @@ app.post('/api/analyze', async (req, res) => {
                 property: {
                     title: property.title,
                     price: property.price,
+                    location: property.location,
                     url: url
                 },
                 analysis: analysis,
