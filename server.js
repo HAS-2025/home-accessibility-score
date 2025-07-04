@@ -1520,17 +1520,39 @@ async function analyzePropertyAccessibility(property) {
     if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
         if (property.epc.numericalScore && property.epc.confidence >= 80) {
             epcScore = Math.max(1, Math.min(5, Math.round((property.epc.numericalScore / 100) * 5)));
-            epcDetails = `Energy rating ${property.epc.rating} (score: ${property.epc.numericalScore}) - ${property.epc.confidence}% confidence via ${property.epc.confidence > 80 ? 'Vision API' : 'Text Search'}`;
+            // Simple description instead of technical details
+            let efficiencyLevel = 'poor';
+            const rating = property.epc.rating;
+            if (['A', 'B'].includes(rating)) efficiencyLevel = 'excellent';
+            else if (['C', 'D'].includes(rating)) efficiencyLevel = 'good';
+            else if (rating === 'E') efficiencyLevel = 'poor';
+            else if (['F', 'G'].includes(rating)) efficiencyLevel = 'very poor';
+        
+        epcDetails = `Energy rating ${rating} - This property has ${efficiencyLevel} energy efficiency and may have ${efficiencyLevel === 'excellent' ? 'lower' : 'higher'} heating costs.`;
         } else {
             const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
             epcScore = letterScores[property.epc.rating] || 3;
-            epcDetails = `Energy rating ${property.epc.rating} (${property.epc.confidence}% confidence) - ${property.epc.reason}`;
+            // Simple description instead of technical details
+            let efficiencyLevel = 'poor';
+            const rating = property.epc.rating;
+            if (['A', 'B'].includes(rating)) efficiencyLevel = 'excellent';
+            else if (['C', 'D'].includes(rating)) efficiencyLevel = 'good';
+            else if (rating === 'E') efficiencyLevel = 'poor';
+            else if (['F', 'G'].includes(rating)) efficiencyLevel = 'very poor';
+
+epcDetails = `Energy rating ${rating} - This property has ${efficiencyLevel} energy efficiency and may have ${efficiencyLevel === 'excellent' ? 'lower' : 'higher'} heating costs.`;
         }
     } else if (property.epcRating) {
         const rating = property.epcRating.toUpperCase();
         const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
         epcScore = letterScores[rating] || 3;
-        epcDetails = `Energy rating ${rating} (legacy extraction)`;
+        let efficiencyLevel = 'poor';
+        if (['A', 'B'].includes(rating)) efficiencyLevel = 'excellent';
+        else if (['C', 'D'].includes(rating)) efficiencyLevel = 'good';
+        else if (rating === 'E') efficiencyLevel = 'poor';
+        else if (['F', 'G'].includes(rating)) efficiencyLevel = 'very poor';
+
+epcDetails = `Energy rating ${rating} - This property has ${efficiencyLevel} energy efficiency and may have ${efficiencyLevel === 'excellent' ? 'lower' : 'higher'} heating costs.`;
     }
     
     // Step 3: NEW - Analyze Accessible Features (replaces internal facilities)
