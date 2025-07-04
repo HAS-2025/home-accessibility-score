@@ -1632,7 +1632,7 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     else if (overallScore >= 3) overallRating = "Good"; 
     else if (overallScore >= 2) overallRating = "Fair";
     
-    summary += ` offers ${overallRating.toLowerCase()} accessibility features for older adults, with an overall accessibility score of ${overallScore}/5 (${overallRating}). `;
+    summary += ` offers ${overallRating.toLowerCase()} accessibility features for older adults, with an overall accessibility score of ${Math.round(overallScore * 10) / 10}/5 (${overallRating}). `;
     
     // 2. Key accessibility strengths - focus on what works well
     if (accessibleFeaturesScore >= 3) {
