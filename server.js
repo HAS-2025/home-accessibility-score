@@ -355,6 +355,95 @@ async function getPropertyCoordinates(address, existingCoords) {
     return null;
 }
 
+// STEP 1: Add the isValidGPName function BEFORE your findNearestGPs function
+
+function isValidGPName(name, address) {
+    const nameLower = name.toLowerCase();
+    const addressLower = (address || '').toLowerCase();
+    
+    // ❌ FILTER OUT FAKE/TEST ENTRIES
+    const fakePatterns = [
+        'bot', 'test', 'fake', 'dummy', 'sample',
+        'jifjaff', 'mybotgp', 'testgp', 'demogp',
+        'xxx', 'yyy', 'zzz', 'placeholder'
+    ];
+    
+    const isFakeEntry = fakePatterns.some(pattern => 
+        nameLower.includes(pattern) || addressLower.includes(pattern)
+    );
+    
+    if (isFakeEntry) {
+        console.log(`❌ FAKE GP DETECTED: ${name} - Contains fake patterns`);
+        return false;
+    }
+    
+    // ❌ FILTER OUT NON-GP MEDICAL SERVICES (your existing logic)
+    const isDefinitelyNotGP = (
+        nameLower.includes('ear wax') || nameLower.includes('earwax') || 
+        nameLower.includes('chiropody') || nameLower.includes('podiatry') || 
+        nameLower.includes('foot care') || nameLower.includes('hearing') ||
+        nameLower.includes('tree surgery') || nameLower.includes('tree service') || 
+        nameLower.includes('landscaping') || nameLower.includes('fertility') || 
+        nameLower.includes('astrology') || nameLower.includes('acupuncture') ||
+        nameLower.includes('chiropractor') || nameLower.includes('physiotherapy') || 
+        nameLower.includes('physio') || nameLower.includes('osteopath') || 
+        nameLower.includes('counselling') || nameLower.includes('therapy') ||
+        nameLower.includes('beauty') || nameLower.includes('aesthetic') || 
+        nameLower.includes('cosmetic') || nameLower.includes('laser') || 
+        nameLower.includes('skin care') || nameLower.includes('botox') ||
+        nameLower.includes('massage') || nameLower.includes('pharmacy') || 
+        nameLower.includes('dentist') || nameLower.includes('dental') || 
+        nameLower.includes('optician') || nameLower.includes('eye care') ||
+        nameLower.includes('vet') || nameLower.includes('veterinary') || 
+        nameLower.includes('care home') || nameLower.includes('nursing home') || 
+        nameLower.includes('mental health') || nameLower.includes('hospital') ||
+        nameLower.includes('spa') || nameLower.includes('hair restoration') ||
+        
+        // Check address too
+        addressLower.includes('spamedica') || addressLower.includes('aesthetic') ||
+        addressLower.includes('cosmetic') || addressLower.includes('beauty') ||
+        addressLower.includes('hospital') || addressLower.includes('clinic')
+    );
+    
+    if (isDefinitelyNotGP) {
+        console.log(`❌ NOT A GP: ${name} - Medical service but not GP`);
+        return false;
+    }
+    
+    // ✅ POSITIVE GP IDENTIFICATION
+    const isLikelyGP = (
+        nameLower.includes('gp surgery') || nameLower.includes('doctors surgery') ||
+        nameLower.includes('medical centre') || nameLower.includes('medical center') ||
+        nameLower.includes('health centre') || nameLower.includes('health center') ||
+        nameLower.includes('family practice') || nameLower.includes('primary care') ||
+        nameLower.includes('group practice') || nameLower.includes('health practice') ||
+        (nameLower.includes('medical practice') && nameLower.includes('dr ')) ||
+        (nameLower.includes('surgery') && !nameLower.includes('tree') && 
+         !nameLower.includes('plastic') && !nameLower.includes('cosmetic') &&
+         (nameLower.includes('dr ') || nameLower.includes('practice') || 
+          nameLower.includes('medical') || nameLower.includes('health'))) ||
+        (nameLower.includes('dr ') && (nameLower.includes('surgery') || 
+         nameLower.includes('practice') || nameLower.includes('medical')))
+    );
+    
+    // ✅ ADDITIONAL VALIDATION: Must have doctor title or practice name
+    const hasValidDoctorTitle = (
+        nameLower.includes('dr ') || nameLower.includes('doctor ') ||
+        nameLower.includes('practice') || nameLower.includes('surgery') ||
+        nameLower.includes('medical centre') || nameLower.includes('health centre')
+    );
+    
+    const isValid = isLikelyGP && hasValidDoctorTitle;
+    
+    if (isValid) {
+        console.log(`✅ VALID GP: ${name}`);
+    } else {
+        console.log(`❌ INVALID GP: ${name} - Failed validation`);
+    }
+    
+    return isValid;
+}
+
 // ✅ ENHANCED GP SEARCH with detailed coordinate logging
 async function findNearestGPs(lat, lng) {
     try {
@@ -395,15 +484,18 @@ async function findNearestGPs(lat, lng) {
             // ✅ KEEP FULL ENHANCED FILTERING but add coordinate logging
             const gps = response.data.places
                 .filter(place => {
-                    const name = place.displayName?.text?.toLowerCase() || '';
-                    const address = (place.formattedAddress || '').toLowerCase();
-                    const types = place.types || [];
+                    const name = place.displayName?.text || '';
+                    const address = place.formattedAddress || '';
                     const businessStatus = place.businessStatus;
                     
                     if (businessStatus === 'CLOSED_PERMANENTLY') {
                         console.log(`Skipping closed place: ${name}`);
                         return false;
                     }
+        
+                    // Use the new enhanced validation function
+                    return isValidGPName(name, address);
+                })
                     
                     // FULL exclusions list
                     const isDefinitelyNotGP = (
@@ -1223,24 +1315,26 @@ async function scrapeRightmoveProperty(url) {
                                         type: 'text',
                                         text: `You are analyzing an EPC (Energy Performance Certificate) image. This is CRITICAL - I need you to be extremely precise about the arrow position.
 
-IMPORTANT: Look at where the arrow tip or pointer is positioned on the A-G rating scale. The bands should be:
-- A (Most efficient): Usually at the TOP of the scale
-- B, C, D, E, F, G: Going down the scale
-- G (Least efficient): Usually at the BOTTOM
+IMPORTANT INSTRUCTIONS:
+1. Look for a BLACK ARROW (sometimes with colored outline) pointing to one of the A-G bands
+2. The arrow may be difficult to see if it's on a similar colored background (e.g., yellow arrow on yellow D band)
+3. Focus on where the ARROW TIP is positioned, not where the arrow shaft crosses
+4. The bands are arranged vertically: A (green, top) → B (light green) → C (yellow-green) → D (yellow) → E (orange) → F (red-orange) → G (red, bottom)
+
+SPECIFIC FOR THIS IMAGE:
+- Look carefully at the yellow D band - there may be a yellow arrow that's hard to see
+- Check if there's a numerical score visible (usually 55-68 for D rating)
+- The current rating is on the LEFT side, potential rating on the RIGHT
 
 Please examine:
-1. The exact position of the arrow tip relative to the letter bands
-2. Which letter the arrow is clearly pointing to
-3. Any numerical score visible (usually 1-100)
-
-Focus specifically on the arrow tip position. Sometimes the arrow shaft might cross multiple bands, but what matters is where the TIP points.
-
-If you see an arrow pointing to the A band (top of scale), it's an A rating.
-If you see an arrow pointing to the B band (second from top), it's a B rating.
+1. The exact position of any arrow tip you can see
+2. Which letter band the arrow clearly points to  
+3. Any numerical score visible (helps confirm the rating)
+4. Be extra careful with yellow arrows on yellow backgrounds
 
 Return ONLY this format: Rating: [LETTER], Score: [NUMBER if visible], Confidence: [PERCENTAGE]%
 
-Be extremely careful about A vs B distinction.`
+If you see a score around 55-68, it's likely a D rating regardless of arrow visibility.`
                                     }, {
                                         type: 'image',
                                         source: {
