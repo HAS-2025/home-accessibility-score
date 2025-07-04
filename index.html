@@ -577,6 +577,7 @@
             document.getElementById('results').classList.add('show');
 
             // Property info now in summary section
+            console.log('Property data:', property);
             document.getElementById('propertyLocation').textContent = property.location || '';
             document.getElementById('propertyTitle').textContent = property.title;
             document.getElementById('propertyPrice').textContent = property.price;
