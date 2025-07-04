@@ -30,6 +30,74 @@ async function convertImageToBase64(imageUrl) {
 }
 
 // 🔧 LAZY LOAD EPC Vision Extractor with correct model
+// Add this validation function at the top of your file (before the Vision API call)
+function validateEPCFromDescription(visionText) {
+    console.log('🔍 Validating EPC from Vision API description:', visionText);
+    
+    // Extract information from the description
+    const currentMatch = visionText.match(/current rating[:\s]*([a-g])\s*(?:band\s*)?(?:with\s*score\s*)?(\d+)?/i);
+    const scoreMatch = visionText.match(/(?:score|points?)[:\s]*(\d+)/i);
+    const orangeArrowMatch = visionText.match/orange arrow.*?([a-g])\s*band/i);
+    const fBandMatch = visionText.match(/([a-g])\s*band.*?(\d+)/i);
+    
+    // Try to extract rating from various patterns
+    let detectedRating = null;
+    let detectedScore = null;
+    
+    if (currentMatch) {
+        detectedRating = currentMatch[1].toUpperCase();
+        detectedScore = currentMatch[2] ? parseInt(currentMatch[2]) : null;
+    } else if (orangeArrowMatch) {
+        detectedRating = orangeArrowMatch[1].toUpperCase();
+    } else if (scoreMatch) {
+        detectedScore = parseInt(scoreMatch[1]);
+    }
+    
+    if (!detectedScore && scoreMatch) {
+        detectedScore = parseInt(scoreMatch[1]);
+    }
+    
+    // Score-based rating detection
+    if (detectedScore && !detectedRating) {
+        if (detectedScore >= 92) detectedRating = 'A';
+        else if (detectedScore >= 81) detectedRating = 'B';
+        else if (detectedScore >= 69) detectedRating = 'C';
+        else if (detectedScore >= 55) detectedRating = 'D';
+        else if (detectedScore >= 39) detectedRating = 'E';
+        else if (detectedScore >= 21) detectedRating = 'F';
+        else detectedRating = 'G';
+        
+        console.log(`🔧 Score-based detection: Score ${detectedScore} → Rating ${detectedRating}`);
+    }
+    
+    // Validate rating matches score
+    if (detectedRating && detectedScore) {
+        const expectedRanges = {
+            'A': [92, 100], 'B': [81, 91], 'C': [69, 80], 'D': [55, 68],
+            'E': [39, 54], 'F': [21, 38], 'G': [1, 20]
+        };
+        
+        const range = expectedRanges[detectedRating];
+        if (range && (detectedScore < range[0] || detectedScore > range[1])) {
+            console.log(`⚠️ Rating ${detectedRating} doesn't match score ${detectedScore}, correcting...`);
+            
+            // Auto-correct based on score
+            for (const [correctRating, correctRange] of Object.entries(expectedRanges)) {
+                if (detectedScore >= correctRange[0] && detectedScore <= correctRange[1]) {
+                    console.log(`🔧 Corrected from ${detectedRating} to ${correctRating}`);
+                    detectedRating = correctRating;
+                    break;
+                }
+            }
+        }
+    }
+    
+    return {
+        rating: detectedRating,
+        score: detectedScore,
+        confidence: detectedRating ? 80 : 0
+    };
+}
 let EPCVisionExtractor = null;
 const getEPCExtractor = () => {
     if (!EPCVisionExtractor && process.env.CLAUDE_API_KEY) {
@@ -1275,6 +1343,7 @@ async function scrapeRightmoveProperty(url) {
                         try {
                             console.log(`👁️ IMPROVED Vision API call for: ${imageUrl.substring(0, 100)}...`);
                             
+                            // Replace your existing Vision API call with this updated version:
                             const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
                                 model: 'claude-3-5-sonnet-20241022',
                                 max_tokens: 600,
@@ -1282,74 +1351,104 @@ async function scrapeRightmoveProperty(url) {
                                     role: 'user',
                                     content: [{
                                         type: 'text',
-                                        text: `You are analyzing an EPC (Energy Performance Certificate) image. This is CRITICAL - I need you to be extremely precise about the arrow position.
+                                        text: `You are analyzing an EPC (Energy Performance Certificate) chart. 
 
-IMPORTANT INSTRUCTIONS:
-1. Look for a BLACK ARROW (sometimes with colored outline) pointing to one of the A-G bands
-2. The arrow may be difficult to see if it's on a similar colored background (e.g., yellow arrow on yellow D band)
-3. Focus on where the ARROW TIP is positioned, not where the arrow shaft crosses
-4. The bands are arranged vertically: A (green, top) → B (light green) → C (yellow-green) → D (yellow) → E (orange) → F (red-orange) → G (red, bottom)
+CRITICAL INSTRUCTIONS:
+1. There are TWO columns: "Current" (left) and "Potential" (right)
+2. I need the CURRENT rating only (left column)
+3. Look for the arrow in the CURRENT column that points to a letter band (A-G)
+4. The arrow color often matches the band color (F=orange, D=yellow, etc.)
 
-SPECIFIC FOR THIS IMAGE:
-- Look carefully at the yellow D band - there may be a yellow arrow that's hard to see
-- Check if there's a numerical score visible (usually 55-68 for D rating)
-- The current rating is on the LEFT side, potential rating on the RIGHT
+CURRENT RATING IDENTIFICATION:
+- Find the arrow in the LEFT column labeled "Current"
+- Identify which letter band (A, B, C, D, E, F, or G) the arrow points to
+- Note the numerical score if visible
+- Ignore the "Potential" column on the right
 
-Please examine:
-1. The exact position of any arrow tip you can see
-2. Which letter band the arrow clearly points to  
-3. Any numerical score visible (helps confirm the rating)
-4. Be extra careful with yellow arrows on yellow backgrounds
+SCORING RANGES (for validation):
+- A: 92-100 (dark green)
+- B: 81-91 (light green) 
+- C: 69-80 (yellow-green)
+- D: 55-68 (yellow)
+- E: 39-54 (orange)
+- F: 21-38 (red-orange)
+- G: 1-20 (red)
 
-Return ONLY this format: Rating: [LETTER], Score: [NUMBER if visible], Confidence: [PERCENTAGE]%
+Look carefully at the CURRENT column and tell me:
+1. Which letter band the arrow points to
+2. The numerical score if visible
+3. Verify the score matches the expected range for that letter
 
-If you see a score around 55-68, it's likely a D rating regardless of arrow visibility.`
-                                    }, {
-                                        type: 'image',
-                                        source: {
-                                            type: 'base64',
-                                            media_type: imageUrl.toLowerCase().includes('.gif') ? 'image/gif' : 
-                                                      imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
-                                            data: await convertImageToBase64(imageUrl)
-                                        }
-                                    }]
-                                }]
-                            }, {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'x-api-key': process.env.CLAUDE_API_KEY,
-                                    'anthropic-version': '2023-06-01'
-                                },
-                                timeout: 15000
-                            });
-                            
-                            const text = visionResponse.data.content[0].text;
-                            console.log('🔍 IMPROVED Vision API response:', text);
-                            
-                            const ratingMatch = text.match(/Rating:\s*([A-G])/i);
-                            const scoreMatch = text.match(/Score:\s*(\d+)/i);
-                            
-                            if (ratingMatch) {
-                                epcData = {
-                                    rating: ratingMatch[1].toUpperCase(),
-                                    score: scoreMatch ? parseInt(scoreMatch[1]) : null,
-                                    confidence: 75, // Lower confidence than clear text
-                                    reason: 'Improved Vision API analysis',
-                                    numericalScore: scoreMatch ? parseInt(scoreMatch[1]) : 0
-                                };
-                                
-                                console.log(`✅ Vision API result: ${epcData.rating} (score: ${epcData.score})`);
-                                break;
-                            }
-                        } catch (imageError) {
-                            console.log(`❌ Vision analysis failed: ${imageError.message}`);
-                            continue;
-                        }
-                    }
-                } else {
-                    console.log('⚠️ No valid Claude API key or no EPC images found - skipping Vision API');
-                }
+RESPOND EXACTLY IN THIS FORMAT:
+Current Rating: [LETTER]
+Current Score: [NUMBER or "not visible"]
+Confidence: [PERCENTAGE]%
+
+Focus ONLY on the current rating (left column). Do not get confused by the potential rating.`
+        }, {
+            type: 'image',
+            source: {
+                type: 'base64',
+                media_type: imageUrl.toLowerCase().includes('.gif') ? 'image/gif' : 
+                          imageUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
+                data: await convertImageToBase64(imageUrl)
             }
+        }]
+    }]
+}, {
+    headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+    },
+    timeout: 15000
+});
+
+const text = visionResponse.data.content[0].text;
+console.log('🔍 IMPROVED Vision API response:', text);
+
+// Try both the standard parsing AND the validation function
+let epcResult = null;
+
+// Standard parsing
+const ratingMatch = text.match(/(?:Current\s+)?Rating:\s*([A-G])/i);
+const scoreMatch = text.match(/(?:Current\s+)?Score:\s*(\d+)/i);
+
+if (ratingMatch) {
+    epcResult = {
+        rating: ratingMatch[1].toUpperCase(),
+        score: scoreMatch ? parseInt(scoreMatch[1]) : null,
+        confidence: 75
+    };
+}
+
+// If standard parsing fails or gives weird results, use validation
+if (!epcResult || !epcResult.rating) {
+    console.log('🔍 Standard parsing failed, trying validation approach...');
+    epcResult = validateEPCFromDescription(text);
+}
+
+// Final validation
+if (epcResult && epcResult.rating && epcResult.score) {
+    const correctedResult = validateEPCFromDescription(`rating ${epcResult.rating} score ${epcResult.score}`);
+    if (correctedResult.rating !== epcResult.rating) {
+        console.log(`🔧 Final correction: ${epcResult.rating} → ${correctedResult.rating}`);
+        epcResult.rating = correctedResult.rating;
+    }
+}
+
+if (epcResult && epcResult.rating) {
+    epcData = {
+        rating: epcResult.rating,
+        score: epcResult.score,
+        confidence: epcResult.confidence,
+        reason: 'Improved Vision API analysis with validation',
+        numericalScore: epcResult.score || 0
+    };
+    
+    console.log(`✅ Vision API result: ${epcData.rating} (score: ${epcData.score})`);
+    break;
+}
             
             // STEP 3: Enhanced text patterns (if Vision API also failed)
             if (!epcData.rating && description && description.length > 0) {
