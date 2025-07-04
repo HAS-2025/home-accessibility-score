@@ -495,77 +495,7 @@ async function findNearestGPs(lat, lng) {
         
                     // Use the new enhanced validation function
                     return isValidGPName(name, address);
-                })
-                    
-                    // FULL exclusions list
-                    const isDefinitelyNotGP = (
-                        name.includes('ear wax') || name.includes('earwax') || name.includes('chiropody') ||
-                        name.includes('podiatry') || name.includes('foot care') || name.includes('hearing') ||
-                        name.includes('tree surgery') || name.includes('tree service') || name.includes('landscaping') ||
-                        name.includes('fertility') || name.includes('astrology') || name.includes('acupuncture') ||
-                        name.includes('chiropractor') || name.includes('physiotherapy') || name.includes('physio') ||
-                        name.includes('osteopath') || name.includes('counselling') || name.includes('therapy') ||
-                        name.includes('beauty') || name.includes('aesthetic') || name.includes('cosmetic') ||
-                        name.includes('laser') || name.includes('skin care') || name.includes('botox') ||
-                        name.includes('massage') || name.includes('pharmacy') || name.includes('dentist') ||
-                        name.includes('dental') || name.includes('optician') || name.includes('eye care') ||
-                        name.includes('vet') || name.includes('veterinary') || name.includes('care home') ||
-                        name.includes('nursing home') || name.includes('mental health') || name.includes('royal united hospital') ||
-                        name.includes('ruh') || name.includes('university hospital') || name.includes('podiatrist') || 
-                        name.includes('spa') || name.includes('spamedica') || 
-                        name.includes('hair restoration') || name.includes('hair transplant') ||
-                        name.includes('physico') || name.includes('physiotherapy') ||
-
-                        // NOW CHECK ADDRESS TOO:
-                        address.includes('spamedica') || address.includes('spa') ||
-                        address.includes('aesthetic') || address.includes('cosmetic') ||
-                        address.includes('hair restoration') || address.includes('beauty') ||
-                        address.includes('ear wax') || address.includes('earwax') || address.includes('chiropody') ||
-                        address.includes('podiatry') || address.includes('podiatrist') || address.includes('foot care') || address.includes('hearing') ||
-                        address.includes('tree surgery') || address.includes('tree service') || address.includes('landscaping') ||
-                        address.includes('fertility') || address.includes('astrology') || address.includes('acupuncture') ||
-                        address.includes('chiropractor') || address.includes('physiotherapy') || address.includes('physio') ||
-                        address.includes('osteopath') || address.includes('counselling') || address.includes('therapy') ||
-                        address.includes('laser') || address.includes('skin care') || address.includes('botox') ||
-                        address.includes('massage') || address.includes('pharmacy') || address.includes('dentist') ||
-                        address.includes('dental') || address.includes('optician') || address.includes('eye care') ||
-                        address.includes('vet') || address.includes('veterinary') || address.includes('care home') ||
-                        address.includes('nursing home') || address.includes('mental health') ||
-                        address.includes('hair transplant') || address.includes('physico')
-                    
-                    );
-                    
-                    if (isDefinitelyNotGP) {
-                        console.log(`${name}: Excluded (definitely not GP)`);
-                        return false;
-                    }
-                    
-                    // FULL positive identification
-                    const isLikelyGPSurgery = (
-                        name.includes('gp surgery') || name.includes('doctors surgery') ||
-                        name.includes('medical centre') || name.includes('medical center') ||
-                        name.includes('health centre') || name.includes('health center') ||
-                        name.includes('family practice') || name.includes('primary care') ||
-                        name.includes('group practice') || name.includes('health practice') ||
-                        (name.includes('medical practice') && name.includes('dr ')) ||
-                        (name.includes('surgery') && !name.includes('tree') && !name.includes('plastic') &&
-                         !name.includes('cosmetic') && !name.includes('laser') && !name.includes('aesthetic') &&
-                         (name.includes('dr ') || name.includes('practice') || name.includes('medical') ||
-                          name.includes('health') || name.includes('grosvenor') || name.includes('pulteney') ||
-                          name.includes('batheaston') || name.includes('bath'))) ||
-                        (name.includes('medical') && (name.includes('centre') || name.includes('center')) &&
-                         !name.includes('specialist') && !name.includes('private')) ||
-                        (name.includes('dr ') && (name.includes('surgery') || name.includes('practice') ||
-                         name.includes('medical') || name.includes('health'))) ||
-                        (types.includes('doctor') && !name.includes('specialist') &&
-                         !name.includes('private') && !name.includes('clinic'))
-                    );
-                    
-                    const isValid = isLikelyGPSurgery;
-                    console.log(`${name}: GP=${isLikelyGPSurgery}, Final=${isValid}`);
-                    
-                    return isValid;
-                })
+                })  
                 .map(place => {
                     const gpLat = place.location?.latitude;
                     const gpLng = place.location?.longitude;
