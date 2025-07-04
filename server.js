@@ -1626,14 +1626,13 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         summary += ` in ${location}`;
     }
     
-    // Calculate total accessibility score for overall rating
-    const totalScore = gpProximity.score + epcScore + accessibleFeaturesScore;
+    // Use the overall score that's calculated elsewhere (matches the top of page display)
     let overallRating = "Limited";
-    if (totalScore >= 13) overallRating = "Excellent";
-    else if (totalScore >= 10) overallRating = "Good"; 
-    else if (totalScore >= 7) overallRating = "Fair";
+    if (overallScore >= 4) overallRating = "Excellent";
+    else if (overallScore >= 3) overallRating = "Good"; 
+    else if (overallScore >= 2) overallRating = "Fair";
     
-    summary += ` offers ${overallRating.toLowerCase()} accessibility features for older adults, with an overall accessibility score of ${Math.round(totalScore)}/15 (${overallRating}). `;
+    summary += ` offers ${overallRating.toLowerCase()} accessibility features for older adults, with an overall accessibility score of ${overallScore}/5 (${overallRating}). `;
     
     // 2. Key accessibility strengths - focus on what works well
     if (accessibleFeaturesScore >= 3) {
@@ -1726,16 +1725,16 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         summary += ", which may result in higher heating costs that could impact comfort for temperature-sensitive residents. ";
     }
     
-    // 6. Final recommendation based on accessibility profile
-    summary += "**Best suited for:** ";
-    if (totalScore >= 13) {
-        summary += "Seniors across a wide range of mobility levels, particularly those planning to age in place. ";
-    } else if (totalScore >= 10) {
-        summary += "Active seniors and those with mild mobility considerations who value accessible features. ";
-    } else if (totalScore >= 7) {
-        summary += "Seniors with good mobility who can adapt to some accessibility limitations. ";
+    // 6. Final recommendation integrated into sentence
+    summary += "This property would be best suited for ";
+    if (overallScore >= 4) {
+        summary += "seniors across a wide range of mobility levels, particularly those planning to age in place.";
+    } else if (overallScore >= 3) {
+        summary += "active seniors and those with mild mobility considerations who value accessible features.";
+    } else if (overallScore >= 2) {
+        summary += "seniors with good mobility who can adapt to some accessibility limitations.";
     } else {
-        summary += "This property may require significant modifications to suit most older adults' accessibility needs. ";
+        summary += "seniors who can make significant modifications, as the property may require substantial accessibility improvements.";
     }
     
     return summary;
