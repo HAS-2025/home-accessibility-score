@@ -578,6 +578,7 @@
             document.getElementById('results').classList.add('show');
 
             // Property info now in summary section
+            document.getElementById('propertyLocation').textContent = property.location || '';
             document.getElementById('propertyTitle').textContent = property.title;
             document.getElementById('propertyPrice').textContent = property.price;
             document.getElementById('overallScore').textContent = analysis.overall;
