@@ -220,11 +220,11 @@ if (hasDownstairsBathroom) {
     console.log('✓ Found downstairs bathroom/WC');
 }
     
-    // 4. LEVEL AND/OR RAMP ACCESS - Enhanced Keywords
+    // 4. LEVEL AND/OR RAMP ACCESS - Enhanced Keywords (Fixed)
     const levelAccessKeywords = [
         'level access', 'step-free access', 'step free access', 'no steps',
         'wheelchair accessible', 'ramp access', 'ramped access', 'access ramp',
-        'disabled access', 'mobility access', 'easy access', 'ground level access',
+        'disabled access', 'mobility access', 'ground level access',
         'flat access', 'level entry', 'step-free entry', 'barrier-free access',
         'accessible entrance', 'level entrance', 'no step access'
     ];
