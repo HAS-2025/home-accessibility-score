@@ -361,7 +361,7 @@ function isValidGPName(name, address) {
     const nameLower = name.toLowerCase();
     const addressLower = (address || '').toLowerCase();
     
-    // ❌ FILTER OUT FAKE/TEST ENTRIES
+    // ❌ STEP 1: Filter out FAKE/TEST entries (keep this strict)
     const fakePatterns = [
         'bot', 'test', 'fake', 'dummy', 'sample',
         'jifjaff', 'mybotgp', 'testgp', 'demogp',
@@ -377,71 +377,110 @@ function isValidGPName(name, address) {
         return false;
     }
     
-    // ❌ FILTER OUT NON-GP MEDICAL SERVICES (your existing logic)
-    const isDefinitelyNotGP = (
-        nameLower.includes('ear wax') || nameLower.includes('earwax') || 
-        nameLower.includes('chiropody') || nameLower.includes('podiatry') || 
-        nameLower.includes('foot care') || nameLower.includes('hearing') ||
-        nameLower.includes('tree surgery') || nameLower.includes('tree service') || 
-        nameLower.includes('landscaping') || nameLower.includes('fertility') || 
-        nameLower.includes('astrology') || nameLower.includes('acupuncture') ||
-        nameLower.includes('chiropractor') || nameLower.includes('physiotherapy') || 
-        nameLower.includes('physio') || nameLower.includes('osteopath') || 
-        nameLower.includes('counselling') || nameLower.includes('therapy') ||
-        nameLower.includes('beauty') || nameLower.includes('aesthetic') || 
-        nameLower.includes('cosmetic') || nameLower.includes('laser') || 
-        nameLower.includes('skin care') || nameLower.includes('botox') ||
-        nameLower.includes('massage') || nameLower.includes('pharmacy') || 
-        nameLower.includes('dentist') || nameLower.includes('dental') || 
-        nameLower.includes('optician') || nameLower.includes('eye care') ||
-        nameLower.includes('vet') || nameLower.includes('veterinary') || 
-        nameLower.includes('care home') || nameLower.includes('nursing home') || 
-        nameLower.includes('mental health') || nameLower.includes('hospital') ||
-        nameLower.includes('spa') || nameLower.includes('hair restoration') ||
-        
-        // Check address too
-        addressLower.includes('spamedica') || addressLower.includes('aesthetic') ||
-        addressLower.includes('cosmetic') || addressLower.includes('beauty') ||
-        addressLower.includes('hospital') || addressLower.includes('clinic')
+    // ❌ STEP 2: Filter out OBVIOUSLY non-medical (keep strict)
+    const obviouslyNotMedical = [
+        'tree surgery', 'tree service', 'landscaping', 'gardening',
+        'plumbing', 'electrician', 'builder', 'construction',
+        'restaurant', 'cafe', 'shop', 'store', 'retail'
+    ];
+    
+    const isObviouslyNotMedical = obviouslyNotMedical.some(pattern => 
+        nameLower.includes(pattern) || addressLower.includes(pattern)
     );
     
-    if (isDefinitelyNotGP) {
-        console.log(`❌ NOT A GP: ${name} - Medical service but not GP`);
+    if (isObviouslyNotMedical) {
+        console.log(`❌ NOT MEDICAL: ${name} - Obviously not medical`);
         return false;
     }
     
-    // ✅ POSITIVE GP IDENTIFICATION
+    // ❌ STEP 3: Filter out specific non-GP medical services (be more selective)
+    const specificNonGP = [
+        'dentist', 'dental', 'optician', 'eye care', 'chiropractor',
+        'physiotherapy', 'physio', 'osteopath', 'pharmacy', 'chemist',
+        'vet', 'veterinary', 'beauty', 'aesthetic', 'cosmetic', 'botox',
+        'laser', 'spa', 'massage', 'acupuncture', 'chiropody', 'podiatry',
+        'hearing aid', 'audiology', 'counselling', 'therapy', 'psychology'
+    ];
+    
+    // Check if it's clearly one of these specific services
+    const isSpecificNonGP = specificNonGP.some(service => {
+        return nameLower.includes(service) && !nameLower.includes('gp') && !nameLower.includes('medical practice');
+    });
+    
+    if (isSpecificNonGP) {
+        console.log(`❌ NOT A GP: ${name} - Specific non-GP medical service`);
+        return false;
+    }
+    
+    // ✅ STEP 4: POSITIVE identification - much more inclusive
     const isLikelyGP = (
-        nameLower.includes('gp surgery') || nameLower.includes('doctors surgery') ||
+        // Clear GP indicators
+        nameLower.includes('gp') || 
+        nameLower.includes('general practitioner') ||
+        
+        // Surgery names
+        nameLower.includes('surgery') ||
+        
+        // Medical/Health practices
+        nameLower.includes('medical practice') ||
         nameLower.includes('medical centre') || nameLower.includes('medical center') ||
         nameLower.includes('health centre') || nameLower.includes('health center') ||
         nameLower.includes('family practice') || nameLower.includes('primary care') ||
-        nameLower.includes('group practice') || nameLower.includes('health practice') ||
-        (nameLower.includes('medical practice') && nameLower.includes('dr ')) ||
-        (nameLower.includes('surgery') && !nameLower.includes('tree') && 
-         !nameLower.includes('plastic') && !nameLower.includes('cosmetic') &&
-         (nameLower.includes('dr ') || nameLower.includes('practice') || 
-          nameLower.includes('medical') || nameLower.includes('health'))) ||
-        (nameLower.includes('dr ') && (nameLower.includes('surgery') || 
-         nameLower.includes('practice') || nameLower.includes('medical')))
+        
+        // Doctor names (individual GPs)
+        (nameLower.startsWith('dr ') || nameLower.startsWith('doctor ')) ||
+        
+        // Private GP clinics
+        (nameLower.includes('private') && nameLower.includes('clinic') && 
+         !specificNonGP.some(service => nameLower.includes(service))) ||
+        
+        // Practice/clinic names that aren't specialist
+        (nameLower.includes('clinic') && !specificNonGP.some(service => nameLower.includes(service))) ||
+        
+        // Assume any "doctor" type from Google Places that isn't obviously specialist
+        true  // Be inclusive - if it got past the exclusions, it's probably a GP
     );
     
-    // ✅ ADDITIONAL VALIDATION: Must have doctor title or practice name
-    const hasValidDoctorTitle = (
-        nameLower.includes('dr ') || nameLower.includes('doctor ') ||
-        nameLower.includes('practice') || nameLower.includes('surgery') ||
-        nameLower.includes('medical centre') || nameLower.includes('health centre')
-    );
-    
-    const isValid = isLikelyGP && hasValidDoctorTitle;
-    
-    if (isValid) {
+    if (isLikelyGP) {
         console.log(`✅ VALID GP: ${name}`);
+        return true;
     } else {
         console.log(`❌ INVALID GP: ${name} - Failed validation`);
+        return false;
+    }
+}
+
+// Alternative even simpler approach - focus on exclusions only:
+function isValidGPNameSimple(name, address) {
+    const nameLower = name.toLowerCase();
+    const addressLower = (address || '').toLowerCase();
+    
+    // Only exclude obvious fakes and non-GP services
+    const shouldExclude = (
+        // Fake entries
+        nameLower.includes('bot') || nameLower.includes('test') || 
+        nameLower.includes('jifjaff') || nameLower.includes('fake') ||
+        
+        // Definitely not GPs
+        nameLower.includes('dentist') || nameLower.includes('dental') ||
+        nameLower.includes('optician') || nameLower.includes('physiotherapy') ||
+        nameLower.includes('physio') || nameLower.includes('chiropractor') ||
+        nameLower.includes('pharmacy') || nameLower.includes('vet') ||
+        nameLower.includes('beauty') || nameLower.includes('aesthetic') ||
+        nameLower.includes('botox') || nameLower.includes('cosmetic') ||
+        nameLower.includes('spa') || nameLower.includes('massage') ||
+        
+        // Non-medical
+        nameLower.includes('tree surgery') || nameLower.includes('landscaping')
+    );
+    
+    if (shouldExclude) {
+        console.log(`❌ EXCLUDED: ${name}`);
+        return false;
     }
     
-    return isValid;
+    console.log(`✅ ACCEPTED: ${name}`);
+    return true;
 }
 
 // ✅ ENHANCED GP SEARCH with detailed coordinate logging
