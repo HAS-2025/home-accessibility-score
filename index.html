@@ -130,7 +130,33 @@
             display: block;
         }
 
-        /* REMOVED: .property-info styles - this box is being eliminated */
+        .property-info {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .property-location {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        
+        .property-info .property-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+        
+        .property-info .property-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
 
         .score-overview {
             background: white;
@@ -449,8 +475,13 @@
         </div>
 
         <div class="results" id="results">
-            <!-- REMOVED: Property info box - moved to summary section -->
-
+                        <!-- NEW: Property info at top -->
+            <div class="property-info">
+                <div class="property-location" id="propertyLocation"></div>
+                <div class="property-title" id="propertyTitle"></div>
+                <div class="property-price" id="propertyPrice"></div>
+            </div>
+            
             <div class="score-overview">
                 <div class="overall-score" id="overallScore"></div>
                 <div class="score-label">Overall Accessibility Score</div>
@@ -490,12 +521,7 @@
             </div>
 
             <div class="summary-section">
-                <!-- NEW: Property info moved here -->
-                <div class="property-header">
-                    <div class="property-title" id="propertyTitle"></div>
-                    <div class="property-price" id="propertyPrice"></div>
-                </div>
-                
+                                
                 <div class="summary-title">📋 Summary & Recommendations</div>
                 <div class="summary-text" id="summaryText"></div>
             </div>
@@ -511,6 +537,7 @@
                 return;
             }
 
+            document.getElementById('propertyLocation').textContent = property.location || '';
             document.getElementById('loading').classList.add('show');
             document.getElementById('results').classList.remove('show');
             document.querySelector('.analyze-btn').disabled = true;
