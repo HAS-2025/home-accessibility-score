@@ -232,6 +232,9 @@ if (hasDownstairsBathroom) {
     const hasLevelAccess = levelAccessKeywords.some(keyword => fullText.includes(keyword));
     
     if (hasLevelAccess) {
+        // Add this logging to see which keyword matched
+        const matchedKeyword = levelAccessKeywords.find(keyword => fullText.includes(keyword));
+        console.log('✓ Found level/ramp access via keyword:', matchedKeyword);
         score += 1;
         features.push('Level/ramp access');
         console.log('✓ Found level/ramp access');
