@@ -668,7 +668,20 @@
             const foundFeatures = accessibleFeatures.features || [];
             
             allFeatures.forEach(feature => {
-                const isFound = foundFeatures.some(found => found.toLowerCase().includes(feature.toLowerCase().split('/')[0].split(' ')[0]));
+                let isFound = false;
+                
+                if (feature.includes('Lateral living')) {
+                    isFound = foundFeatures.some(found => found.toLowerCase().includes('lateral') || found.toLowerCase().includes('single floor'));
+                } else if (feature.includes('Downstairs bedroom')) {
+                    isFound = foundFeatures.some(found => found.toLowerCase().includes('downstairs bedroom'));
+                } else if (feature.includes('Downstairs bathroom')) {
+                    isFound = foundFeatures.some(found => found.toLowerCase().includes('downstairs bathroom'));
+                } else if (feature.includes('Level/ramp access')) {
+                    isFound = foundFeatures.some(found => found.toLowerCase().includes('level/ramp access'));
+                } else if (feature.includes('Off-street')) {
+                    isFound = foundFeatures.some(found => found.toLowerCase().includes('off-street') || found.toLowerCase().includes('private parking'));
+                }
+                
                 const icon = isFound ? '✅' : '❌';
                 detailsHtml += `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${feature}</div>`;
             });
