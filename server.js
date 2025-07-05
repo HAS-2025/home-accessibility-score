@@ -422,135 +422,73 @@ async function getPropertyCoordinates(address, existingCoords) {
     console.log('No coordinates available for property');
     return null;
 }
+// STEP 1: Add this AI detection function at the top of your file (near other functions)
 
-// STEP 1: Add the isValidGPName function BEFORE your findNearestGPs function
-
-function isValidGPName(name, address) {
+async function isActualGP(name, address) {
+    // Quick filter for obvious fake entries first
     const nameLower = name.toLowerCase();
-    const addressLower = (address || '').toLowerCase();
-    
-    // ❌ STEP 1: Filter out FAKE/TEST entries (keep this strict)
-    const fakePatterns = [
-        'bot', 'test', 'fake', 'dummy', 'sample',
-        'jifjaff', 'mybotgp', 'testgp', 'demogp',
-        'xxx', 'yyy', 'zzz', 'placeholder'
-    ];
-    
-    const isFakeEntry = fakePatterns.some(pattern => 
-        nameLower.includes(pattern) || addressLower.includes(pattern)
-    );
-    
-    if (isFakeEntry) {
-        console.log(`❌ FAKE GP DETECTED: ${name} - Contains fake patterns`);
+    if (nameLower.includes('bot') || nameLower.includes('test') || nameLower.includes('jifjaff')) {
+        console.log(`❌ FAKE ENTRY: ${name}`);
         return false;
     }
     
-    // ❌ STEP 2: Filter out OBVIOUSLY non-medical (keep strict)
-    const obviouslyNotMedical = [
-        'tree surgery', 'tree service', 'landscaping', 'gardening',
-        'plumbing', 'electrician', 'builder', 'construction',
-        'restaurant', 'cafe', 'shop', 'store', 'retail'
-    ];
-    
-    const isObviouslyNotMedical = obviouslyNotMedical.some(pattern => 
-        nameLower.includes(pattern) || addressLower.includes(pattern)
-    );
-    
-    if (isObviouslyNotMedical) {
-        console.log(`❌ NOT MEDICAL: ${name} - Obviously not medical`);
-        return false;
-    }
-    
-    // ❌ STEP 3: Filter out specific non-GP medical services (be more selective)
-    const specificNonGP = [
-        'dentist', 'dental', 'optician', 'eye care', 'chiropractor',
-        'physiotherapy', 'physio', 'osteopath', 'pharmacy', 'chemist',
-        'vet', 'veterinary', 'beauty', 'aesthetic', 'cosmetic', 'botox',
-        'laser', 'spa', 'massage', 'acupuncture', 'chiropody', 'podiatry',
-        'hearing aid', 'audiology', 'counselling', 'therapy', 'psychology', 
-        'nutrition', 'nutritionist', 'dietitian', 'diet', 'wellness',
-        'fitness', 'personal trainer', 'trainer', 'coach', 'coaching'
-    ];
-    
-    // Check if it's clearly one of these specific services
-    const isSpecificNonGP = specificNonGP.some(service => {
-        return nameLower.includes(service) && !nameLower.includes('gp') && !nameLower.includes('medical practice');
-    });
-    
-    if (isSpecificNonGP) {
-        console.log(`❌ NOT A GP: ${name} - Specific non-GP medical service`);
-        return false;
-    }
-    
-    // ✅ STEP 4: POSITIVE identification - much more inclusive
-    const isLikelyGP = (
-        // Clear GP indicators
-        nameLower.includes('gp') || 
-        nameLower.includes('general practitioner') ||
-        
-        // Surgery names
-        nameLower.includes('surgery') ||
-        
-        // Medical/Health practices
-        nameLower.includes('medical practice') ||
-        nameLower.includes('medical centre') || nameLower.includes('medical center') ||
-        nameLower.includes('health centre') || nameLower.includes('health center') ||
-        nameLower.includes('family practice') || nameLower.includes('primary care') ||
-        
-        // Doctor names (individual GPs)
-        (nameLower.startsWith('dr ') || nameLower.startsWith('doctor ')) ||
-        
-        // Private GP clinics
-        (nameLower.includes('private') && nameLower.includes('clinic') && 
-         !specificNonGP.some(service => nameLower.includes(service))) ||
-        
-        // Practice/clinic names that aren't specialist
-        (nameLower.includes('clinic') && !specificNonGP.some(service => nameLower.includes(service))) ||
-        
-        // Assume any "doctor" type from Google Places that isn't obviously specialist
-        true  // Be inclusive - if it got past the exclusions, it's probably a GP
-    );
-    
-    if (isLikelyGP) {
-        console.log(`✅ VALID GP: ${name}`);
-        return true;
-    } else {
-        console.log(`❌ INVALID GP: ${name} - Failed validation`);
-        return false;
-    }
-}
+    // Use Claude API to intelligently detect if this is a real GP
+    try {
+        const prompt = `Is "${name}" a General Practitioner (GP) surgery or medical practice that provides primary healthcare?
 
-// Alternative even simpler approach - focus on exclusions only:
-function isValidGPNameSimple(name, address) {
-    const nameLower = name.toLowerCase();
-    const addressLower = (address || '').toLowerCase();
-    
-    // Only exclude obvious fakes and non-GP services
-    const shouldExclude = (
-        // Fake entries
-        nameLower.includes('bot') || nameLower.includes('test') || 
-        nameLower.includes('jifjaff') || nameLower.includes('fake') ||
+Consider:
+- GPs provide general medical care, routine checkups, prescriptions, referrals
+- NOT specialists like: nutritionists, dentists, physiotherapists, cosmetic doctors, private specialists
+- Address: ${address}
+
+Examples:
+✅ "Dr Smith Surgery" = YES (GP surgery)
+✅ "Millway Medical Practice" = YES (medical practice)  
+✅ "Dr John Wilson" = YES (individual GP)
+❌ "Clare Turner Nutrition" = NO (nutritionist)
+❌ "Beauty Clinic" = NO (cosmetic)
+❌ "PhysioFirst" = NO (physiotherapy)
+
+Respond with only: YES or NO`;
+
+        const response = await axios.post('https://api.anthropic.com/v1/messages', {
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 10,
+            messages: [{
+                role: 'user',
+                content: prompt
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            timeout: 5000
+        });
+
+        const result = response.data.content[0].text.trim().toUpperCase();
+        const isGP = result === 'YES';
         
-        // Definitely not GPs
-        nameLower.includes('dentist') || nameLower.includes('dental') ||
-        nameLower.includes('optician') || nameLower.includes('physiotherapy') ||
-        nameLower.includes('physio') || nameLower.includes('chiropractor') ||
-        nameLower.includes('pharmacy') || nameLower.includes('vet') ||
-        nameLower.includes('beauty') || nameLower.includes('aesthetic') ||
-        nameLower.includes('botox') || nameLower.includes('cosmetic') ||
-        nameLower.includes('spa') || nameLower.includes('massage') ||
+        console.log(`🤖 AI GP Detection: "${name}" = ${isGP ? '✅ GP' : '❌ NOT GP'}`);
+        return isGP;
         
-        // Non-medical
-        nameLower.includes('tree surgery') || nameLower.includes('landscaping')
-    );
-    
-    if (shouldExclude) {
-        console.log(`❌ EXCLUDED: ${name}`);
-        return false;
+    } catch (error) {
+        console.log(`⚠️ AI detection failed for ${name}, using fallback logic`);
+        
+        // Fallback to basic filtering if AI fails
+        const obviouslyNotGP = [
+            'nutrition', 'nutritionist', 'dentist', 'physio', 'beauty', 'aesthetic'
+        ].some(keyword => nameLower.includes(keyword));
+        
+        const likelyGP = nameLower.includes('surgery') || 
+                        nameLower.includes('medical practice') ||
+                        nameLower.includes('medical centre') ||
+                        nameLower.includes('gp') ||
+                        nameLower.startsWith('dr ');
+        
+        return likelyGP && !obviouslyNotGP;
     }
-    
-    console.log(`✅ ACCEPTED: ${name}`);
-    return true;
 }
 
 // ✅ ENHANCED GP SEARCH with detailed coordinate logging
@@ -591,51 +529,60 @@ async function findNearestGPs(lat, lng) {
 
         if (response.data.places && response.data.places.length > 0) {
             // ✅ KEEP FULL ENHANCED FILTERING but add coordinate logging
-            const gps = response.data.places
-                .filter(place => {
-                    const name = place.displayName?.text || '';
-                    const address = place.formattedAddress || '';
-                    const businessStatus = place.businessStatus;
-                    
-                    if (businessStatus === 'CLOSED_PERMANENTLY') {
-                        console.log(`Skipping closed place: ${name}`);
-                        return false;
-                    }
-        
-                    // Use the new enhanced validation function
-                    return isValidGPName(name, address);
-                })  
-                .map(place => {
-                    const gpLat = place.location?.latitude;
-                    const gpLng = place.location?.longitude;
-                    
-                    // Calculate straight-line distance for verification
-                    const straightLineDistance = calculateStraightLineDistance(lat, lng, gpLat, gpLng);
-                    
-                    const gpInfo = {
-                        name: place.displayName?.text || 'Medical Practice',
-                        address: place.formattedAddress || 'Address not available',
-                        location: { lat: gpLat, lng: gpLng },
-                        rating: place.rating || null,
-                        placeId: place.id,
-                        businessStatus: place.businessStatus,
-                        website: place.websiteUri || null,
-                        straightLineDistance: straightLineDistance
-                    };
-                    
-                    // 📍 LOG DETAILED COORDINATE INFO
-                    console.log(`📍 GP: ${gpInfo.name}`);
-                    console.log(`   Address: ${gpInfo.address}`);
-                    console.log(`   Coordinates: ${gpLat}, ${gpLng}`);
-                    console.log(`   Google Maps: https://www.google.com/maps?q=${gpLat},${gpLng}`);
-                    console.log(`   Straight-line distance: ${straightLineDistance.toFixed(2)} km`);
-                    console.log(`   ---`);
-                    
-                    return gpInfo;
-                })
-                .slice(0, 5);
+            const gps = [];
+
+        // Process each place individually with AI detection
+        for (const place of response.data.places) {
+            const name = place.displayName?.text || '';
+            const address = place.formattedAddress || '';
+            const businessStatus = place.businessStatus;
             
-            console.log(`Found ${gps.length} valid GP surgeries`);
+            if (businessStatus === 'CLOSED_PERMANENTLY') {
+                console.log(`Skipping closed place: ${name}`);
+                continue;
+            }
+            
+            // Use AI to determine if this is actually a GP
+            const isGP = await isActualGP(name, address);
+            if (!isGP) {
+                continue; // Skip this place
+            }
+            
+            // If we get here, it's a valid GP - process it
+            const gpLat = place.location?.latitude;
+            const gpLng = place.location?.longitude;
+            
+            const straightLineDistance = calculateStraightLineDistance(lat, lng, gpLat, gpLng);
+            
+            const gpInfo = {
+                name: place.displayName?.text || 'Medical Practice',
+                address: place.formattedAddress || 'Address not available',
+                location: { lat: gpLat, lng: gpLng },
+                rating: place.rating || null,
+                placeId: place.id,
+                businessStatus: place.businessStatus,
+                website: place.websiteUri || null,
+                straightLineDistance: straightLineDistance
+            };
+            
+            // Log the GP details
+            console.log(`📍 VALID GP: ${gpInfo.name}`);
+            console.log(`   Address: ${gpInfo.address}`);
+            console.log(`   Coordinates: ${gpLat}, ${gpLng}`);
+            console.log(`   Straight-line distance: ${straightLineDistance.toFixed(2)} km`);
+            console.log(`   ---`);
+            
+            gps.push(gpInfo);
+            
+            // Limit to 5 GPs
+            if (gps.length >= 5) break;
+            
+            // Small delay to avoid overwhelming the API
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        console.log(`Found ${gps.length} valid GP surgeries using AI detection`);
+
             
             if (gps.length > 0) {
                 return gps;
