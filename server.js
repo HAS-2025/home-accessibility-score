@@ -1689,46 +1689,64 @@ async function analyzePropertyAccessibility(property) {
     }
 
     // Step 2: Calculate EPC Score
-    let epcScore = 3;
-    let epcDetails = 'EPC rating not specified';
-
-    if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
-        if (property.epc.numericalScore && property.epc.confidence >= 80) {
-            epcScore = Math.max(1, Math.min(5, Math.round((property.epc.numericalScore / 100) * 5)));
-            // Simple description instead of technical details
-            let efficiencyLevel = 'poor';
-            const rating = property.epc.rating;
-            if (['A', 'B'].includes(rating)) efficiencyLevel = 'excellent';
-            else if (['C', 'D'].includes(rating)) efficiencyLevel = 'good';
-            else if (rating === 'E') efficiencyLevel = 'poor';
-            else if (['F', 'G'].includes(rating)) efficiencyLevel = 'very poor';
+function calculateEPCScore(epcRating) {
+    if (!epcRating) return { score: 3, rating: 'Not available', description: 'Energy rating not available' };
+    
+    const rating = epcRating.toUpperCase();
+    
+    switch (rating) {
+        case 'A':
+        case 'B':
+            return {
+                score: 5,
+                rating: 'Excellent',
+                description: `Energy rating ${rating} - This property has excellent energy efficiency and may have lower heating costs.`
+            };
         
-        epcDetails = `Energy rating ${rating} - This property has ${efficiencyLevel} energy efficiency and may have ${efficiencyLevel === 'excellent' ? 'lower' : 'higher'} heating costs.`;
-        } else {
-            const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
-            epcScore = letterScores[property.epc.rating] || 3;
-            // Simple description instead of technical details
-            let efficiencyLevel = 'poor';
-            const rating = property.epc.rating;
-            if (['A', 'B'].includes(rating)) efficiencyLevel = 'excellent';
-            else if (['C', 'D'].includes(rating)) efficiencyLevel = 'good';
-            else if (rating === 'E') efficiencyLevel = 'poor';
-            else if (['F', 'G'].includes(rating)) efficiencyLevel = 'very poor';
-
-epcDetails = `Energy rating ${rating} - This property has ${efficiencyLevel} energy efficiency and may have ${efficiencyLevel === 'excellent' ? 'lower' : 'higher'} heating costs.`;
-        }
-    } else if (property.epcRating) {
-        const rating = property.epcRating.toUpperCase();
-        const letterScores = { 'A': 5, 'B': 4, 'C': 4, 'D': 3, 'E': 2, 'F': 2, 'G': 1 };
-        epcScore = letterScores[rating] || 3;
-        let efficiencyLevel = 'poor';
-        if (['A', 'B'].includes(rating)) efficiencyLevel = 'excellent';
-        else if (['C', 'D'].includes(rating)) efficiencyLevel = 'good';
-        else if (rating === 'E') efficiencyLevel = 'poor';
-        else if (['F', 'G'].includes(rating)) efficiencyLevel = 'very poor';
-
-epcDetails = `Energy rating ${rating} - This property has ${efficiencyLevel} energy efficiency and may have ${efficiencyLevel === 'excellent' ? 'lower' : 'higher'} heating costs.`;
+        case 'C':
+            return {
+                score: 4,
+                rating: 'Good',
+                description: `Energy rating ${rating} - This property has good energy efficiency and may have lower heating costs.`
+            };
+            
+        case 'D':
+            return {
+                score: 3,
+                rating: 'Average',
+                description: `Energy rating ${rating} - This property has average energy efficiency and may have moderate heating costs.`
+            };
+            
+        case 'E':
+        case 'F':
+        case 'G':
+            return {
+                score: 2,
+                rating: 'Poor',
+                description: `Energy rating ${rating} - This property has poor energy efficiency and may have higher heating costs.`
+            };
+            
+        default:
+            return {
+                score: 3,
+                rating: 'Unknown',
+                description: 'Energy rating not available'
+            };
     }
+}
+
+// Get EPC rating from property data
+let epcRating = null;
+if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
+    epcRating = property.epc.rating;
+} else if (property.epcRating) {
+    epcRating = property.epcRating;
+}
+
+// Calculate score and details
+const epcAnalysis = calculateEPCScore(epcRating);
+const epcScore = epcAnalysis.score;
+const epcDetails = epcAnalysis.description;
     
     // Step 3: NEW - Analyze Accessible Features (replaces internal facilities)
     console.log('🏠 Analyzing accessible features...');
