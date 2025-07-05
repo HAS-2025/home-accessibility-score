@@ -424,40 +424,24 @@ async function getPropertyCoordinates(address, existingCoords) {
 }
 // STEP 1: Add this AI detection function at the top of your file (near other functions)
 
-async function isActualGP(name, address) {
-    // Quick filter for obvious fake entries first
-    const nameLower = name.toLowerCase();
-    if (nameLower.includes('bot') || nameLower.includes('test') || nameLower.includes('jifjaff')) {
-        console.log(`❌ FAKE ENTRY: ${name}`);
-        return false;
-    }
-    
-    // Use Claude API to intelligently detect if this is a real GP
+// Replace the old isActualGP function with this batch version:
+async function batchDetectGPs(places) {
+    const placeList = places.map((place, index) => 
+        `${index + 1}. "${place.displayName?.text}" - ${place.formattedAddress}`
+    ).join('\n');
+
     try {
-        const prompt = `Is "${name}" a General Practitioner (GP) surgery or medical practice that provides primary healthcare?
+        const prompt = `Which of these are actual GP surgeries/medical practices that provide primary healthcare?
 
-Consider:
-- GPs provide general medical care, routine checkups, prescriptions, referrals
-- NOT specialists like: nutritionists, dentists, physiotherapists, cosmetic doctors, private specialists
-- Address: ${address}
+${placeList}
 
-Examples:
-✅ "Dr Smith Surgery" = YES (GP surgery)
-✅ "Millway Medical Practice" = YES (medical practice)  
-✅ "Dr John Wilson" = YES (individual GP)
-❌ "Clare Turner Nutrition" = NO (nutritionist)
-❌ "Beauty Clinic" = NO (cosmetic)
-❌ "PhysioFirst" = NO (physiotherapy)
-
-Respond with only: YES or NO`;
+Return only the numbers of the actual GPs (e.g., "1,3,5"). 
+GPs provide general medical care - NOT specialists like nutrition, dentistry, imaging, etc.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 10,
-            messages: [{
-                role: 'user',
-                content: prompt
-            }]
+            max_tokens: 50,
+            messages: [{ role: 'user', content: prompt }]
         }, {
             headers: {
                 'Content-Type': 'application/json',
@@ -467,28 +451,52 @@ Respond with only: YES or NO`;
             timeout: 5000
         });
 
-        const result = response.data.content[0].text.trim().toUpperCase();
-        const isGP = result === 'YES';
+        const result = response.data.content[0].text.trim();
+        const validIndices = result.split(',').map(n => parseInt(n.trim()) - 1);
         
-        console.log(`🤖 AI GP Detection: "${name}" = ${isGP ? '✅ GP' : '❌ NOT GP'}`);
-        return isGP;
+        console.log(`🤖 Batch AI Detection: Valid GPs at indices ${validIndices}`);
+        return validIndices;
         
     } catch (error) {
-        console.log(`⚠️ AI detection failed for ${name}, using fallback logic`);
-        
-        // Fallback to basic filtering if AI fails
-        const obviouslyNotGP = [
-            'nutrition', 'nutritionist', 'dentist', 'physio', 'beauty', 'aesthetic'
-        ].some(keyword => nameLower.includes(keyword));
-        
-        const likelyGP = nameLower.includes('surgery') || 
-                        nameLower.includes('medical practice') ||
-                        nameLower.includes('medical centre') ||
-                        nameLower.includes('gp') ||
-                        nameLower.startsWith('dr ');
-        
-        return likelyGP && !obviouslyNotGP;
+        console.log('⚠️ Batch AI detection failed, using fallback');
+        return null;
     }
+}
+
+// Add this improved fallback function:
+function smartFallbackDetection(name, address) {
+    const nameLower = name.toLowerCase();
+    
+    // Quick fake detection
+    if (nameLower.includes('bot') || nameLower.includes('jifjaff')) {
+        return false;
+    }
+    
+    // Obvious non-GPs (from your working examples)
+    const obviousNonGPs = [
+        'nutrition', 'chiropody', 'nuclear medicine', 'imaging', 
+        'dentist', 'physio', 'beauty', 'aesthetic', 'spa'
+    ];
+    
+    if (obviousNonGPs.some(term => nameLower.includes(term))) {
+        console.log(`❌ SMART FALLBACK: ${name} - Not a GP`);
+        return false;
+    }
+    
+    // Obvious GPs
+    const obviousGPs = [
+        'surgery', 'medical practice', 'health centre', 'gp',
+        'dr ', 'medical centre'
+    ];
+    
+    if (obviousGPs.some(term => nameLower.includes(term))) {
+        console.log(`✅ SMART FALLBACK: ${name} - Is a GP`);
+        return true;
+    }
+    
+    // When unsure, be inclusive (like your current fallback)
+    console.log(`✅ SMART FALLBACK: ${name} - Probably a GP`);
+    return true;
 }
 
 // ✅ ENHANCED GP SEARCH with detailed coordinate logging
@@ -531,57 +539,98 @@ async function findNearestGPs(lat, lng) {
             // ✅ KEEP FULL ENHANCED FILTERING but add coordinate logging
             const gps = [];
 
-        // Process each place individually with AI detection
-        for (const place of response.data.places) {
-            const name = place.displayName?.text || '';
-            const address = place.formattedAddress || '';
-            const businessStatus = place.businessStatus;
+            // Try batch AI detection first
+            const validGPIndices = await batchDetectGPs(response.data.places);
             
-            if (businessStatus === 'CLOSED_PERMANENTLY') {
-                console.log(`Skipping closed place: ${name}`);
-                continue;
+            if (validGPIndices && validGPIndices.length > 0) {
+                console.log(`🤖 AI found ${validGPIndices.length} valid GPs, processing them...`);
+                
+                // Process only the AI-confirmed GPs
+                for (const index of validGPIndices) {
+                    const place = response.data.places[index];
+                    if (!place) continue;
+                    
+                    const name = place.displayName?.text || '';
+                    const businessStatus = place.businessStatus;
+                    
+                    if (businessStatus === 'CLOSED_PERMANENTLY') {
+                        console.log(`Skipping closed place: ${name}`);
+                        continue;
+                    }
+                    
+                    // Process the valid GP
+                    const gpLat = place.location?.latitude;
+                    const gpLng = place.location?.longitude;
+                    
+                    const straightLineDistance = calculateStraightLineDistance(lat, lng, gpLat, gpLng);
+                    
+                    const gpInfo = {
+                        name: place.displayName?.text || 'Medical Practice',
+                        address: place.formattedAddress || 'Address not available',
+                        location: { lat: gpLat, lng: gpLng },
+                        rating: place.rating || null,
+                        placeId: place.id,
+                        businessStatus: place.businessStatus,
+                        website: place.websiteUri || null,
+                        straightLineDistance: straightLineDistance
+                    };
+                    
+                    console.log(`📍 VALID GP: ${gpInfo.name}`);
+                    console.log(`   Address: ${gpInfo.address}`);
+                    console.log(`   Coordinates: ${gpLat}, ${gpLng}`);
+                    console.log(`   Straight-line distance: ${straightLineDistance.toFixed(2)} km`);
+                    console.log(`   ---`);
+                    
+                    gps.push(gpInfo);
+                    
+                    if (gps.length >= 5) break;
+                }
+            } else {
+                console.log(`⚠️ AI detection failed, using smart fallback for all places...`);
+                
+                // Fallback to smart detection
+                for (const place of response.data.places) {
+                    const name = place.displayName?.text || '';
+                    const address = place.formattedAddress || '';
+                    const businessStatus = place.businessStatus;
+                    
+                    if (businessStatus === 'CLOSED_PERMANENTLY') {
+                        console.log(`Skipping closed place: ${name}`);
+                        continue;
+                    }
+                    
+                    if (smartFallbackDetection(name, address)) {
+                        // Process the GP (same logic as above)
+                        const gpLat = place.location?.latitude;
+                        const gpLng = place.location?.longitude;
+                        
+                        const straightLineDistance = calculateStraightLineDistance(lat, lng, gpLat, gpLng);
+                        
+                        const gpInfo = {
+                            name: place.displayName?.text || 'Medical Practice',
+                            address: place.formattedAddress || 'Address not available',
+                            location: { lat: gpLat, lng: gpLng },
+                            rating: place.rating || null,
+                            placeId: place.id,
+                            businessStatus: place.businessStatus,
+                            website: place.websiteUri || null,
+                            straightLineDistance: straightLineDistance
+                        };
+                        
+                        console.log(`📍 FALLBACK GP: ${gpInfo.name}`);
+                        console.log(`   Address: ${gpInfo.address}`);
+                        console.log(`   Coordinates: ${gpLat}, ${gpLng}`);
+                        console.log(`   Straight-line distance: ${straightLineDistance.toFixed(2)} km`);
+                        console.log(`   ---`);
+                        
+                        gps.push(gpInfo);
+                        
+                        if (gps.length >= 5) break;
+                    }
+                }
             }
             
-            // Use AI to determine if this is actually a GP
-            const isGP = await isActualGP(name, address);
-            if (!isGP) {
-                continue; // Skip this place
-            }
-            
-            // If we get here, it's a valid GP - process it
-            const gpLat = place.location?.latitude;
-            const gpLng = place.location?.longitude;
-            
-            const straightLineDistance = calculateStraightLineDistance(lat, lng, gpLat, gpLng);
-            
-            const gpInfo = {
-                name: place.displayName?.text || 'Medical Practice',
-                address: place.formattedAddress || 'Address not available',
-                location: { lat: gpLat, lng: gpLng },
-                rating: place.rating || null,
-                placeId: place.id,
-                businessStatus: place.businessStatus,
-                website: place.websiteUri || null,
-                straightLineDistance: straightLineDistance
-            };
-            
-            // Log the GP details
-            console.log(`📍 VALID GP: ${gpInfo.name}`);
-            console.log(`   Address: ${gpInfo.address}`);
-            console.log(`   Coordinates: ${gpLat}, ${gpLng}`);
-            console.log(`   Straight-line distance: ${straightLineDistance.toFixed(2)} km`);
-            console.log(`   ---`);
-            
-            gps.push(gpInfo);
-            
-            // Limit to 5 GPs
-            if (gps.length >= 5) break;
-            
-            // Small delay to avoid overwhelming the API
-            await new Promise(resolve => setTimeout(resolve, 200));
-        }
-        
-        console.log(`Found ${gps.length} valid GP surgeries using AI detection`);
+            console.log(`Found ${gps.length} valid GP surgeries using batch AI detection`);
 
             
             if (gps.length > 0) {
