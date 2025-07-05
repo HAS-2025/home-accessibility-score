@@ -467,7 +467,9 @@ function isValidGPName(name, address) {
         'physiotherapy', 'physio', 'osteopath', 'pharmacy', 'chemist',
         'vet', 'veterinary', 'beauty', 'aesthetic', 'cosmetic', 'botox',
         'laser', 'spa', 'massage', 'acupuncture', 'chiropody', 'podiatry',
-        'hearing aid', 'audiology', 'counselling', 'therapy', 'psychology'
+        'hearing aid', 'audiology', 'counselling', 'therapy', 'psychology', 
+        'nutrition', 'nutritionist', 'dietitian', 'diet', 'wellness',
+        'fitness', 'personal trainer', 'trainer', 'coach', 'coaching'
     ];
     
     // Check if it's clearly one of these specific services
