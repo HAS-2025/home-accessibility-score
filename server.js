@@ -135,9 +135,9 @@ async function calculateAccessibleFeaturesScore(property) {
     const features = [];
     
     // Extract relevant text for analysis - FIXED variable references
-    const description = (propertyData.description || '').toLowerCase();
-    const title = (propertyData.title || '').toLowerCase();
-    const propertyFeatures = (propertyData.features || []).join(' ').toLowerCase();
+    const description = (property.description || '').toLowerCase();
+    const title = (property.title || '').toLowerCase();
+    const propertyFeatures = (property.features || []).join(' ').toLowerCase();
     const fullText = `${title} ${description} ${propertyFeatures}`.toLowerCase();
     
     console.log('🏠 Analyzing accessible features for property...');
