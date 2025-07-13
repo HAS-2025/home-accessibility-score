@@ -1605,7 +1605,7 @@ async function scrapeRightmoveProperty(url) {
                 // Check if this looks like a location (has street/area pattern)
                 if (locationText && 
                     locationText.length > 5 && 
-                    locationText.length < 50 && 
+                    locationText.length < 70 && 
                     !locationText.includes('£') &&
                     !locationText.includes('bedroom') &&
                     !locationText.includes('bathroom') &&
