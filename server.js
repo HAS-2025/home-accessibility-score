@@ -1447,6 +1447,67 @@ async function extractEPCFromRightmoveDropdown(url) {
     }
 }
 
+// ✅ ADD THESE VALIDATION FUNCTIONS TO YOUR SERVER.JS
+// Add these functions somewhere in your server.js file, before your scraping function
+
+// Helper function to validate location against coordinates
+function validateLocationAgainstCoordinates(locationText, coordinates) {
+    if (!coordinates || !locationText) return true; // If no coordinates, can't validate
+    
+    const { lat, lng } = coordinates;
+    const locationLower = locationText.toLowerCase();
+    
+    // Define coordinate ranges for major UK cities
+    const cityRanges = {
+        london: { latMin: 51.28, latMax: 51.70, lngMin: -0.51, lngMax: 0.33 },
+        manchester: { latMin: 53.35, latMax: 53.55, lngMin: -2.35, lngMax: -2.15 },
+        birmingham: { latMin: 52.40, latMax: 52.60, lngMin: -2.00, lngMax: -1.80 },
+        liverpool: { latMin: 53.30, latMax: 53.50, lngMin: -3.05, lngMax: -2.85 },
+        leeds: { latMin: 53.70, latMax: 53.90, lngMin: -1.70, lngMax: -1.45 },
+        bristol: { latMin: 51.40, latMax: 51.50, lngMin: -2.65, lngMax: -2.50 }
+    };
+    
+    // Check if coordinates match the mentioned city
+    for (const [city, range] of Object.entries(cityRanges)) {
+        const isInCityRange = lat >= range.latMin && lat <= range.latMax && 
+                             lng >= range.lngMin && lng <= range.lngMax;
+        const locationMentionsCity = locationLower.includes(city);
+        
+        if (locationMentionsCity && !isInCityRange) {
+            console.log(`🏠 Coordinate mismatch: Location mentions ${city} but coordinates are outside ${city} range`);
+            return false;
+        }
+    }
+    
+    return true; // No obvious mismatch detected
+}
+
+// Helper function to get city name from coordinates
+function getCityFromCoordinates(coordinates) {
+    if (!coordinates) return null;
+    
+    const { lat, lng } = coordinates;
+    
+    const cityRanges = {
+        'London': { latMin: 51.28, latMax: 51.70, lngMin: -0.51, lngMax: 0.33 },
+        'Manchester': { latMin: 53.35, latMax: 53.55, lngMin: -2.35, lngMax: -2.15 },
+        'Birmingham': { latMin: 52.40, latMax: 52.60, lngMin: -2.00, lngMax: -1.80 },
+        'Liverpool': { latMin: 53.30, latMax: 53.50, lngMin: -3.05, lngMax: -2.85 },
+        'Leeds': { latMin: 53.70, latMax: 53.90, lngMin: -1.70, lngMax: -1.45 },
+        'Bristol': { latMin: 51.40, latMax: 51.50, lngMin: -2.65, lngMax: -2.50 }
+    };
+    
+    for (const [city, range] of Object.entries(cityRanges)) {
+        if (lat >= range.latMin && lat <= range.latMax && 
+            lng >= range.lngMin && lng <= range.lngMax) {
+            console.log(`🏠 Coordinates indicate property is in ${city}`);
+            return `${city} (coordinates-corrected)`;
+        }
+    }
+    
+    return null; // City not identified
+}
+
 // ✅ FULL PROPERTY SCRAPING - Restore all functionality
 async function scrapeRightmoveProperty(url) {
     try {
@@ -1558,9 +1619,14 @@ async function scrapeRightmoveProperty(url) {
                      locationText.includes('Place') ||
                      locationText.includes(','))) {
                     
-                    location = locationText;
-                    console.log('Found location:', location);
-                    return false; // Break out of loop
+                    // Validate against coordinates if available
+                    if (!coordinates || validateLocationAgainstCoordinates(locationText, coordinates)) {
+                        location = locationText;
+                        console.log('Found location:', location);
+                        return false; // Break out of loop
+                    } else {
+                        console.log('🏠 Skipping location due to coordinate mismatch:', locationText);
+                    }
                 }
             });
             
@@ -1576,27 +1642,52 @@ async function scrapeRightmoveProperty(url) {
                 if (prevElements.length) {
                     const locationText = prevElements.text().trim();
                     if (locationText && locationText.length > 5 && locationText.length < 50) {
-                        location = locationText;
-                        console.log('Found location near map:', location);
+                        // Validate against coordinates
+                        if (!coordinates || validateLocationAgainstCoordinates(locationText, coordinates)) {
+                            location = locationText;
+                            console.log('Found location near map:', location);
+                        } else {
+                            console.log('🏠 Skipping map location due to coordinate mismatch:', locationText);
+                        }
                     }
                 }
             }
         }
-        // Final fallback: Look for any text that matches "Street, Area" pattern
+        
+        // Improved fallback: Look for pattern matches but validate them
         if (!location) {
             const allText = $('body').text();
-            const locationMatch = allText.match(/([A-Za-z\s]+ (?:Street|Road|Avenue|Lane|Close|Drive|Place),\s*[A-Za-z\s]+)/g);
-            if (locationMatch && locationMatch.length > 0) {
-                location = locationMatch[0];
-                console.log('Found location via pattern match:', location);
+            const locationMatches = allText.match(/([A-Za-z\s]+ (?:Street|Road|Avenue|Lane|Close|Drive|Place),\s*[A-Za-z\s]+)/g);
+            
+            if (locationMatches && locationMatches.length > 0) {
+                // Try each match and use the first one that validates
+                for (const potentialLocation of locationMatches) {
+                    if (!coordinates || validateLocationAgainstCoordinates(potentialLocation, coordinates)) {
+                        location = potentialLocation;
+                        console.log('Found location via pattern match:', location);
+                        break;
+                    } else {
+                        console.log('🏠 Skipping pattern match due to coordinate mismatch:', potentialLocation);
+                    }
+                }
             }
         }
+        
+        // Final fallback: Use coordinates to determine city if all else fails
+        if (!location && coordinates) {
+            const cityFromCoords = getCityFromCoordinates(coordinates);
+            if (cityFromCoords) {
+                location = cityFromCoords;
+                console.log('🏠 Using city from coordinates:', location);
+            }
+        }
+        
         // Clean up location if found
         if (location) {
             location = location.replace(/^[,\s]+|[,\s]+$/g, ''); // Remove leading/trailing commas and spaces
             console.log('Cleaned location:', location);
         }
-
+        
         const priceMatch = pageText.match(/£[\d,]+/g);
         const price = priceMatch ? priceMatch[0] : 'Price not available';
 
