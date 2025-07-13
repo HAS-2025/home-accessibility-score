@@ -366,14 +366,22 @@ if (hasDownstairsBathroom) {
     if (!hasBalcony && property.floorplan) {
         console.log('🔍 No balcony found in text, checking floor plan...');
         const floorplanBalcony = await analyzeFloorPlanForBalcony(property.floorplan);
+
+        console.log('🔍 Floor plan analysis returned:', floorplanBalcony); // ADD THIS
+        console.log('🔍 Type of floorplanBalcony:', typeof floorplanBalcony); // ADD THIS
         
         if (floorplanBalcony === true) {
             hasBalcony = true;
             console.log('✅ Balcony detected via floor plan analysis');
+        } else {
+            console.log('❌ Floor plan balcony check failed:', floorplanBalcony); // ADD THIS
         }
     } else {
         console.log('🔍 Skipping floor plan analysis - hasBalcony:', hasBalcony, 'floorplan available:', !!property.floorplan); // ADD THIS
     }
+
+    console.log('🔍 hasBalcony after floor plan check:', hasBalcony); // ADD THIS
+    
     // ADD THIS BLOCK AFTER THE FLOOR PLAN DETECTION:
     if (hasBalcony) {
         score += 1;
