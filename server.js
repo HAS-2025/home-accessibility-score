@@ -932,6 +932,132 @@ function calculateGPProximityScore(durationMinutes, routeAccessibilityScore = nu
     return baseScore;
 }
 
+// ✅ PUBLIC TRANSPORT ANALYSIS
+async function analyzePublicTransport(lat, lng) {
+    try {
+        console.log(`🚌 Finding public transport near ${lat}, ${lng}`);
+        
+        // Find nearby bus stops
+        const busStops = await findNearbyTransit(lat, lng, 'bus_station');
+        
+        // Find nearby train stations  
+        const trainStations = await findNearbyTransit(lat, lng, 'train_station');
+        
+        // Calculate score based on distance only
+        const transitScore = calculateTransitScore(busStops, trainStations);
+        
+        console.log(`🚌 Found ${busStops.length} bus stops, ${trainStations.length} train stations`);
+        console.log(`🚌 Public transport score: ${transitScore}/5`);
+        
+        return {
+            score: transitScore,
+            busStops: busStops.slice(0, 3), // Top 3 nearest
+            trainStations: trainStations.slice(0, 3),
+            summary: generateTransitSummary(transitScore, busStops, trainStations)
+        };
+        
+    } catch (error) {
+        console.error('Public transport analysis failed:', error.message);
+        return {
+            score: 2,
+            busStops: [],
+            trainStations: [],
+            summary: 'Public transport analysis unavailable'
+        };
+    }
+}
+
+async function findNearbyTransit(lat, lng, transitType) {
+    try {
+        const requestBody = {
+            includedTypes: [transitType],
+            maxResultCount: 10,
+            locationRestriction: {
+                circle: {
+                    center: { latitude: lat, longitude: lng },
+                    radius: 2000.0 // 2km radius
+                }
+            },
+            rankPreference: "DISTANCE",
+            languageCode: "en-GB",
+            regionCode: "GB"
+        };
+        
+        const response = await axios.post(
+            'https://places.googleapis.com/v1/places:searchNearby',
+            requestBody,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.id'
+                },
+                timeout: 8000
+            }
+        );
+        
+        if (response.data.places && response.data.places.length > 0) {
+            return response.data.places.map(place => ({
+                name: place.displayName?.text || `${transitType.replace('_', ' ')}`,
+                address: place.formattedAddress || 'Address not available',
+                location: {
+                    lat: place.location?.latitude,
+                    lng: place.location?.longitude
+                },
+                distance: calculateStraightLineDistance(lat, lng, place.location?.latitude, place.location?.longitude),
+                walkingTime: Math.round((calculateStraightLineDistance(lat, lng, place.location?.latitude, place.location?.longitude) * 1000) / 80), // 80m/min walking speed
+                placeId: place.id
+            })).sort((a, b) => a.distance - b.distance);
+        }
+        
+        return [];
+        
+    } catch (error) {
+        console.error(`${transitType} search failed:`, error.message);
+        return [];
+    }
+}
+
+function calculateTransitScore(busStops, trainStations) {
+    const nearestBusDistance = busStops[0]?.distance ? busStops[0].distance * 1000 : Infinity; // Convert km to meters
+    const nearestTrainDistance = trainStations[0]?.distance ? trainStations[0].distance * 1000 : Infinity;
+    
+    console.log(`🚌 Nearest bus: ${nearestBusDistance}m, Nearest train: ${nearestTrainDistance}m`);
+    
+    // Scoring criteria based on your requirements
+    if ((nearestBusDistance <= 200 && nearestTrainDistance <= 800)) return 5;
+    if (nearestBusDistance <= 400 || nearestTrainDistance <= 1200) return 4;
+    if (nearestBusDistance <= 600 || nearestTrainDistance <= 1500) return 3;
+    if (nearestBusDistance <= 800 || nearestTrainDistance <= 2000) return 2;
+    return 1;
+}
+
+function generateTransitSummary(score, busStops, trainStations) {
+    let summary = `Public Transport Score: ${score}/5\n\n`;
+    
+    if (busStops.length > 0) {
+        summary += "🚌 **Nearest Bus Stops:**\n";
+        busStops.slice(0, 3).forEach((stop, index) => {
+            summary += `${index + 1}. **${stop.name}** (${Math.round(stop.distance * 1000)}m away, ${stop.walkingTime}-min walk)\n`;
+        });
+        summary += "\n";
+    }
+    
+    if (trainStations.length > 0) {
+        summary += "🚂 **Nearest Train Stations:**\n";
+        trainStations.slice(0, 3).forEach((station, index) => {
+            summary += `${index + 1}. **${station.name}** (${Math.round(station.distance * 1000)}m away, ${station.walkingTime}-min walk)\n`;
+        });
+        summary += "\n";
+    }
+    
+    if (busStops.length === 0 && trainStations.length === 0) {
+        summary += "No public transport found within 2km walking distance.\n";
+    }
+    
+    return summary;
+}
+
 // ✅ ENHANCED EPC EXTRACTION with lazy Vision API loading
 async function extractEPCFromRightmoveDropdown(url) {
     try {
@@ -1750,8 +1876,34 @@ const epcDetails = epcAnalysis.description;
     console.log('🏠 Analyzing accessible features...');
     const accessibleFeatures = calculateAccessibleFeaturesScore(property);
     
-    const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score) / 3;
-    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, property.title, property.epcRating, property.location);
+    // Step 4: NEW - Analyze Public Transport
+    let publicTransport = null;
+    if (property.coordinates) {
+        console.log('🚌 Analyzing public transport...');
+        try {
+            publicTransport = await analyzePublicTransport(property.coordinates.lat, property.coordinates.lng);
+        } catch (error) {
+            console.error('Public transport analysis failed:', error.message);
+            publicTransport = {
+                score: 2,
+                busStops: [],
+                trainStations: [],
+                summary: 'Public transport analysis unavailable'
+            };
+        }
+    } else {
+        publicTransport = {
+            score: 2,
+            busStops: [],
+            trainStations: [],
+            summary: 'Property location coordinates not available for public transport analysis'
+        };
+    }
+    
+    // Updated overall score calculation (4 categories now)
+    const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score + publicTransport.score) / 4;
+    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, overallScore, property.title, property.epcRating, property.location);
+    
     return {
         gpProximity: {
             score: gpProximity.score || 0,
@@ -1773,7 +1925,6 @@ const epcDetails = epcAnalysis.description;
             method: property.epc?.confidence > 80 ? 'Vision API' : 
                     property.epc?.confidence > 50 ? 'Text Search' : 'Default'
         },
-        // NEW: Accessible Features (replaces internalFacilities)
         accessibleFeatures: {
             score: accessibleFeatures.score || 0,
             rating: getScoreRating(accessibleFeatures.score || 0),
@@ -1781,13 +1932,21 @@ const epcDetails = epcAnalysis.description;
             features: accessibleFeatures.features || [],
             percentage: accessibleFeatures.percentage || 0
         },
+        // NEW: Public Transport
+        publicTransport: {
+            score: publicTransport.score || 0,
+            rating: getScoreRating(publicTransport.score || 0),
+            details: publicTransport.summary || 'No public transport details available',
+            busStops: publicTransport.busStops || [],
+            trainStations: publicTransport.trainStations || []
+        },
         overall: Math.round((overallScore || 0) * 10) / 10,
         summary: summary || 'Analysis completed successfully'
     };
 }
 
-// ENHANCED: Generate detailed accessibility-focused summary
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, overallScore, title, epcRating, location) {
+// Add publicTransport parameter to the function
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, overallScore, title, epcRating, location) {
     let summary = "";
     
     const accessibleFeaturesScore = accessibleFeatures.score || 0;
@@ -1865,6 +2024,37 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     
     if (gpProximity.nearestGP) {
         summary += ` to ${gpProximity.nearestGP}`;
+    }
+    summary += ". ";
+
+    // NEW: Public Transport Context
+    let transportRating = "limited";
+    if (publicTransport.score >= 4.5) transportRating = "excellent";
+    else if (publicTransport.score >= 3.5) transportRating = "good";
+    else if (publicTransport.score >= 2.5) transportRating = "fair";
+    
+    summary += `Public transport connectivity is ${transportRating}`;
+    
+    if (publicTransport.score >= 4) {
+        summary += " with convenient access to buses and trains that supports independent travel";
+    } else if (publicTransport.score >= 3) {
+        summary += " with reasonable access to public transport for regular journeys";
+    } else if (publicTransport.score >= 2) {
+        summary += ", though limited options may require planning for longer journeys";
+    } else {
+        summary += " due to minimal nearby public transport options";
+    }
+    
+    const nearestBus = publicTransport.busStops?.[0];
+    const nearestTrain = publicTransport.trainStations?.[0];
+    
+    if (nearestBus || nearestTrain) {
+        summary += " (";
+        const transportDetails = [];
+        if (nearestBus) transportDetails.push(`bus ${Math.round(nearestBus.distance * 1000)}m away`);
+        if (nearestTrain) transportDetails.push(`train station ${Math.round(nearestTrain.distance * 1000)}m away`);
+        summary += transportDetails.join(', ');
+        summary += ")";
     }
     summary += ". ";
     
