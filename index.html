@@ -802,7 +802,7 @@
             else if (score >= 2) scoreClass = 'fair';
             
             document.getElementById('publicTransportScore').className = `score-value ${scoreClass}`;
-            document.getElementById('publicTransportDescription').textContent = transport.details || '';
+            document.getElementById('publicTransportDescription').textContent = `Score: ${transport.score}/5`;
             
             let detailsHtml = '<div class="transport-info">';
             
@@ -850,20 +850,7 @@
                 detailsHtml += '<div class="no-transport-found">No public transport found within 2km walking distance</div>';
             }
             
-            // Add scoring criteria info
-            detailsHtml += `
-                <div class="accessibility-criteria">
-                    <h4>Public Transport Scoring:</h4>
-                    <ul>
-                        <li>Excellent (5): Bus &le;200m AND train &le;800m</li>
-                        <li>Good (4): Bus &le;400m OR train &le;1.2km</li>
-                        <li>Fair (3): Bus &le;600m OR train &le;1.5km</li>
-                        <li>Poor (2): Bus &le;800m OR train &le;2km</li>
-                        <li>Very Poor (1): No convenient public transport</li>
-                    </ul>
-                </div>
-            `;
-            
+                        
             detailsHtml += '</div>';
             
             document.getElementById('publicTransportDetails').innerHTML = detailsHtml;
