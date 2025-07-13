@@ -428,6 +428,8 @@ async function tryFloorplanURL(propertyId) {
             }
         });
         
+
+        
         console.log(`Found ${floorplanImages.length} floorplans on dedicated page`);
         
         if (floorplanImages.length > 0) {
@@ -1491,6 +1493,10 @@ async function scrapeRightmoveProperty(url) {
             }
         });
 
+        // ADD THE DEBUG CODE RIGHT HERE:
+        console.log('🔍 All found images:', images?.slice(0, 5));
+        console.log('🔍 Total images found:', images?.length);
+        
         let floorplan = await tryFloorplanURL(propertyId);
         if (!floorplan) {
             $('img').each((i, img) => {
