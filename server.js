@@ -1936,7 +1936,7 @@ const epcDetails = epcAnalysis.description;
         publicTransport: {
             score: publicTransport.score || 0,
             rating: getScoreRating(publicTransport.score || 0),
-            details: publicTransport.summary || 'No public transport details available',
+            details: '', // EMPTY STRING
             busStops: publicTransport.busStops || [],
             trainStations: publicTransport.trainStations || []
         },
