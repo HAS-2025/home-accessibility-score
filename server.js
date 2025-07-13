@@ -333,22 +333,61 @@ if (hasDownstairsBathroom) {
         features.push('Off-street/private parking');
         console.log('✓ Found off-street/private parking');
     }
+
+    // 6. GARDEN ACCESS (SHARED/COMMUNAL) - New Feature
+    const gardenKeywords = [
+        'communal garden', 'shared garden', 'private garden', 'rear garden',
+        'front garden', 'garden access', 'well maintained garden', 'landscaped garden',
+        'communal grounds', 'shared outdoor space', 'garden area', 'outdoor space',
+        'communal courtyard', 'shared terrace'
+    ];
     
-    console.log(`🏠 Accessible Features Score: ${score}/5`);
+    const hasGarden = gardenKeywords.some(keyword => fullText.includes(keyword));
+    
+    if (hasGarden) {
+        score += 1;
+        features.push('Garden access (shared/communal)');
+        console.log('✓ Found garden access');
+    }
+    
+    // 7. BALCONY/TERRACE - New Feature  
+    const balconyKeywords = [
+        'balcony', 'terrace', 'patio', 'roof terrace', 'private balcony',
+        'juliet balcony', 'outdoor terrace', 'decking', 'sun terrace',
+        'private patio', 'covered balcony'
+    ];
+    
+    const hasBalcony = balconyKeywords.some(keyword => fullText.includes(keyword));
+    
+    if (hasBalcony) {
+        score += 1;
+        features.push('Balcony/terrace');
+        console.log('✓ Found balcony/terrace');
+    }
+    
+    // UPDATE: Add precise scoring calculation first
+    const maxScore = 7; // Now 7 features total
+    const preciseScore = Math.min(5, (score / maxScore) * 5);
+    const displayScore = Math.round(preciseScore);
+    
+    console.log(`🏠 Accessible Features Score: ${displayScore}/5 (${score}/${maxScore} features found)`);
     console.log('✅ Features found:', features);
     console.log('🔍 Single floor property detected:', isSingleFloorProperty);
     
     return {
-        score: score,
+        score: preciseScore, // ADD: Precise score for overall calculation  
+        displayScore: displayScore, // ADD: Rounded score for display
         maxScore: 5,
         features: features,
-        percentage: Math.round((score / 5) * 100),
+        percentage: Math.round((score / maxScore) * 100), // UPDATE: Change to /7
         details: {
             lateralLiving: hasLateralLiving && !isUpperFloor,
             downstairsBedroom: hasDownstairsBedroom,
             downstairsBathroom: hasDownstairsBathroom,
             levelAccess: hasLevelAccess,
             privateParking: hasPrivateParking && !hasOnStreetOnly,
+            garden: hasGarden, // ADD
+            balcony: hasBalcony, // ADD
             isSingleFloorProperty: isSingleFloorProperty
         }
     };
