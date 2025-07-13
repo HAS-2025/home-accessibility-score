@@ -1653,6 +1653,39 @@ async function scrapeRightmoveProperty(url) {
                 }
             }
         }
+
+        // NEW METHOD: Extract from property description/combined text
+        if (!location) {
+            const allText = $('body').text();
+            
+            // Look for "location, london, postcode" pattern (your specific case)
+            const londonPattern = /([^,]*),\s*([^,]*),\s*(plumstead|greenwich|woolwich|lewisham|bromley|bexley),\s*london,\s*(se\d+|sw\d+|e\d+|w\d+|n\d+|nw\d+|ne\d+|ec\d+|wc\d+)/i;
+            const londonMatch = allText.match(londonPattern);
+            
+            if (londonMatch) {
+                const potentialLocation = `${londonMatch[1].trim()}, ${londonMatch[2].trim()}, ${londonMatch[3].trim()}, London, ${londonMatch[4].toUpperCase()}`;
+                
+                if (!coordinates || validateLocationAgainstCoordinates(potentialLocation, coordinates)) {
+                    location = potentialLocation;
+                    console.log('Found London location in description:', location);
+                }
+            }
+            
+            // More general pattern for any UK location
+            if (!location) {
+                const ukPattern = /([^,]+),\s*([^,]+),\s*([^,]+),\s*([a-z]{2}\d+[a-z\d\s]*)/i;
+                const ukMatch = allText.match(ukPattern);
+                
+                if (ukMatch) {
+                    const potentialLocation = `${ukMatch[1].trim()}, ${ukMatch[2].trim()}, ${ukMatch[3].trim()}, ${ukMatch[4].toUpperCase()}`;
+                    
+                    if (!coordinates || validateLocationAgainstCoordinates(potentialLocation, coordinates)) {
+                        location = potentialLocation;
+                        console.log('Found UK location in description:', location);
+                    }
+                }
+            }
+        }
         
         // Improved fallback: Look for pattern matches but validate them
         if (!location) {
