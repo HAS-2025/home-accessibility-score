@@ -374,6 +374,12 @@ if (hasDownstairsBathroom) {
     } else {
         console.log('🔍 Skipping floor plan analysis - hasBalcony:', hasBalcony, 'floorplan available:', !!property.floorplan); // ADD THIS
     }
+    // ADD THIS BLOCK AFTER THE FLOOR PLAN DETECTION:
+    if (hasBalcony) {
+        score += 1;
+        features.push('Balcony/terrace');
+        console.log('✓ Found balcony/terrace');
+    }
     
     // UPDATE: Add precise scoring calculation first
     const maxScore = 7; // Now 7 features total
