@@ -552,6 +552,139 @@ Be conservative - only say BALCONY_FOUND if you're confident.`;
     }
 }
 
+// ✅ DIMENSIONS EXTRACTION
+function extractDimensions(propertyDescription, title, features) {
+    console.log('📐 Extracting property dimensions...');
+    
+    const dimensions = {
+        totalSqFt: null,
+        totalSqM: null,
+        rooms: [],
+        roomTypes: []
+    };
+    
+    const fullText = `${title} ${propertyDescription} ${features.join(' ')}`.toLowerCase();
+    
+    // Extract total square footage
+    const sqftPatterns = [
+        /(\d+(?:,\d+)?)\s*sq\s*ft/i,
+        /(\d+(?:,\d+)?)\s*sqft/i,
+        /(\d+(?:,\d+)?)\s*square\s*feet/i
+    ];
+    
+    for (const pattern of sqftPatterns) {
+        const match = fullText.match(pattern);
+        if (match) {
+            dimensions.totalSqFt = parseInt(match[1].replace(/,/g, ''));
+            console.log('📐 Found total sq ft:', dimensions.totalSqFt);
+            break;
+        }
+    }
+    
+    // Extract total square meters
+    const sqmPatterns = [
+        /(\d+(?:,\d+)?)\s*sq\s*m\b/i,
+        /(\d+(?:,\d+)?)\s*sqm/i,
+        /(\d+(?:,\d+)?)\s*square\s*met/i
+    ];
+    
+    for (const pattern of sqmPatterns) {
+        const match = fullText.match(pattern);
+        if (match) {
+            dimensions.totalSqM = parseInt(match[1].replace(/,/g, ''));
+            console.log('📐 Found total sq m:', dimensions.totalSqM);
+            break;
+        }
+    }
+    
+    // If only one unit found, convert to the other
+    if (dimensions.totalSqFt && !dimensions.totalSqM) {
+        dimensions.totalSqM = Math.round(dimensions.totalSqFt * 0.092903);
+    } else if (dimensions.totalSqM && !dimensions.totalSqFt) {
+        dimensions.totalSqFt = Math.round(dimensions.totalSqM * 10.764);
+    }
+    
+    // Extract individual room dimensions
+    const roomDimensionPatterns = [
+        /(\w+(?:\s+\w+)*)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:ft|m)/gi,
+        /(\w+(?:\s+\w+)*)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/gi
+    ];
+    
+    for (const pattern of roomDimensionPatterns) {
+        const matches = [...fullText.matchAll(pattern)];
+        
+        for (const match of matches) {
+            const roomName = match[1].trim();
+            const length = parseFloat(match[2]);
+            const width = parseFloat(match[3]);
+            
+            // Skip if dimensions seem unrealistic
+            if (length > 0 && width > 0 && length < 50 && width < 50) {
+                const sqft = Math.round(length * width);
+                
+                dimensions.rooms.push({
+                    name: roomName,
+                    length,
+                    width,
+                    sqft,
+                    dimensions: `${length} × ${width}`
+                });
+                
+                console.log(`📐 Found room: ${roomName} - ${length} × ${width} (${sqft} sq ft)`);
+            }
+        }
+    }
+    
+    // Extract room types and counts
+    const roomTypePatterns = {
+        bedrooms: /(\d+)\s*bed(?:room)?s?/i,
+        bathrooms: /(\d+)\s*bath(?:room)?s?/i,
+        receptions: /(\d+)\s*reception\s*rooms?/i,
+        receptionRooms: /(\d+)\s*reception/i
+    };
+    
+    for (const [type, pattern] of Object.entries(roomTypePatterns)) {
+        const match = fullText.match(pattern);
+        if (match) {
+            const count = parseInt(match[1]);
+            dimensions.roomTypes.push({
+                type: type.replace(/s$/, ''),
+                count: count,
+                display: `${count} ${type === 'receptions' || type === 'receptionRooms' ? 'reception room' + (count > 1 ? 's' : '') : type.slice(0, -1) + (count > 1 ? 's' : '')}`
+            });
+            console.log(`📐 Found room type: ${count} ${type}`);
+        }
+    }
+    
+    // Detect specific room mentions
+    const specificRooms = [
+        'kitchen', 'dining room', 'living room', 'lounge', 'sitting room',
+        'study', 'office', 'conservatory', 'utility room', 'cloakroom',
+        'en suite', 'ensuite', 'master bedroom', 'guest bedroom'
+    ];
+    
+    const foundSpecificRooms = [];
+    for (const room of specificRooms) {
+        if (fullText.includes(room)) {
+            foundSpecificRooms.push(room);
+        }
+    }
+    
+    if (foundSpecificRooms.length > 0) {
+        dimensions.specificRooms = foundSpecificRooms;
+        console.log('📐 Found specific rooms:', foundSpecificRooms);
+    }
+    
+    console.log('📐 Dimension extraction complete:', {
+        totalSqFt: dimensions.totalSqFt,
+        totalSqM: dimensions.totalSqM,
+        roomCount: dimensions.rooms.length,
+        roomTypes: dimensions.roomTypes.length
+    });
+    
+    return dimensions;
+}
+
 // Enhanced coordinate extraction using Geocoding API as fallback
 async function getPropertyCoordinates(address, existingCoords) {
     if (existingCoords && existingCoords.lat && existingCoords.lng) {
@@ -1895,7 +2028,8 @@ if (epcResult && epcResult.rating) {
             epc: epcData,
             epcRating: epcData.rating,
             address: address || 'Address not found',
-            coordinates: coordinates
+            coordinates: coordinates,
+            dimensions: extractDimensions(description, title, features)
         };
 
     } catch (error) {
@@ -2067,6 +2201,10 @@ const epcDetails = epcAnalysis.description;
             summary: 'Property location coordinates not available for public transport analysis'
         };
     }
+
+    // Step 5: NEW - Analyze Property Dimensions  
+    console.log('📐 Analyzing property dimensions...');
+    const dimensions = extractDimensions(property.description, property.title, property.features);
     
     // Updated overall score calculation (4 categories now)
     const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score + publicTransport.score) / 4;
