@@ -348,8 +348,8 @@ if (hasDownstairsBathroom) {
         features.push('Garden access (shared/communal)');
         console.log('✓ Found garden access');
     }
-    
-    // 7. BALCONY/TERRACE - New Feature  
+     
+    // 7. BALCONY/TERRACE - Enhanced with Floor Plan Analysis
     const balconyKeywords = [
         'balcony', 'private terrace', 'patio', 'roof terrace', 'private balcony',
         'juliet balcony', 'outdoor terrace', 'decking', 'sun terrace',
@@ -357,6 +357,10 @@ if (hasDownstairsBathroom) {
     ];
     
     let hasBalcony = balconyKeywords.some(keyword => fullText.includes(keyword));
+    
+    console.log('🔍 Balcony text detection result:', hasBalcony); // ADD THIS
+    console.log('🔍 Floor plan available:', !!property.floorplan); // ADD THIS
+    console.log('🔍 Floor plan URL:', property.floorplan); // ADD THIS
     
     // If not found in text, try floor plan analysis
     if (!hasBalcony && property.floorplan) {
@@ -367,12 +371,8 @@ if (hasDownstairsBathroom) {
             hasBalcony = true;
             console.log('✅ Balcony detected via floor plan analysis');
         }
-    }
-    
-    if (hasBalcony) {
-        score += 1;
-        features.push('Balcony/terrace');
-        console.log('✓ Found balcony/terrace');
+    } else {
+        console.log('🔍 Skipping floor plan analysis - hasBalcony:', hasBalcony, 'floorplan available:', !!property.floorplan); // ADD THIS
     }
     
     // UPDATE: Add precise scoring calculation first
