@@ -1504,7 +1504,7 @@ async function scrapeRightmoveProperty(url) {
                 const alt = $(img).attr('alt') || '';
                 if (src && (alt.toLowerCase().includes('floorplan') ||
                     alt.toLowerCase().includes('floor plan') ||
-                    src.includes('floorplan'))) {
+                    src.includes('floorplan') || src.includes('FLP'))) {
                     floorplan = src;
                 }
             });
