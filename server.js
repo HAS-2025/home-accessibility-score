@@ -130,7 +130,7 @@ const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
 // FIXED: Enhanced Accessible Features Detection Logic
-async function calculateAccessibleFeaturesScore(propertyData) {
+async function calculateAccessibleFeaturesScore(property) {
     let score = 0;
     const features = [];
     
