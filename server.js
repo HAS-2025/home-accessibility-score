@@ -406,15 +406,15 @@ if (hasDownstairsBathroom) {
 // Try to access dedicated floorplan page
 async function tryFloorplanURL(propertyId) {
     try {
+        // Try the dedicated floorplan URL first
         const floorplanURL = `https://www.rightmove.co.uk/properties/${propertyId}#/floorplan?activePlan=1&channel=RES_BUY`;
-        
         console.log('Trying floorplan URL:', floorplanURL);
         
         const response = await axios.get(floorplanURL, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             },
-            timeout: 8000 // Reduced timeout
+            timeout: 8000
         });
 
         const $ = cheerio.load(response.data);
@@ -429,6 +429,43 @@ async function tryFloorplanURL(propertyId) {
         });
         
         console.log(`Found ${floorplanImages.length} floorplans on dedicated page`);
+        
+        if (floorplanImages.length > 0) {
+            return floorplanImages[0];
+        }
+        
+        // If no floorplans found, try the main property page
+        console.log('No floorplans on dedicated page, trying main property page...');
+        const mainURL = `https://www.rightmove.co.uk/properties/${propertyId}`;
+        
+        const mainResponse = await axios.get(mainURL, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            },
+            timeout: 8000
+        });
+        
+        const $main = cheerio.load(mainResponse.data);
+        
+        // Look for floorplan images on main page
+        $main('img').each((i, img) => {
+            const src = $main(img).attr('src') || $main(img).attr('data-src');
+            if (src && (src.includes('floorplan') || src.includes('plan') || 
+                       $main(img).attr('alt')?.toLowerCase().includes('floorplan'))) {
+                floorplanImages.push(src);
+            }
+        });
+        
+        // Also look in script tags for floorplan URLs
+        $main('script').each((i, script) => {
+            const scriptContent = $main(script).html() || '';
+            const floorplanMatches = scriptContent.match(/https?:\/\/[^"'\s]*floorplan[^"'\s]*\.(png|jpg|jpeg|gif)/gi);
+            if (floorplanMatches) {
+                floorplanImages.push(...floorplanMatches);
+            }
+        });
+        
+        console.log(`Found ${floorplanImages.length} total floorplans including main page`);
         return floorplanImages.length > 0 ? floorplanImages[0] : null;
         
     } catch (error) {
