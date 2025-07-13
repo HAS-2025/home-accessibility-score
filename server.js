@@ -544,7 +544,7 @@ Be conservative - only say BALCONY_FOUND if you're confident.`;
         const result = response.data.content[0].text.trim().toUpperCase();
         console.log('👁️ Floor plan balcony analysis result:', result);
         
-        return result === 'BALCONY_FOUND';
+        return result.includes('BALCONY_FOUND');
         
     } catch (error) {
         console.log('❌ Floor plan balcony analysis failed:', error.message);
