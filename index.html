@@ -276,6 +276,56 @@
             color: #555;
         }
 
+        .transport-info {
+            margin-top: 1rem;
+        }
+        
+        .transport-stop {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .stop-name {
+            font-weight: 600;
+            color: #1e40af;
+        }
+        
+        .stop-address {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-top: 0.3rem;
+            line-height: 1.4;
+        }
+        
+        .stop-distance {
+            color: #059669;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        
+        .transport-type-header {
+            font-weight: 600;
+            color: #374151;
+            margin: 1rem 0 0.5rem 0;
+            font-size: 0.9rem;
+        }
+        
+        .no-transport-found {
+            color: #6b7280;
+            font-style: italic;
+            text-align: center;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 2px dashed #d1d5db;
+        }
+        </style>
+        
+        <script>
+
         .gp-details {
             margin-top: 1rem;
         }
@@ -519,6 +569,15 @@
                     <div class="score-description" id="accessibleFeaturesDescription"></div>
                     <div class="score-details" id="accessibleFeaturesDetails"></div>
                 </div>
+                <div class="score-card">
+                <div class="score-header">
+                    <span class="score-icon">🚌</span>
+                    <span class="score-title">Public Transport</span>
+                </div>
+                <div class="score-value" id="publicTransportScore"></div>
+                <div class="score-description" id="publicTransportDescription"></div>
+                <div class="score-details" id="publicTransportDetails"></div>
+            </div>
             </div>
 
             <div class="summary-section">
@@ -588,6 +647,7 @@
             displayGPProximity(analysis.gpProximity);
             displayEPCRating(analysis.epcRating);
             displayAccessibleFeatures(analysis.accessibleFeatures);
+            displayPublicTransport(analysis.publicTransport);
             document.getElementById('summaryText').textContent = analysis.summary;
         }
 
@@ -719,7 +779,98 @@
             
             document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
         }
-
+        function displayPublicTransport(transport) {
+            console.log('Displaying public transport data:', transport);
+            
+            if (!transport) {
+                document.getElementById('publicTransportScore').textContent = 'N/A';
+                document.getElementById('publicTransportScore').className = 'score-value poor';
+                document.getElementById('publicTransportDescription').textContent = 'Public transport data not available';
+                document.getElementById('publicTransportDetails').innerHTML = '<div class="no-transport-found">Unable to analyze public transport</div>';
+                return;
+            }
+            
+            // Display rating and score
+            let ratingText = 'Poor';
+            const score = transport.score || 0;
+            if (score >= 4) ratingText = 'Excellent';
+            else if (score >= 3) ratingText = 'Good';
+            else if (score >= 2) ratingText = 'Fair';
+            
+            document.getElementById('publicTransportScore').textContent = `${ratingText} - ${score}/5`;
+            
+            let scoreClass = 'poor';
+            if (score >= 4) scoreClass = 'excellent';
+            else if (score >= 3) scoreClass = 'good';
+            else if (score >= 2) scoreClass = 'fair';
+            
+            document.getElementById('publicTransportScore').className = `score-value ${scoreClass}`;
+            document.getElementById('publicTransportDescription').textContent = transport.details || '';
+            
+            let detailsHtml = '<div class="transport-info">';
+            
+            // Bus stops section
+            if (transport.busStops && transport.busStops.length > 0) {
+                detailsHtml += '<div class="transport-type-header">🚌 Nearest Bus Stops</div>';
+                transport.busStops.forEach((stop, index) => {
+                    if (index < 3) { // Show max 3
+                        const distanceM = Math.round(stop.distance * 1000);
+                        const walkingTime = stop.walkingTime || Math.round(distanceM / 80);
+                        
+                        detailsHtml += `
+                            <div class="transport-stop">
+                                <div class="stop-name">${stop.name}</div>
+                                <div class="stop-address">📍 ${stop.address}</div>
+                                <div class="stop-distance">🚶 ${distanceM}m away (${walkingTime}-min walk)</div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+            
+            // Train stations section
+            if (transport.trainStations && transport.trainStations.length > 0) {
+                detailsHtml += '<div class="transport-type-header">🚂 Nearest Train Stations</div>';
+                transport.trainStations.forEach((station, index) => {
+                    if (index < 3) { // Show max 3
+                        const distanceM = Math.round(station.distance * 1000);
+                        const walkingTime = station.walkingTime || Math.round(distanceM / 80);
+                        
+                        detailsHtml += `
+                            <div class="transport-stop">
+                                <div class="stop-name">${station.name}</div>
+                                <div class="stop-address">📍 ${station.address}</div>
+                                <div class="stop-distance">🚶 ${distanceM}m away (${walkingTime}-min walk)</div>
+                            </div>
+                        `;
+                    }
+                });
+            }
+            
+            // No transport found message
+            if ((!transport.busStops || transport.busStops.length === 0) && 
+                (!transport.trainStations || transport.trainStations.length === 0)) {
+                detailsHtml += '<div class="no-transport-found">No public transport found within 2km walking distance</div>';
+            }
+            
+            // Add scoring criteria info
+            detailsHtml += `
+                <div class="accessibility-criteria">
+                    <h4>Public Transport Scoring:</h4>
+                    <ul>
+                        <li>Excellent (5): Bus ≤200m AND train ≤800m</li>
+                        <li>Good (4): Bus ≤400m OR train ≤1.2km</li>
+                        <li>Fair (3): Bus ≤600m OR train ≤1.5km</li>
+                        <li>Poor (2): Bus ≤800m OR train ≤2km</li>
+                        <li>Very Poor (1): No convenient public transport</li>
+                    </ul>
+                </div>
+            `;
+            
+            detailsHtml += '</div>';
+            
+            document.getElementById('publicTransportDetails').innerHTML = detailsHtml;
+        }
         document.getElementById('propertyUrl').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 analyzeProperty();
