@@ -1600,6 +1600,7 @@ async function scrapeRightmoveProperty(url) {
             const locationElements = $(selector);
             locationElements.each((i, el) => {
                 const locationText = $(el).text().trim();
+                console.log(`🔍 Checking selector element: "${locationText}" (length: ${locationText.length})`);
                 
                 // Check if this looks like a location (has street/area pattern)
                 if (locationText && 
