@@ -130,7 +130,7 @@ const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
 // FIXED: Enhanced Accessible Features Detection Logic
-function calculateAccessibleFeaturesScore(propertyData) {
+async function calculateAccessibleFeaturesScore(propertyData) {
     let score = 0;
     const features = [];
     
@@ -336,10 +336,9 @@ if (hasDownstairsBathroom) {
 
     // 6. GARDEN ACCESS (SHARED/COMMUNAL) - New Feature
     const gardenKeywords = [
-        'communal garden', 'shared garden', 'private garden', 'rear garden',
-        'front garden', 'garden access', 'well maintained garden', 'landscaped garden',
-        'communal grounds', 'shared outdoor space', 'garden area', 'outdoor space',
-        'communal courtyard', 'shared terrace'
+        'communal garden', 'shared garden', 'communal grounds', 'shared outdoor space',
+        'communal courtyard', 'landscaped grounds', 'garden access', 'shared terrace',
+        'communal areas', 'residents garden', 'well maintained garden', 'landscaped garden'
     ];
     
     const hasGarden = gardenKeywords.some(keyword => fullText.includes(keyword));
@@ -352,12 +351,23 @@ if (hasDownstairsBathroom) {
     
     // 7. BALCONY/TERRACE - New Feature  
     const balconyKeywords = [
-        'balcony', 'terrace', 'patio', 'roof terrace', 'private balcony',
+        'balcony', 'private terrace', 'patio', 'roof terrace', 'private balcony',
         'juliet balcony', 'outdoor terrace', 'decking', 'sun terrace',
         'private patio', 'covered balcony'
     ];
     
-    const hasBalcony = balconyKeywords.some(keyword => fullText.includes(keyword));
+    let hasBalcony = balconyKeywords.some(keyword => fullText.includes(keyword));
+    
+    // If not found in text, try floor plan analysis
+    if (!hasBalcony && property.floorplan) {
+        console.log('🔍 No balcony found in text, checking floor plan...');
+        const floorplanBalcony = await analyzeFloorPlanForBalcony(property.floorplan);
+        
+        if (floorplanBalcony === true) {
+            hasBalcony = true;
+            console.log('✅ Balcony detected via floor plan analysis');
+        }
+    }
     
     if (hasBalcony) {
         score += 1;
@@ -423,6 +433,68 @@ async function tryFloorplanURL(propertyId) {
         
     } catch (error) {
         console.log('Floorplan URL not accessible:', error.message);
+        return null;
+    }
+}
+
+// ✅ ADD THE NEW FUNCTION HERE - RIGHT AFTER tryFloorplanURL
+async function analyzeFloorPlanForBalcony(floorplanUrl) {
+    try {
+        console.log('👁️ Analyzing floor plan for balcony:', floorplanUrl?.substring(0, 100) + '...');
+        
+        if (!floorplanUrl || !process.env.CLAUDE_API_KEY) {
+            console.log('⚠️ No floor plan URL or Claude API key available');
+            return null;
+        }
+        
+        const prompt = `Analyze this floor plan image and determine if it shows a balcony, terrace, or outdoor space.
+
+Look for:
+1. Labeled text like "Balcony", "Terrace", "Patio", "Outdoor Space"
+2. Outdoor areas connected to the main living space
+3. Spaces on the building perimeter with outdoor furniture symbols
+4. Areas with different hatching/shading patterns indicating outdoor space
+
+Respond with EXACTLY one of these:
+- "BALCONY_FOUND" if you can see a balcony/terrace/outdoor space
+- "NO_BALCONY" if no outdoor space is visible
+- "UNCLEAR" if the image is too unclear to determine
+
+Be conservative - only say BALCONY_FOUND if you're confident.`;
+
+        const response = await axios.post('https://api.anthropic.com/v1/messages', {
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 50,
+            messages: [{
+                role: 'user',
+                content: [{
+                    type: 'text',
+                    text: prompt
+                }, {
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: floorplanUrl.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg',
+                        data: await convertImageToBase64(floorplanUrl)
+                    }
+                }]
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            timeout: 15000
+        });
+        
+        const result = response.data.content[0].text.trim().toUpperCase();
+        console.log('👁️ Floor plan balcony analysis result:', result);
+        
+        return result === 'BALCONY_FOUND';
+        
+    } catch (error) {
+        console.log('❌ Floor plan balcony analysis failed:', error.message);
         return null;
     }
 }
@@ -1913,7 +1985,7 @@ const epcDetails = epcAnalysis.description;
     
     // Step 3: NEW - Analyze Accessible Features (replaces internal facilities)
     console.log('🏠 Analyzing accessible features...');
-    const accessibleFeatures = calculateAccessibleFeaturesScore(property);
+    const accessibleFeatures = await calculateAccessibleFeaturesScore(property);
     
     // Step 4: NEW - Analyze Public Transport
     let publicTransport = null;
