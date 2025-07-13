@@ -1033,7 +1033,7 @@ function calculateTransitScore(busStops, trainStations) {
 }
 
 function generateTransitSummary(score, busStops, trainStations) {
-    let summary = `Public Transport Score: ${score}/5\n\n`;
+    let summary = ``;
     
     if (busStops.length > 0) {
         summary += "🚌 **Nearest Bus Stops:**\n";
