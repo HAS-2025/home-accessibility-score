@@ -967,6 +967,7 @@ async function extractDimensions(propertyDescription, title, features, floorplan
                     });
                     
                     return dimensions;
+                    }    
 
 // Enhanced coordinate extraction using Geocoding API as fallback
 async function getPropertyCoordinates(address, existingCoords) {
