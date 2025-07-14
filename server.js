@@ -552,6 +552,93 @@ Be conservative - only say BALCONY_FOUND if you're confident.`;
     }
 }
 
+// Add this function near your existing analyzeFloorplanForBalcony function
+
+async function analyzeFloorplanForRooms(floorplanUrl) {
+    console.log('🏠 Analyzing floor plan for room layout:', floorplanUrl);
+    
+    if (!process.env.CLAUDE_API_KEY) {
+        console.log('⚠️ No Claude API key available for floor plan room analysis');
+        return null;
+    }
+    
+    try {
+        const prompt = `Please analyze this floor plan image and identify the different rooms/spaces. 
+
+Look for and identify:
+- Kitchen areas (look for counters, appliances, sink symbols)
+- Living/lounge areas (open spaces, seating arrangements)
+- Dining areas (dining table symbols, designated eating spaces)
+- Study/office spaces (desk areas, smaller rooms)
+- Utility rooms (washing machine symbols, storage areas)
+- Reception rooms (formal living spaces)
+- Any open-plan combined spaces (kitchen/living/dining)
+
+Respond with ONLY a JSON object in this exact format:
+{
+  "rooms": [
+    {"type": "kitchen", "display": "kitchen", "count": 1},
+    {"type": "livingRoom", "display": "living room", "count": 1},
+    {"type": "diningRoom", "display": "dining room", "count": 1}
+  ]
+}
+
+Use these type values: kitchen, livingRoom, diningRoom, study, utility, reception, openPlan
+For openPlan, use display like "open plan kitchen/living"
+
+Only include rooms you can clearly identify. Do not include bedrooms or bathrooms as these are already detected from text.`;
+
+        const response = await axios.post('https://api.anthropic.com/v1/messages', {
+            model: 'claude-3-haiku-20240307',
+            max_tokens: 500,
+            messages: [{
+                role: 'user',
+                content: [{
+                    type: 'text',
+                    text: prompt
+                }, {
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: 'image/png',
+                        data: await getImageAsBase64(floorplanUrl)
+                    }
+                }]
+            }]
+        }, {
+            headers: {
+                'Authorization': `Bearer ${process.env.CLAUDE_API_KEY}`,
+                'Content-Type': 'application/json',
+                'anthropic-version': '2023-06-01'
+            },
+            timeout: 15000
+        });
+
+        const analysisText = response.data.content[0].text.trim();
+        console.log('🏠 Floor plan room analysis result:', analysisText);
+        
+        // Parse the JSON response
+        try {
+            const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                const roomData = JSON.parse(jsonMatch[0]);
+                console.log('🏠 Parsed room data:', roomData);
+                return roomData;
+            } else {
+                console.log('🏠 No JSON found in floor plan response');
+                return null;
+            }
+        } catch (parseError) {
+            console.log('🏠 Failed to parse floor plan room JSON:', parseError.message);
+            return null;
+        }
+        
+    } catch (error) {
+        console.log('🏠 Floor plan room analysis failed:', error.message);
+        return null;
+    }
+}
+
 // ✅ DIMENSIONS EXTRACTION
 function extractDimensions(propertyDescription, title, features) {
     console.log('📐 Extracting property dimensions...');
@@ -701,6 +788,49 @@ function extractDimensions(propertyDescription, title, features) {
                 });
                 
                 console.log(`📐 Found room type: ${count} ${displayName}`);
+            }
+        }
+        // FLOOR PLAN FALLBACK FOR MISSING ROOM INFORMATION
+        console.log('📐 Checking if floor plan analysis needed...');
+        console.log('📐 Current room types found:', dimensions.roomTypes.length);
+        
+        // If we only found basic rooms and have a floor plan, analyze it for more rooms
+        const hasLimitedRoomInfo = dimensions.roomTypes.length <= 2 && 
+                                  dimensions.roomTypes.every(room => 
+                                      room.type === 'bedroom' || room.type === 'bathroom'
+                                  );
+        
+        if (hasLimitedRoomInfo && floorplan) {
+            console.log('📐 Limited room info detected, analyzing floor plan for rooms...');
+            
+            try {
+                // Use Claude API to analyze floor plan for room layout
+                const floorplanRoomAnalysis = await analyzeFloorplanForRooms(floorplan);
+                
+                if (floorplanRoomAnalysis && floorplanRoomAnalysis.rooms) {
+                    console.log('📐 Floor plan analysis successful, adding detected rooms...');
+                    
+                    // Add rooms detected from floor plan
+                    floorplanRoomAnalysis.rooms.forEach(room => {
+                        // Check if room type already exists
+                        const alreadyExists = dimensions.roomTypes.some(existingRoom => 
+                            existingRoom.type === room.type
+                        );
+                        
+                        if (!alreadyExists) {
+                            dimensions.roomTypes.push({
+                                type: room.type,
+                                count: room.count || 1,
+                                display: room.display
+                            });
+                            console.log(`📐 Added from floor plan: ${room.display}`);
+                        }
+                    });
+                } else {
+                    console.log('📐 Floor plan analysis failed or returned no rooms');
+                }
+            } catch (error) {
+                console.log('📐 Floor plan room analysis error:', error.message);
             }
         }
     }
