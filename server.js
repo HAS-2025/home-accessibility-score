@@ -800,8 +800,10 @@ async function extractDimensions(propertyDescription, title, features, floorplan
                                       room.type === 'bedroom' || room.type === 'bathroom'
                                   );
         
-        if (hasLimitedRoomInfo && floorplan) {
+        // Add a flag to prevent multiple floor plan analyses
+        if (hasLimitedRoomInfo && floorplan && !dimensions.floorplanAnalyzed) {
             console.log('📐 Limited room info detected, analyzing floor plan for rooms...');
+            dimensions.floorplanAnalyzed = true; // Set flag to prevent re-analysis
             
             try {
                 // Use Claude API to analyze floor plan for room layout
