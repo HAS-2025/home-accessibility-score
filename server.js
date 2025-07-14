@@ -635,44 +635,99 @@ function extractDimensions(propertyDescription, title, features) {
         }
     }
     
-    // Extract room types and counts
+    // Extract room types and counts - ENHANCED VERSION
     const roomTypePatterns = {
         bedrooms: /(\d+)\s*bed(?:room)?s?/i,
         bathrooms: /(\d+)\s*bath(?:room)?s?/i,
         receptions: /(\d+)\s*reception\s*rooms?/i,
-        receptionRooms: /(\d+)\s*reception/i
+        livingRooms: /(\d+)?\s*(?:living\s*room|lounge|sitting\s*room)s?/i,
+        kitchens: /(\d+)?\s*kitchen(?:ette)?s?/i,
+        diningRooms: /(\d+)?\s*dining\s*rooms?/i,
+        studies: /(\d+)?\s*(?:study|studies|office)s?/i,
+        conservatories: /(\d+)?\s*conservator(?:y|ies)/i,
+        utilities: /(\d+)?\s*utility\s*rooms?/i,
+        cloakrooms: /(\d+)?\s*(?:cloakroom|downstairs\s*wc|powder\s*room)s?/i
     };
     
     for (const [type, pattern] of Object.entries(roomTypePatterns)) {
         const match = fullText.match(pattern);
         if (match) {
-            const count = parseInt(match[1]);
-            dimensions.roomTypes.push({
-                type: type.replace(/s$/, ''),
-                count: count,
-                display: `${count} ${type === 'receptions' || type === 'receptionRooms' ? 'reception room' + (count > 1 ? 's' : '') : type.slice(0, -1) + (count > 1 ? 's' : '')}`
-            });
-            console.log(`📐 Found room type: ${count} ${type}`);
+            // For rooms that might not have a number (like "kitchen"), default to 1
+            let count = match[1] ? parseInt(match[1]) : 1;
+            
+            // Skip if count is 0 or invalid
+            if (count > 0 && count <= 10) { // Reasonable limit
+                let displayName;
+                switch(type) {
+                    case 'bedrooms':
+                        displayName = count === 1 ? 'bedroom' : 'bedrooms';
+                        break;
+                    case 'bathrooms':
+                        displayName = count === 1 ? 'bathroom' : 'bathrooms';
+                        break;
+                    case 'receptions':
+                        displayName = count === 1 ? 'reception room' : 'reception rooms';
+                        break;
+                    case 'livingRooms':
+                        displayName = count === 1 ? 'living room' : 'living rooms';
+                        break;
+                    case 'kitchens':
+                        displayName = count === 1 ? 'kitchen' : 'kitchens';
+                        break;
+                    case 'diningRooms':
+                        displayName = count === 1 ? 'dining room' : 'dining rooms';
+                        break;
+                    case 'studies':
+                        displayName = count === 1 ? 'study' : 'studies';
+                        break;
+                    case 'conservatories':
+                        displayName = count === 1 ? 'conservatory' : 'conservatories';
+                        break;
+                    case 'utilities':
+                        displayName = count === 1 ? 'utility room' : 'utility rooms';
+                        break;
+                    case 'cloakrooms':
+                        displayName = count === 1 ? 'cloakroom' : 'cloakrooms';
+                        break;
+                    default:
+                        displayName = type;
+                }
+                
+                dimensions.roomTypes.push({
+                    type: type.replace(/s$/, ''), // Remove trailing 's'
+                    count: count,
+                    display: displayName
+                });
+                
+                console.log(`📐 Found room type: ${count} ${displayName}`);
+            }
         }
     }
     
-    // Detect specific room mentions
-    const specificRooms = [
-        'kitchen', 'dining room', 'living room', 'lounge', 'sitting room',
-        'study', 'office', 'conservatory', 'utility room', 'cloakroom',
-        'en suite', 'ensuite', 'master bedroom', 'guest bedroom'
+    // Also check for combined living/kitchen/dining spaces
+    const combinedPatterns = [
+        /open[- ]plan/i,
+        /kitchen[\/\-\s]*(?:living|diner|dining)/i,
+        /living[\/\-\s]*(?:kitchen|dining)/i,
+        /kitchen[\/\-\s]*diner/i
     ];
     
-    const foundSpecificRooms = [];
-    for (const room of specificRooms) {
-        if (fullText.includes(room)) {
-            foundSpecificRooms.push(room);
+    for (const pattern of combinedPatterns) {
+        if (fullText.match(pattern)) {
+            // Add open plan living space if not already found individual rooms
+            const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
+            const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
+            
+            if (!hasLiving && !hasKitchen) {
+                dimensions.roomTypes.push({
+                    type: 'openPlan',
+                    count: 1,
+                    display: 'open plan living/kitchen'
+                });
+                console.log('📐 Found combined space: open plan living/kitchen');
+            }
+            break;
         }
-    }
-    
-    if (foundSpecificRooms.length > 0) {
-        dimensions.specificRooms = foundSpecificRooms;
-        console.log('📐 Found specific rooms:', foundSpecificRooms);
     }
     
     console.log('📐 Dimension extraction complete:', {
