@@ -790,6 +790,41 @@ async function extractDimensions(propertyDescription, title, features, floorplan
                 console.log(`📐 Found room type: ${count} ${displayName}`);
             }
         }
+
+        // Extract all property spaces (outdoor, utility, and storage spaces)
+        const propertySpacePatterns = {
+            balcony: /balcony|balconies/i,
+            terrace: /terrace/i,
+            patio: /patio/i,
+            garden: /garden|yard/i,
+            courtyard: /courtyard/i,
+            roof_terrace: /roof\s*terrace/i,
+            garage: /garage/i,
+            parking: /parking\s*space|car\s*park/i,
+            storage: /storage\s*room|storage\s*space/i,
+            basement: /basement|cellar/i,
+            attic: /attic|loft\s*space/i,
+            shed: /shed|outbuilding/i,
+            gym: /gym|fitness\s*room/i,
+            wine_cellar: /wine\s*cellar/i,
+            laundry: /laundry\s*room/i
+        };
+        
+        Object.entries(propertySpacePatterns).forEach(([spaceType, pattern]) => {
+            if (fullText.match(pattern)) {
+                const alreadyExists = dimensions.roomTypes.some(room => room.type === spaceType);
+                
+                if (!alreadyExists) {
+                    let displayName = spaceType.replace('_', ' ');
+                    dimensions.roomTypes.push({
+                        type: spaceType,
+                        count: 1,
+                        display: displayName
+                    });
+                    console.log(`📐 Found property space: ${displayName}`);
+                }
+            }
+        });
         // FLOOR PLAN FALLBACK FOR MISSING ROOM INFORMATION
         console.log('📐 Checking if floor plan analysis needed...');
         console.log('📐 Current room types found:', dimensions.roomTypes.length);
@@ -841,75 +876,97 @@ async function extractDimensions(propertyDescription, title, features, floorplan
                         console.log('📐 Removed individual rooms in favor of open plan space');
                     }
                     
-                    // INSERT THE SMART CONSOLIDATION CODE HERE (line 843)
-                    // Smart room consolidation - detect common open plan combinations
-                    const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
-                    const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
-                    const hasDining = dimensions.roomTypes.some(room => room.type === 'diningRoom');
+                    // Conservative consolidation - only combine when there's clear textual evidence
+                    const detectedRooms = dimensions.roomTypes.filter(room => 
+                        ['kitchen', 'livingRoom', 'diningRoom'].includes(room.type)
+                    );
                     
-                    // If we have kitchen + living + dining but no explicit openPlan, consolidate them
-                    if (hasKitchen && hasLiving && hasDining && !dimensions.roomTypes.some(room => room.type === 'openPlan')) {
-                        console.log('📐 Consolidating separate kitchen/living/dining into open plan...');
+                    // Only consolidate if we have 2 or more of these room types AND clear evidence of combination
+                    if (detectedRooms.length >= 2 && !dimensions.roomTypes.some(room => room.type === 'openPlan')) {
+                        // Check if the text suggests these are truly combined
+                        const combinedSpaceIndicators = [
+                            /open[- ]plan/i,
+                            /kitchen[\/\-\s]*living/i,
+                            /living[\/\-\s]*kitchen/i,
+                            /kitchen[\/\-\s]*dining/i,
+                            /dining[\/\-\s]*kitchen/i,
+                            /kitchen[\/\-\s]*diner/i,
+                            /living[\/\-\s]*dining/i,
+                            /dining[\/\-\s]*living/i,
+                            /kitchen[\/\-\s]*living[\/\-\s]*dining/i,
+                            /living[\/\-\s]*kitchen[\/\-\s]*dining/i,
+                            /reception[\/\-\s]*kitchen/i,
+                            /kitchen[\/\-\s]*reception/i
+                        ];
                         
-                        // Remove individual rooms
-                        dimensions.roomTypes = dimensions.roomTypes.filter(room => 
-                            !['kitchen', 'livingRoom', 'diningRoom'].includes(room.type)
+                        const hasCombinedIndicator = combinedSpaceIndicators.some(pattern => 
+                            fullText.match(pattern)
                         );
                         
-                        // Add consolidated open plan room
-                        dimensions.roomTypes.push({
-                            type: 'openPlan',
-                            count: 1,
-                            display: 'open plan kitchen/living/dining'
-                        });
-                        
-                        console.log('📐 Consolidated rooms into open plan space');
+                        // Only consolidate if we have clear textual evidence of combination
+                        if (hasCombinedIndicator) {
+                            const roomsToConsolidate = detectedRooms.map(room => room.type);
+                            console.log(`📐 Found evidence of combined space, consolidating: ${roomsToConsolidate.join('/')}`);
+                            
+                            // Remove the individual rooms that are being consolidated
+                            dimensions.roomTypes = dimensions.roomTypes.filter(room => 
+                                !roomsToConsolidate.includes(room.type)
+                            );
+                            
+                            // Create display name based on detected rooms
+                            const displayParts = [];
+                            if (roomsToConsolidate.includes('kitchen')) displayParts.push('kitchen');
+                            if (roomsToConsolidate.includes('livingRoom')) displayParts.push('living');
+                            if (roomsToConsolidate.includes('diningRoom')) displayParts.push('dining');
+                            
+                            // Add consolidated open plan room
+                            dimensions.roomTypes.push({
+                                type: 'openPlan',
+                                count: 1,
+                                display: `open plan ${displayParts.join('/')}`
+                            });
+                            
+                            console.log(`📐 Consolidated into: open plan ${displayParts.join('/')}`);
+                        } else {
+                            console.log('📐 Multiple main rooms found but no evidence of combination - keeping separate');
+                        }
+                    } // ← First closing brace for the main if statement
+                    
+                    // Check for combined spaces when no individual rooms were detected
+                    const combinedPatterns = [
+                        /open[- ]plan/i,
+                        /kitchen[\/\-\s]*(?:living|diner|dining)/i,
+                        /living[\/\-\s]*(?:kitchen|dining)/i,
+                        /kitchen[\/\-\s]*diner/i
+                    ];
+                    
+                    for (const pattern of combinedPatterns) {
+                        if (fullText.match(pattern)) {
+                            // Add open plan living space if no rooms detected yet
+                            const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
+                            const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
+                            const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
+                            
+                            if (!hasLiving && !hasKitchen && !hasOpenPlan) {
+                                dimensions.roomTypes.push({
+                                    type: 'openPlan',
+                                    count: 1,
+                                    display: 'open plan living/kitchen'
+                                });
+                                console.log('📐 Found combined space: open plan living/kitchen');
+                            }
+                            break;
+                        }
                     }
                     
-                } else {
-                    console.log('📐 Floor plan analysis failed or returned no rooms');
-                }
-            } catch (error) {
-                console.log('📐 Floor plan room analysis error:', error.message);
-            }
-        }
-    }
-    
-    // Also check for combined living/kitchen/dining spaces
-    const combinedPatterns = [
-        /open[- ]plan/i,
-        /kitchen[\/\-\s]*(?:living|diner|dining)/i,
-        /living[\/\-\s]*(?:kitchen|dining)/i,
-        /kitchen[\/\-\s]*diner/i
-    ];
-    
-    for (const pattern of combinedPatterns) {
-        if (fullText.match(pattern)) {
-            // Add open plan living space if not already found individual rooms
-            const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
-            const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
-            
-            if (!hasLiving && !hasKitchen) {
-                dimensions.roomTypes.push({
-                    type: 'openPlan',
-                    count: 1,
-                    display: 'open plan living/kitchen'
-                });
-                console.log('📐 Found combined space: open plan living/kitchen');
-            }
-            break;
-        }
-    }
-    
-    console.log('📐 Dimension extraction complete:', {
-        totalSqFt: dimensions.totalSqFt,
-        totalSqM: dimensions.totalSqM,
-        roomCount: dimensions.rooms.length,
-        roomTypes: dimensions.roomTypes.length
-    });
-    
-    return dimensions;
-}
+                    console.log('📐 Dimension extraction complete:', {
+                        totalSqFt: dimensions.totalSqFt,
+                        totalSqM: dimensions.totalSqM,
+                        roomCount: dimensions.rooms.length,
+                        roomTypes: dimensions.roomTypes.length
+                    });
+                    
+                    return dimensions;
 
 // Enhanced coordinate extraction using Geocoding API as fallback
 async function getPropertyCoordinates(address, existingCoords) {
