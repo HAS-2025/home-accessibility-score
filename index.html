@@ -364,7 +364,148 @@
             font-size: 0.8rem;
             margin: 0.25rem 0;
         }
-
+        .dimension-section {
+            margin-bottom: 20px;
+        }
+        
+        .dimension-section h4 {
+            color: #333;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 6px;
+        }
+        
+        .size-display {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .size-value {
+            background: #f0f7ff;
+            color: #0066cc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .size-value.secondary {
+            background: #f5f5f5;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .room-types {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .room-type-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .room-count {
+            background: #007bff;
+            color: white;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .room-name {
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .room-dimensions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .room-dimension-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 3px solid #007bff;
+        }
+        
+        .room-dimension-item .room-name {
+            font-weight: 500;
+            color: #333;
+            text-transform: capitalize;
+        }
+        
+        .room-size {
+            color: #666;
+            font-family: monospace;
+            font-weight: 500;
+        }
+        
+        .specific-rooms {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .room-tag {
+            background: #e7f3ff;
+            color: #0066cc;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        
+        .no-data {
+            color: #666;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .size-display {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .room-types {
+                flex-direction: column;
+            }
+            
+            .room-dimension-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+        }
+        
         .accessible-features-list {
             margin-top: 0.5rem;
         }
@@ -576,7 +717,9 @@
                 <div class="score-details" id="publicTransportDetails"></div>
             </div>
             </div>
-
+            
+            <div id="dimensionsCard" class="score-card" style="display: none;"></div>
+            
             <div class="summary-section">
                                 
                 <div class="summary-title">📋 Summary & Recommendations</div>
@@ -645,6 +788,7 @@
             displayEPCRating(analysis.epcRating);
             displayAccessibleFeatures(analysis.accessibleFeatures);
             displayPublicTransport(analysis.publicTransport);
+            displayDimensions(analysis.dimensions);
             document.getElementById('summaryText').textContent = analysis.summary;
         }
 
@@ -782,6 +926,129 @@
             detailsHtml += '</div>';
             
             document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
+        }
+        
+        // Add this function to your main.js or wherever your display functions are
+
+        function displayDimensions(dimensions) {
+            if (!dimensions) {
+                console.log('📐 No dimensions data to display');
+                return '';
+            }
+        
+            console.log('📐 Displaying dimensions:', dimensions);
+        
+            let dimensionsHtml = `
+                <div class="score-card">
+                    <div class="score-header">
+                        <h3>📐 Property Dimensions</h3>
+                    </div>
+                    <div class="score-content">
+            `;
+        
+            // Total Square Footage Section
+            if (dimensions.totalSqFt || dimensions.totalSqM) {
+                dimensionsHtml += `
+                    <div class="dimension-section">
+                        <h4>Total Size</h4>
+                        <div class="size-display">
+                `;
+                
+                if (dimensions.totalSqFt) {
+                    dimensionsHtml += `<span class="size-value">${dimensions.totalSqFt.toLocaleString()} sq ft</span>`;
+                }
+                
+                if (dimensions.totalSqM) {
+                    dimensionsHtml += `<span class="size-value secondary">${dimensions.totalSqM.toLocaleString()} sq m</span>`;
+                }
+                
+                dimensionsHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+        
+            // Room Types Section
+            if (dimensions.roomTypes && dimensions.roomTypes.length > 0) {
+                dimensionsHtml += `
+                    <div class="dimension-section">
+                        <h4>Room Breakdown</h4>
+                        <div class="room-types">
+                `;
+                
+                dimensions.roomTypes.forEach(roomType => {
+                    dimensionsHtml += `
+                        <div class="room-type-item">
+                            <span class="room-count">${roomType.count}</span>
+                            <span class="room-name">${roomType.display}</span>
+                        </div>
+                    `;
+                });
+                
+                dimensionsHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+        
+            // Individual Room Dimensions Section
+            if (dimensions.rooms && dimensions.rooms.length > 0) {
+                dimensionsHtml += `
+                    <div class="dimension-section">
+                        <h4>Individual Room Sizes</h4>
+                        <div class="room-dimensions">
+                `;
+                
+                dimensions.rooms.forEach(room => {
+                    dimensionsHtml += `
+                        <div class="room-dimension-item">
+                            <span class="room-name">${room.name}</span>
+                            <span class="room-size">${room.dimensions} (${room.sqft} sq ft)</span>
+                        </div>
+                    `;
+                });
+                
+                dimensionsHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+        
+            // Specific Rooms Section
+            if (dimensions.specificRooms && dimensions.specificRooms.length > 0) {
+                dimensionsHtml += `
+                    <div class="dimension-section">
+                        <h4>Room Features</h4>
+                        <div class="specific-rooms">
+                `;
+                
+                dimensions.specificRooms.forEach(room => {
+                    dimensionsHtml += `<span class="room-tag">${room}</span>`;
+                });
+                
+                dimensionsHtml += `
+                        </div>
+                    </div>
+                `;
+            }
+        
+            // If no detailed data available
+            if (!dimensions.totalSqFt && !dimensions.totalSqM && 
+                (!dimensions.roomTypes || dimensions.roomTypes.length === 0) &&
+                (!dimensions.rooms || dimensions.rooms.length === 0)) {
+                dimensionsHtml += `
+                    <div class="dimension-section">
+                        <p class="no-data">No detailed dimension information available for this property.</p>
+                    </div>
+                `;
+            }
+        
+            dimensionsHtml += `
+                    </div>
+                </div>
+            `;
+        
+            return dimensionsHtml;
         }
         
         function displayPublicTransport(transport) {
