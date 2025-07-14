@@ -1034,12 +1034,13 @@
                 `;
                 
                 dimensions.roomTypes.forEach(roomType => {
-                    // Get appropriate icon for room type
                     const roomIcon = getRoomIcon(roomType.type);
+                    // Combine count with display text for better formatting
+                    const displayText = roomType.count > 1 ? `${roomType.count} ${roomType.display}` : roomType.display;
                     dimensionsHtml += `
                         <div class="room-item">
                             <span class="room-icon">${roomIcon}</span>
-                            <span class="room-text">${roomType.display}</span>
+                            <span class="room-text">${displayText}</span>
                         </div>
                     `;
                 });
