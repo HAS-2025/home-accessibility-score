@@ -828,6 +828,19 @@ async function extractDimensions(propertyDescription, title, features, floorplan
                             console.log(`📐 Added from floor plan: ${room.display}`);
                         }
                     });
+                    
+                    // ADD THIS NEW SECTION RIGHT AFTER THE ABOVE CODE:
+                    // Remove individual rooms if open plan space detected
+                    const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
+                    if (hasOpenPlan) {
+                        console.log('📐 Open plan space detected, removing duplicate individual rooms...');
+                        // Remove individual kitchen, living, dining if open plan exists
+                        dimensions.roomTypes = dimensions.roomTypes.filter(room => 
+                            !['kitchen', 'livingRoom', 'diningRoom'].includes(room.type) || room.type === 'openPlan'
+                        );
+                        console.log('📐 Removed individual rooms in favor of open plan space');
+                    }
+                    
                 } else {
                     console.log('📐 Floor plan analysis failed or returned no rooms');
                 }
