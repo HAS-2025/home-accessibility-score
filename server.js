@@ -849,6 +849,30 @@ async function extractDimensions(propertyDescription, title, features, floorplan
             }
         }
     }
+
+    // Smart room consolidation - detect common open plan combinations
+    const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
+    const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
+    const hasDining = dimensions.roomTypes.some(room => room.type === 'diningRoom');
+    
+    // If we have kitchen + living + dining but no explicit openPlan, consolidate them
+    if (hasKitchen && hasLiving && hasDining && !dimensions.roomTypes.some(room => room.type === 'openPlan')) {
+        console.log('📐 Consolidating separate kitchen/living/dining into open plan...');
+        
+        // Remove individual rooms
+        dimensions.roomTypes = dimensions.roomTypes.filter(room => 
+            !['kitchen', 'livingRoom', 'diningRoom'].includes(room.type)
+        );
+        
+        // Add consolidated open plan room
+        dimensions.roomTypes.push({
+            type: 'openPlan',
+            count: 1,
+            display: 'open plan kitchen/living/dining'
+        });
+        
+        console.log('📐 Consolidated rooms into open plan space');
+    }
     
     // Also check for combined living/kitchen/dining spaces
     const combinedPatterns = [
