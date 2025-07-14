@@ -931,7 +931,7 @@
         // Add this function to your main.js or wherever your display functions are
 
         function displayDimensions(dimensions) {
-            console.log('🔍 displayDimensions called with:', dimensions); // ADD THIS
+            console.log('🔍 displayDimensions called with:', dimensions);
             if (!dimensions) {
                 console.log('📐 No dimensions data to display');
                 return;
@@ -939,10 +939,10 @@
         
             console.log('📐 Displaying dimensions:', dimensions);
             
-            const container = document.getElementById('dimensionsCard'); // ADD THIS
-            console.log('🔍 Container found:', container); // ADD THIS
+            const container = document.getElementById('dimensionsCard');
+            console.log('🔍 Container found:', container);
             if (!container) {
-                console.error('Dimensions container not found');
+                console.error('❌ Dimensions container not found - check HTML!');
                 return;
             }
         
@@ -955,6 +955,7 @@
         
             // Total Square Footage Section
             if (dimensions.totalSqFt || dimensions.totalSqM) {
+                console.log('📐 Adding total size section');
                 dimensionsHtml += `
                     <div class="dimension-section">
                         <h4>Total Size</h4>
@@ -977,6 +978,7 @@
         
             // Room Types Section
             if (dimensions.roomTypes && dimensions.roomTypes.length > 0) {
+                console.log('📐 Adding room types section:', dimensions.roomTypes);
                 dimensionsHtml += `
                     <div class="dimension-section">
                         <h4>Room Breakdown</h4>
@@ -998,51 +1000,10 @@
                 `;
             }
         
-            // Individual Room Dimensions Section
-            if (dimensions.rooms && dimensions.rooms.length > 0) {
-                dimensionsHtml += `
-                    <div class="dimension-section">
-                        <h4>Individual Room Sizes</h4>
-                        <div class="room-dimensions">
-                `;
-                
-                dimensions.rooms.forEach(room => {
-                    dimensionsHtml += `
-                        <div class="room-dimension-item">
-                            <span class="room-name">${room.name}</span>
-                            <span class="room-size">${room.dimensions} (${room.sqft} sq ft)</span>
-                        </div>
-                    `;
-                });
-                
-                dimensionsHtml += `
-                        </div>
-                    </div>
-                `;
-            }
-        
-            // Specific Rooms Section
-            if (dimensions.specificRooms && dimensions.specificRooms.length > 0) {
-                dimensionsHtml += `
-                    <div class="dimension-section">
-                        <h4>Room Features</h4>
-                        <div class="specific-rooms">
-                `;
-                
-                dimensions.specificRooms.forEach(room => {
-                    dimensionsHtml += `<span class="room-tag">${room}</span>`;
-                });
-                
-                dimensionsHtml += `
-                        </div>
-                    </div>
-                `;
-            }
-        
             // If no detailed data available
             if (!dimensions.totalSqFt && !dimensions.totalSqM && 
-                (!dimensions.roomTypes || dimensions.roomTypes.length === 0) &&
-                (!dimensions.rooms || dimensions.rooms.length === 0)) {
+                (!dimensions.roomTypes || dimensions.roomTypes.length === 0)) {
+                console.log('📐 No dimension data available, showing fallback message');
                 dimensionsHtml += `
                     <div class="dimension-section">
                         <p class="no-data">No detailed dimension information available for this property.</p>
@@ -1050,12 +1011,12 @@
                 `;
             }
         
-            dimensionsHtml += `
-                    </div>
-                </div>
-            `;
-        
-            return dimensionsHtml;
+            dimensionsHtml += `</div>`;
+            
+            console.log('📐 Setting innerHTML and showing container');
+            container.innerHTML = dimensionsHtml;
+            container.style.display = 'block';
+            console.log('✅ Dimensions card should now be visible');
         }
         
         function displayPublicTransport(transport) {
