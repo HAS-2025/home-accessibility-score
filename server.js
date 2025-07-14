@@ -601,14 +601,14 @@ Only include rooms you can clearly identify. Do not include bedrooms or bathroom
                     source: {
                         type: 'base64',
                         media_type: 'image/png',
-                        data: await getImageAsBase64(floorplanUrl)
+                        data: await convertImageToBase64(floorplanUrl)
                     }
                 }]
             }]
         }, {
             headers: {
-                'Authorization': `Bearer ${process.env.CLAUDE_API_KEY}`,
                 'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
                 'anthropic-version': '2023-06-01'
             },
             timeout: 15000
