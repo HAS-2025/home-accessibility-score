@@ -2371,6 +2371,7 @@ const epcDetails = epcAnalysis.description;
             busStops: publicTransport.busStops || [],
             trainStations: publicTransport.trainStations || []
         },
+        dimensions: property.dimensions || null,
         overall: Math.round((overallScore || 0) * 10) / 10,
         summary: summary || 'Analysis completed successfully'
     };
