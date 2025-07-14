@@ -931,19 +931,26 @@
         // Add this function to your main.js or wherever your display functions are
 
         function displayDimensions(dimensions) {
+            console.log('🔍 displayDimensions called with:', dimensions); // ADD THIS
             if (!dimensions) {
                 console.log('📐 No dimensions data to display');
-                return '';
+                return;
             }
         
             console.log('📐 Displaying dimensions:', dimensions);
+            
+            const container = document.getElementById('dimensionsCard'); // ADD THIS
+            console.log('🔍 Container found:', container); // ADD THIS
+            if (!container) {
+                console.error('Dimensions container not found');
+                return;
+            }
         
             let dimensionsHtml = `
-                <div class="score-card">
-                    <div class="score-header">
-                        <h3>📐 Property Dimensions</h3>
-                    </div>
-                    <div class="score-content">
+                <div class="score-header">
+                    <h3>📐 Property Dimensions</h3>
+                </div>
+                <div class="score-content">
             `;
         
             // Total Square Footage Section
