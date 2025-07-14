@@ -640,7 +640,7 @@ Only include rooms you can clearly identify. Do not include bedrooms or bathroom
 }
 
 // ✅ DIMENSIONS EXTRACTION
-async function extractDimensions(propertyDescription, title, features) {
+async function extractDimensions(propertyDescription, title, features, floorplan) {
     console.log('📐 Extracting property dimensions...');
     
     const dimensions = {
@@ -2340,7 +2340,7 @@ if (epcResult && epcResult.rating) {
             epcRating: epcData.rating,
             address: address || 'Address not found',
             coordinates: coordinates,
-            dimensions: await extractDimensions(description, title, features)
+            dimensions: await extractDimensions(description, title, features, floorplan)
         };
 
     } catch (error) {
