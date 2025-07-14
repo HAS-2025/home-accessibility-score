@@ -2517,7 +2517,7 @@ const epcDetails = epcAnalysis.description;
 
     // Step 5: NEW - Analyze Property Dimensions  
     console.log('📐 Analyzing property dimensions...');
-    const dimensions = extractDimensions(property.description, property.title, property.features);
+    const dimensions = property.dimensions || null;
     
     // Updated overall score calculation (4 categories now)
     const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score + publicTransport.score) / 4;
