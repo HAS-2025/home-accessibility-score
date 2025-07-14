@@ -564,6 +564,7 @@ function extractDimensions(propertyDescription, title, features) {
     };
     
     const fullText = `${title} ${propertyDescription} ${features.join(' ')}`.toLowerCase();
+    console.log('📐 Full text for room analysis (first 1000 chars):', fullText.substring(0, 1000));
     
     // Extract total square footage
     const sqftPatterns = [
