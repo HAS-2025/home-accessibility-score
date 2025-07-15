@@ -697,11 +697,11 @@ Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balco
 async function extractDimensions(propertyDescription, title, features, floorplan) {
     console.log('📐 Extracting property dimensions...');
     
-    const dimensions = {
-        totalSqFt: null,
-        totalSqM: null,
-        rooms: [],
-        roomTypes: []
+    let dimensions = {
+    totalSqFt: null,
+    totalSqM: null,
+    rooms: [],
+    roomTypes: []
     };
     
     const fullText = `${title} ${propertyDescription} ${features.join(' ')}`.toLowerCase();
