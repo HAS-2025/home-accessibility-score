@@ -857,11 +857,12 @@
         .dimension-detailed-room {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            padding: 6px 8px;
+            align-items: flex-start; /* Changed from center */
+            padding: 8px 12px;
             background: rgba(59, 130, 246, 0.05);
             border-radius: 6px;
-            margin-bottom: 4px;
+            margin-bottom: 6px; /* Increased spacing */
+            min-height: 40px; /* Give minimum height */
         }
         
         .dimension-detailed-room:last-child {
@@ -881,8 +882,10 @@
         .dimension-room-measure {
             color: #6b7280;
             font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 11px;
+            font-size: 12px; /* Increased from 11px */
             font-weight: 500;
+            white-space: nowrap; /* Prevent text wrapping */
+            text-align: right;
         }
         
         /* No data styling */
