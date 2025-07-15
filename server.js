@@ -894,14 +894,8 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     console.log('📐 Checking if floor plan analysis needed...');
     console.log('📐 Current room types found:', dimensions.roomTypes.length);
     
-    // If we only found basic rooms and have a floor plan, analyze it for more rooms
-    const hasLimitedRoomInfo = dimensions.roomTypes.length <= 2 && 
-                              dimensions.roomTypes.every(room => 
-                                  room.type === 'bedroom' || room.type === 'bathroom'
-                              );
-    
-    // Add a flag to prevent multiple floor plan analyses
-    if (hasLimitedRoomInfo && floorplan && !dimensions.floorplanAnalyzed) {
+    // Always analyze floor plan for room dimensions if available
+    if (floorplan && !dimensions.floorplanAnalyzed) {
         console.log('📐 Limited room info detected, analyzing floor plan for rooms...');
         dimensions.floorplanAnalyzed = true; // Set flag to prevent re-analysis
         
