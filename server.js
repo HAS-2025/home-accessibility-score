@@ -563,36 +563,81 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify only the clearly visible rooms/spaces.
+        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify rooms AND their dimensions if visible.
 
-BE CONSERVATIVE - only identify rooms you can clearly see with obvious boundaries and purpose.
+IMPORTANT: Look for both room identification AND dimension measurements.
+
+For each room, identify:
+1. Room type (kitchen, livingRoom, bedroom, bathroom, etc.)
+2. Dimensions if shown (look for measurements like "13'1" x 7'6"" or "3.99 x 2.29m")
 
 Look for:
 - Kitchen areas (clear counters, appliances, sink symbols)
-- Living areas (clear open spaces)
-- Dining areas (only if clearly separate from living/kitchen with walls)
-- Balconies/terraces (outdoor spaces with different shading/hatching)
-- Utility rooms (only if clearly separated with washing symbols and walls)
+- Living/reception areas (clear open spaces, often labeled "Reception Room")
+- Bedroom areas (bed symbols, labeled bedrooms)
+- Bathroom areas (toilet/bath symbols)
+- Balconies/terraces (outdoor spaces with different shading)
+- Utility rooms (washing symbols, storage)
 
-DO NOT identify rooms unless you can clearly see:
-1. Physical boundaries (walls separating spaces)
-2. Clear room purpose indicators (appliances, furniture symbols)
-3. Obvious spatial separation
+DIMENSION EXTRACTION:
+- Look for text showing measurements like "13'1" x 7'6"" or "4.27 x 3.38m"
+- Look for dimension lines and arrows
+- Extract both imperial (feet/inches) and metric (meters) if available
+- Include the room area in sq ft or sq m if shown
 
-For small flats/apartments, kitchen/living/dining are often one combined open space.
-If you see kitchen/living/dining without clear wall separation, treat as ONE open plan space.
+BE CONSERVATIVE - only identify rooms you can clearly see with obvious boundaries.
+Only include dimensions that are clearly readable and associated with specific rooms.
 
 Respond with ONLY a JSON object:
 {
   "rooms": [
-    {"type": "openPlan", "display": "open plan kitchen/living/dining", "count": 1},
-    {"type": "balcony", "display": "balcony", "count": 1}
+    {
+      "type": "kitchen",
+      "display": "kitchen",
+      "count": 1,
+      "dimensions": {
+        "imperial": "13'1\" x 7'6\"",
+        "metric": "3.99 x 2.29m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "livingRoom",
+      "display": "reception room",
+      "count": 1,
+      "dimensions": {
+        "imperial": "13'1\" x 11'1\"",
+        "metric": "3.99 x 3.38m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "bedroom",
+      "display": "bedroom",
+      "count": 1,
+      "dimensions": {
+        "imperial": "14'0\" x 11'1\"",
+        "metric": "4.27 x 3.38m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "bathroom",
+      "display": "bathroom",
+      "count": 1,
+      "dimensions": null
+    }
   ]
 }
 
-Type options: openPlan, kitchen, livingRoom, diningRoom, utility, balcony, terrace, storage
-Use openPlan for combined kitchen/living/dining spaces without clear wall separation.
-Only include rooms you are 100% confident about - when in doubt, don't include it.`;
+Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balcony, terrace, storage, reception
+- Use "reception" for reception rooms/living rooms
+- Set dimensions to null if not clearly visible
+- Only include rooms you are 100% confident about
+- If no dimensions visible, set dimensions to null`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-haiku-20240307',
@@ -865,24 +910,8 @@ async function extractDimensions(propertyDescription, title, features, floorplan
             const floorplanRoomAnalysis = await analyzeFloorplanForRooms(floorplan);
             
             if (floorplanRoomAnalysis && floorplanRoomAnalysis.rooms) {
-                console.log('📐 Floor plan analysis successful, adding detected rooms...');
-                
-                // Add rooms detected from floor plan
-                floorplanRoomAnalysis.rooms.forEach(room => {
-                    // Check if room type already exists
-                    const alreadyExists = dimensions.roomTypes.some(existingRoom => 
-                        existingRoom.type === room.type
-                    );
-                    
-                    if (!alreadyExists) {
-                        dimensions.roomTypes.push({
-                            type: room.type,
-                            count: room.count || 1,
-                            display: room.display
-                        });
-                        console.log(`📐 Added from floor plan: ${room.display}`);
-                    }
-                });
+                // Use the new processFloorPlanResults function
+                dimensions = processFloorPlanResults(floorplanRoomAnalysis, dimensions);
             }
         } catch (error) {
             console.log('📐 Floor plan analysis failed:', error.message);
@@ -992,6 +1021,162 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     
     return dimensions;
 } // ← MISSING: Close the main extractDimensions function 
+
+// Updated function to process floor plan results with dimensions
+function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
+    if (floorplanRoomAnalysis && floorplanRoomAnalysis.rooms) {
+        console.log('📐 Floor plan analysis successful, adding detected rooms...');
+        
+        // Add rooms detected from floor plan
+        floorplanRoomAnalysis.rooms.forEach(room => {
+            // Check if room type already exists
+            const alreadyExists = dimensions.roomTypes.some(existingRoom => 
+                existingRoom.type === room.type
+            );
+            
+            if (!alreadyExists) {
+                dimensions.roomTypes.push({
+                    type: room.type,
+                    count: room.count || 1,
+                    display: room.display
+                });
+                console.log(`📐 Added from floor plan: ${room.display}`);
+            }
+        });
+        
+        // Process dimensions if available
+        const roomsWithDimensions = floorplanRoomAnalysis.rooms.filter(room => 
+            room.dimensions && room.dimensions !== null
+        );
+        
+        if (roomsWithDimensions.length > 0) {
+            console.log('📐 Found rooms with dimensions from floor plan...');
+            
+            // Add to dimensions.rooms array for detailed display
+            roomsWithDimensions.forEach(room => {
+                if (room.dimensions) {
+                    const roomDimension = {
+                        name: room.display,
+                        type: room.type,
+                        imperial: room.dimensions.imperial || null,
+                        metric: room.dimensions.metric || null,
+                        area_sqft: room.dimensions.area_sqft || null,
+                        area_sqm: room.dimensions.area_sqm || null
+                    };
+                    
+                    // Create dimensions string for display
+                    if (room.dimensions.imperial) {
+                        roomDimension.dimensions = room.dimensions.imperial;
+                        
+                        // Calculate area if dimensions available
+                        const area = calculateAreaFromDimensions(room.dimensions.imperial);
+                        if (area) {
+                            roomDimension.sqft = area;
+                        }
+                    } else if (room.dimensions.metric) {
+                        roomDimension.dimensions = room.dimensions.metric;
+                    }
+                    
+                    dimensions.rooms.push(roomDimension);
+                    console.log(`📐 Added dimensions for ${room.display}: ${roomDimension.dimensions}`);
+                }
+            });
+        }
+    }
+    
+    return dimensions;
+}
+
+// Helper function to calculate area from dimension string
+function calculateAreaFromDimensions(dimensionString) {
+    // Parse dimensions like "13'1" x 7'6"" or "14'0" x 11'1""
+    const match = dimensionString.match(/(\d+)'(\d+)"\s*x\s*(\d+)'(\d+)"/);
+    if (match) {
+        const feet1 = parseInt(match[1]);
+        const inches1 = parseInt(match[2]);
+        const feet2 = parseInt(match[3]);
+        const inches2 = parseInt(match[4]);
+        
+        const totalInches1 = (feet1 * 12) + inches1;
+        const totalInches2 = (feet2 * 12) + inches2;
+        
+        // Convert to feet and calculate area
+        const length = totalInches1 / 12;
+        const width = totalInches2 / 12;
+        
+        return Math.round(length * width);
+    }
+    
+    return null;
+}
+
+// NEW function to handle detailed room dimensions
+function generateDetailedRoomList(dimensions) {
+    const roomsWithDimensions = [];
+    const roomsWithoutDimensions = [];
+    
+    // Process rooms with dimensions from floor plan
+    if (dimensions.rooms && dimensions.rooms.length > 0) {
+        dimensions.rooms.forEach(room => {
+            const icon = getRoomIcon(room.type || 'unknown');
+            
+            roomsWithDimensions.push({
+                icon: icon,
+                name: room.name,
+                dimensions: room.dimensions,
+                sqft: room.sqft,
+                source: 'floorplan'
+            });
+        });
+    }
+    
+    // Add room types without specific dimensions
+    dimensions.roomTypes.forEach(roomType => {
+        // Check if this room type already has dimensions
+        const hasDimensions = roomsWithDimensions.some(room => 
+            room.name.toLowerCase().includes(roomType.display.toLowerCase())
+        );
+        
+        if (!hasDimensions) {
+            const icon = getRoomIcon(roomType.type);
+            const roomCount = roomType.count > 1 ? `${roomType.count} ` : '';
+            
+            roomsWithoutDimensions.push({
+                icon: icon,
+                name: `${roomCount}${roomType.display}`,
+                dimensions: null,
+                sqft: null,
+                source: 'text'
+            });
+        }
+    });
+    
+    // Combine and display
+    const allRooms = [...roomsWithDimensions, ...roomsWithoutDimensions];
+    
+    return allRooms.map(room => {
+        if (room.dimensions) {
+            return `
+                <div class="dimension-detailed-room">
+                    <div class="dimension-room-name">
+                        <span class="dimension-room-icon">${room.icon}</span>
+                        ${room.name}
+                    </div>
+                    <div class="dimension-room-measure">
+                        ${room.dimensions}${room.sqft ? ` (${room.sqft} sq ft)` : ''}
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="dimension-room-line">
+                    <span class="dimension-room-icon">${room.icon}</span>
+                    <span class="dimension-room-text">${room.name}</span>
+                </div>
+            `;
+        }
+    }).join('');
+}
 
 // Enhanced coordinate extraction using Geocoding API as fallback
 async function getPropertyCoordinates(address, existingCoords) {
