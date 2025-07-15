@@ -772,6 +772,14 @@
 
         /* ADD THIS CSS TO MATCH YOUR TRANSPORT SECTIONS */
 
+        /* Gray background wrapper like transport sections */
+        .dimension-transport-wrapper {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
         /* Main transport-style section for dimensions */
         .dimension-transport-section {
             background: #f0f9ff;
@@ -1361,26 +1369,30 @@
                 </div>
                 
                 <!-- Total Size Section - Using transport-stop styling -->
-                <div class="dimension-transport-section">
-                    <div class="dimension-section-header">TOTAL SIZE</div>
-                    <div class="dimension-size-display">
-                        ${dimensions.totalSqFt ? `
-                            <span class="dimension-primary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</span>
-                        ` : ''}
-                        ${dimensions.totalSqM ? `
-                            <span class="dimension-secondary-size">${dimensions.totalSqM.toLocaleString()} sq m</span>
-                        ` : ''}
-                        ${!dimensions.totalSqFt && !dimensions.totalSqM ? `
-                            <span class="dimension-primary-size">Size not specified</span>
-                        ` : ''}
+                <div class="dimension-transport-wrapper">
+                    <div class="dimension-transport-section">
+                        <div class="dimension-section-header">TOTAL SIZE</div>
+                        <div class="dimension-size-display">
+                            ${dimensions.totalSqFt ? `
+                                <span class="dimension-primary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</span>
+                            ` : ''}
+                            ${dimensions.totalSqM ? `
+                                <span class="dimension-secondary-size">${dimensions.totalSqM.toLocaleString()} sq m</span>
+                            ` : ''}
+                            ${!dimensions.totalSqFt && !dimensions.totalSqM ? `
+                                <span class="dimension-primary-size">Size not specified</span>
+                            ` : ''}
+                        </div>
                     </div>
                 </div>
         
                 <!-- Room Breakdown Section - Using transport-stop styling -->
-                <div class="dimension-transport-section">
-                    <div class="dimension-section-header">ROOM BREAKDOWN</div>
-                    <div class="dimension-room-content">
-                        ${generateRoomBreakdown(dimensions)}
+                <div class="dimension-transport-wrapper">
+                    <div class="dimension-transport-section">
+                        <div class="dimension-section-header">ROOM BREAKDOWN</div>
+                        <div class="dimension-room-content">
+                            ${generateRoomBreakdown(dimensions)}
+                        </div>
                     </div>
                 </div>
             `;
