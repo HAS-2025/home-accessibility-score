@@ -740,12 +740,58 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     for (const [type, pattern] of Object.entries(roomTypePatterns)) {
         const match = fullText.match(pattern);
         if (match) {
-            // ... (your existing room type extraction logic) ...
+            // For rooms that might not have a number (like "kitchen"), default to 1
+            let count = match[1] ? parseInt(match[1]) : 1;
             
-            console.log(`📐 Found room type: ${count} ${displayName}`);
+            // Skip if count is 0 or invalid
+            if (count > 0 && count <= 10) { // Reasonable limit
+                let displayName;
+                switch(type) {
+                    case 'bedrooms':
+                        displayName = count === 1 ? 'bedroom' : 'bedrooms';
+                        break;
+                    case 'bathrooms':
+                        displayName = count === 1 ? 'bathroom' : 'bathrooms';
+                        break;
+                    case 'receptions':
+                        displayName = count === 1 ? 'reception room' : 'reception rooms';
+                        break;
+                    case 'livingRooms':
+                        displayName = count === 1 ? 'living room' : 'living rooms';
+                        break;
+                    case 'kitchens':
+                        displayName = count === 1 ? 'kitchen' : 'kitchens';
+                        break;
+                    case 'diningRooms':
+                        displayName = count === 1 ? 'dining room' : 'dining rooms';
+                        break;
+                    case 'studies':
+                        displayName = count === 1 ? 'study' : 'studies';
+                        break;
+                    case 'conservatories':
+                        displayName = count === 1 ? 'conservatory' : 'conservatories';
+                        break;
+                    case 'utilities':
+                        displayName = count === 1 ? 'utility room' : 'utility rooms';
+                        break;
+                    case 'cloakrooms':
+                        displayName = count === 1 ? 'cloakroom' : 'cloakrooms';
+                        break;
+                    default:
+                        displayName = type;
+                }
+                
+                dimensions.roomTypes.push({
+                    type: type.replace(/s$/, ''), // Remove trailing 's'
+                    count: count,
+                    display: displayName
+                });
+                
+                console.log(`📐 Found room type: ${count} ${displayName}`);
+            }
         }
-    } // ← MISSING: Close the main room type loop
-
+    }        
+            
     // Extract all property spaces (outdoor, utility, and storage spaces)
     // MOVE THIS OUTSIDE THE LOOP ABOVE
     const propertySpacePatterns = {
