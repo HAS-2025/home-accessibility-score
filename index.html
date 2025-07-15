@@ -562,6 +562,75 @@
                 font-size: 13px;
             }
         }
+
+        /* ADD THESE STYLES TO YOUR EXISTING DIMENSIONS CSS */
+
+        /* Enhanced room dimension items with icons */
+        .room-dimension-item .room-name {
+            display: flex;
+            align-items: center;
+        }
+        
+        .room-dimension-item .room-icon {
+            font-size: 14px;
+            width: 18px;
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        /* Mixed layout for rooms with and without dimensions */
+        .room-dimensions-list .room-item {
+            background: #f0f0f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            border-bottom: none;
+            margin-bottom: 8px;
+        }
+        
+        .room-dimensions-list .room-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Enhanced size display */
+        .size-display {
+            min-height: 40px;
+            align-items: center;
+        }
+        
+        /* Improved primary size styling */
+        .primary-size {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+        
+        /* Better responsive handling for room dimensions */
+        @media (max-width: 768px) {
+            .room-dimension-item .room-name {
+                margin-bottom: 4px;
+            }
+            
+            .room-dimension-item .room-size {
+                font-size: 11px;
+            }
+        }
+        
+        /* Ensure consistent spacing in mixed lists */
+        .room-dimensions-list > *:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Better visual hierarchy for rooms with dimensions */
+        .room-dimension-item {
+            border-left: 3px solid #007bff;
+            transition: all 0.2s ease;
+        }
+        
+        .room-dimension-item:hover {
+            background: #e9ecef;
+            border-left-color: #0056b3;
+        }
         
         .accessible-features-list {
             margin-top: 0.5rem;
@@ -985,158 +1054,200 @@
         }
         
         // ✅ IMPROVED DIMENSIONS DISPLAY FUNCTION - VERTICAL LAYOUT
-        // Replace your displayDimensions function with this version
-        
+        // Updated displayDimensions function - compatible with your existing CSS
         function displayDimensions(dimensions) {
-            console.log('🔍 displayDimensions called with:', dimensions);
+            const dimensionsContainer = document.getElementById('dimensions-info');
+            
             if (!dimensions) {
-                console.log('📐 No dimensions data to display');
-                return;
-            }
-        
-            console.log('📐 Displaying dimensions:', dimensions);
-            
-            const container = document.getElementById('dimensionsCard');
-            console.log('🔍 Container found:', container);
-            if (!container) {
-                console.error('❌ Dimensions container not found - check HTML!');
-                return;
-            }
-        
-            let dimensionsHtml = `
-                <div class="score-header">
-                    <h3>📐 Property Dimensions</h3>
-                </div>
-                <div class="score-content">
-            `;
-        
-            // Total size section - more compact
-            if (dimensions.totalSqFt || dimensions.totalSqM) {
-                console.log('📐 Adding total size section');
-                dimensionsHtml += `
-                    <div class="dimension-stat">
-                        <div class="stat-label">Total Size</div>
-                        <div class="stat-values">
-                            ${dimensions.totalSqFt ? `<span class="primary-stat">${dimensions.totalSqFt.toLocaleString()} sq ft</span>` : ''}
-                            ${dimensions.totalSqM ? `<span class="secondary-stat">${dimensions.totalSqM.toLocaleString()} sq m</span>` : ''}
-                        </div>
-                    </div>
-                `;
-            }
-        
-            // Room breakdown - clean list without duplicate numbers
-            if (dimensions.roomTypes && dimensions.roomTypes.length > 0) {
-                console.log('📐 Adding room types section:', dimensions.roomTypes);
-                dimensionsHtml += `
-                    <div class="dimension-stat">
-                        <div class="stat-label">Room Breakdown</div>
-                        <div class="room-list-vertical">
-                `;
-                
-                dimensions.roomTypes.forEach(roomType => {
-                    const roomIcon = getRoomIcon(roomType.type);
-                    // Combine count with display text for better formatting
-                    const displayText = roomType.count > 1 ? `${roomType.count} ${roomType.display}` : roomType.display;
-                    dimensionsHtml += `
-                        <div class="room-item">
-                            <span class="room-icon">${roomIcon}</span>
-                            <span class="room-text">${displayText}</span>
-                        </div>
-                    `;
-                });
-                
-                dimensionsHtml += `
-                        </div>
-                    </div>
-                `;
-            }
-        
-            // Individual room dimensions (if available)
-            if (dimensions.rooms && dimensions.rooms.length > 0) {
-                console.log('📐 Adding individual room dimensions');
-                dimensionsHtml += `
-                    <div class="dimension-stat">
-                        <div class="stat-label">Individual Room Sizes</div>
-                        <div class="room-dimensions-list">
-                `;
-                
-                dimensions.rooms.forEach(room => {
-                    dimensionsHtml += `
-                        <div class="room-dimension-row">
-                            <span class="room-name">${room.name}</span>
-                            <span class="room-size">${room.dimensions} (${room.sqft} sq ft)</span>
-                        </div>
-                    `;
-                });
-                
-                dimensionsHtml += `
-                        </div>
-                    </div>
-                `;
-            }
-        
-            // Specific rooms/features (if available)
-            if (dimensions.specificRooms && dimensions.specificRooms.length > 0) {
-                console.log('📐 Adding specific rooms');
-                dimensionsHtml += `
-                    <div class="dimension-stat">
-                        <div class="stat-label">Additional Features</div>
-                        <div class="feature-list">
-                `;
-                
-                dimensions.specificRooms.forEach(room => {
-                    const featureIcon = getFeatureIcon(room);
-                    dimensionsHtml += `
-                        <span class="feature-item">
-                            <span class="feature-icon">${featureIcon}</span>
-                            ${room}
-                        </span>
-                    `;
-                });
-                
-                dimensionsHtml += `
-                        </div>
-                    </div>
-                `;
-            }
-        
-            // If no detailed data available
-            if (!dimensions.totalSqFt && !dimensions.totalSqM && 
-                (!dimensions.roomTypes || dimensions.roomTypes.length === 0)) {
-                console.log('📐 No dimension data available, showing fallback message');
-                dimensionsHtml += `
+                dimensionsContainer.innerHTML = `
                     <div class="no-data">
-                        <span class="no-data-icon">📏</span>
-                        <span class="no-data-text">No size information available</span>
+                        <span class="no-data-icon">📐</span>
+                        <span class="no-data-text">Dimension information not available</span>
                     </div>
                 `;
+                return;
             }
         
-            dimensionsHtml += `</div>`;
+            let html = `
+                <!-- Total Size Section -->
+                <div class="dimension-section">
+                    <div class="section-label">Total Size</div>
+                    <div class="size-display">
+                        ${dimensions.totalSqFt ? `
+                            <div class="primary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</div>
+                        ` : ''}
+                        ${dimensions.totalSqM ? `
+                            <div class="secondary-size">${dimensions.totalSqM.toLocaleString()} sq m</div>
+                        ` : ''}
+                        ${!dimensions.totalSqFt && !dimensions.totalSqM ? `
+                            <div class="primary-size">Size not specified</div>
+                        ` : ''}
+                    </div>
+                </div>
+        
+                <!-- Room Breakdown Section -->
+                <div class="dimension-section">
+                    <div class="section-label">Room Breakdown</div>
+                    ${generateRoomBreakdown(dimensions)}
+                </div>
+            `;
             
-            console.log('📐 Setting innerHTML and showing container');
-            container.innerHTML = dimensionsHtml;
-            container.style.display = 'block';
-            console.log('✅ Dimensions card should now be visible');
+            dimensionsContainer.innerHTML = html;
         }
         
-        // Helper function to get appropriate icons for room types - UPDATED
+        function generateRoomBreakdown(dimensions) {
+            if (!dimensions.roomTypes || dimensions.roomTypes.length === 0) {
+                return `
+                    <div class="no-data">
+                        <span class="no-data-icon">🏠</span>
+                        <span class="no-data-text">No room information available</span>
+                    </div>
+                `;
+            }
+        
+            // Check if we have individual room dimensions
+            const hasIndividualRooms = dimensions.rooms && dimensions.rooms.length > 0;
+            
+            if (hasIndividualRooms) {
+                // Show detailed room breakdown with dimensions
+                return `
+                    <div class="room-dimensions-list">
+                        ${generateDetailedRoomList(dimensions)}
+                    </div>
+                `;
+            } else {
+                // Show simple room list
+                return `
+                    <div class="room-list">
+                        ${dimensions.roomTypes.map(room => {
+                            const icon = getRoomIcon(room.type);
+                            const roomCount = room.count > 1 ? `${room.count} ` : '';
+                            
+                            return `
+                                <div class="room-item">
+                                    <span class="room-icon">${icon}</span>
+                                    <span class="room-text">${roomCount}${room.display}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+        }
+        
+        function generateDetailedRoomList(dimensions) {
+            const roomsWithDimensions = [];
+            const roomsWithoutDimensions = [];
+            
+            // Separate rooms with and without dimensions
+            dimensions.roomTypes.forEach(roomType => {
+                const matchingRooms = findMatchingRooms(roomType, dimensions.rooms);
+                
+                if (matchingRooms.length > 0) {
+                    // Add rooms with dimensions
+                    matchingRooms.forEach((room, index) => {
+                        const roomNumber = matchingRooms.length > 1 ? ` ${index + 1}` : '';
+                        const icon = getRoomIcon(roomType.type);
+                        
+                        roomsWithDimensions.push({
+                            icon: icon,
+                            name: `${roomType.display}${roomNumber}`,
+                            dimensions: room.dimensions,
+                            sqft: room.sqft
+                        });
+                    });
+                } else {
+                    // Add rooms without specific dimensions
+                    const icon = getRoomIcon(roomType.type);
+                    const roomCount = roomType.count > 1 ? `${roomType.count} ` : '';
+                    
+                    roomsWithoutDimensions.push({
+                        icon: icon,
+                        name: `${roomCount}${roomType.display}`,
+                        dimensions: null,
+                        sqft: null
+                    });
+                }
+            });
+            
+            // Combine and display
+            const allRooms = [...roomsWithDimensions, ...roomsWithoutDimensions];
+            
+            return allRooms.map(room => {
+                if (room.dimensions) {
+                    return `
+                        <div class="room-dimension-item">
+                            <div class="room-name">
+                                <span class="room-icon" style="margin-right: 6px;">${room.icon}</span>
+                                ${room.name}
+                            </div>
+                            <div class="room-size">
+                                ${room.dimensions}${room.sqft ? ` (${room.sqft} sq ft)` : ''}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="room-item">
+                            <span class="room-icon">${room.icon}</span>
+                            <span class="room-text">${room.name}</span>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+        
+        function findMatchingRooms(roomType, individualRooms) {
+            if (!individualRooms || individualRooms.length === 0) {
+                return [];
+            }
+            
+            return individualRooms.filter(room => {
+                const roomName = room.name.toLowerCase();
+                const typeToMatch = roomType.type.toLowerCase();
+                const displayToMatch = roomType.display.toLowerCase();
+                
+                // Match different room type variations
+                return roomName.includes(typeToMatch) || 
+                       roomName.includes(displayToMatch) ||
+                       (typeToMatch === 'bedroom' && roomName.includes('bed')) ||
+                       (typeToMatch === 'bathroom' && roomName.includes('bath')) ||
+                       (typeToMatch === 'livingroom' && (roomName.includes('living') || roomName.includes('lounge'))) ||
+                       (typeToMatch === 'kitchen' && roomName.includes('kitchen')) ||
+                       (typeToMatch === 'diningroom' && roomName.includes('dining')) ||
+                       (typeToMatch === 'study' && roomName.includes('study')) ||
+                       (typeToMatch === 'utility' && roomName.includes('utility'));
+            });
+        }
+        
         function getRoomIcon(roomType) {
             const icons = {
                 'bedroom': '🛏️',
                 'bathroom': '🚿',
-                'reception': '🛋️',
-                'livingRoom': '🛋️',
                 'kitchen': '🍳',
+                'livingRoom': '🛋️',
                 'diningRoom': '🍽️',
                 'study': '📚',
-                'conservatory': '🌿',
                 'utility': '🧺',
-                'cloakroom': '🚽',
-                'openPlan': '🏠'
+                'openPlan': '🏠',
+                'balcony': '🌿',
+                'terrace': '🌿',
+                'patio': '🌿',
+                'garden': '🌱',
+                'garage': '🚗',
+                'parking': '🅿️',
+                'storage': '📦',
+                'basement': '🏠',
+                'laundry': '🧺',
+                'roof_terrace': '🌿',
+                'courtyard': '🌿',
+                'attic': '🏠',
+                'shed': '📦',
+                'gym': '💪',
+                'wine_cellar': '🍷'
             };
             
-            return icons[roomType] || '🏠'; // Default icon
+            return icons[roomType] || '🏠';
         }
         
         // Helper function to get icons for specific features - UPDATED
