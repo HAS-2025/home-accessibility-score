@@ -1430,23 +1430,29 @@
             const roomsWithDimensions = [];
             const roomsWithoutDimensions = [];
             
-            // Separate rooms with and without dimensions
-            dimensions.roomTypes.forEach(roomType => {
-                const matchingRooms = findMatchingRooms(roomType, dimensions.rooms);
-                
-                if (matchingRooms.length > 0) {
-                    matchingRooms.forEach((room, index) => {
-                        const roomNumber = matchingRooms.length > 1 ? ` ${index + 1}` : '';
-                        const icon = getRoomIcon(roomType.type);
-                        
-                        roomsWithDimensions.push({
-                            icon: icon,
-                            name: `${roomType.display}${roomNumber}`,
-                            dimensions: room.dimensions,
-                            sqft: room.sqft
-                        });
+            // Process rooms with dimensions from floor plan (NEW DATA STRUCTURE)
+            if (dimensions.rooms && dimensions.rooms.length > 0) {
+                dimensions.rooms.forEach(room => {
+                    const icon = getRoomIcon(room.type || 'unknown');
+                    
+                    roomsWithDimensions.push({
+                        icon: icon,
+                        name: room.name,
+                        dimensions: room.dimensions,
+                        sqft: room.sqft,
+                        source: 'floorplan'
                     });
-                } else {
+                });
+            }
+            
+            // Add room types without specific dimensions
+            dimensions.roomTypes.forEach(roomType => {
+                // Check if this room type already has dimensions
+                const hasDimensions = roomsWithDimensions.some(room => 
+                    room.name.toLowerCase().includes(roomType.display.toLowerCase())
+                );
+                
+                if (!hasDimensions) {
                     const icon = getRoomIcon(roomType.type);
                     const roomCount = roomType.count > 1 ? `${roomType.count} ` : '';
                     
@@ -1454,11 +1460,13 @@
                         icon: icon,
                         name: `${roomCount}${roomType.display}`,
                         dimensions: null,
-                        sqft: null
+                        sqft: null,
+                        source: 'text'
                     });
                 }
             });
             
+            // Combine and display
             const allRooms = [...roomsWithDimensions, ...roomsWithoutDimensions];
             
             return allRooms.map(room => {
@@ -1484,7 +1492,6 @@
                 }
             }).join('');
         }
-        
         function findMatchingRooms(roomType, individualRooms) {
             if (!individualRooms || individualRooms.length === 0) {
                 return [];
