@@ -769,6 +769,145 @@
                 align-self: flex-end;
             }
         }
+
+        /* ADD THIS CSS TO MATCH YOUR TRANSPORT SECTIONS */
+
+        /* Main transport-style section for dimensions */
+        .dimension-transport-section {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        /* Section headers matching transport style */
+        .dimension-section-header {
+            font-weight: 600;
+            color: #1e40af;
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Size display */
+        .dimension-size-display {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .dimension-primary-size {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e40af;
+            line-height: 1;
+        }
+        
+        .dimension-secondary-size {
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            background: #e5e7eb;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+        
+        /* Room content */
+        .dimension-room-content {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        /* Simple room lines */
+        .dimension-room-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+        }
+        
+        .dimension-room-icon {
+            font-size: 14px;
+            width: 18px;
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .dimension-room-text {
+            font-size: 14px;
+            color: #374151;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        
+        /* Detailed room with dimensions */
+        .dimension-detailed-room {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 6px;
+            margin-bottom: 4px;
+        }
+        
+        .dimension-detailed-room:last-child {
+            margin-bottom: 0;
+        }
+        
+        .dimension-room-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            color: #1e40af;
+            text-transform: capitalize;
+            font-size: 13px;
+        }
+        
+        .dimension-room-measure {
+            color: #6b7280;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        
+        /* No data styling */
+        .dimension-no-data {
+            color: #6b7280;
+            font-style: italic;
+            font-size: 13px;
+            padding: 8px 0;
+            text-align: center;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .dimension-size-display {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+            
+            .dimension-primary-size {
+                font-size: 20px;
+            }
+            
+            .dimension-detailed-room {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
+            }
+            
+            .dimension-room-measure {
+                align-self: flex-end;
+            }
+        }
         
         .accessible-features-list {
             margin-top: 0.5rem;
@@ -1192,7 +1331,7 @@
         }
         
         // ✅ IMPROVED DIMENSIONS DISPLAY FUNCTION - VERTICAL LAYOUT
-        // Updated displayDimensions function to match existing card structure
+        // Updated displayDimensions function using your existing CSS classes
         function displayDimensions(dimensions) {
             const dimensionsContainer = document.getElementById('dimensionsCard');
             
@@ -1221,26 +1360,26 @@
                     <span class="score-title">Property Dimensions</span>
                 </div>
                 
-                <!-- Total Size Section - Matching other sections' blue boxes -->
-                <div class="transport-section total-size-section">
-                    <div class="section-header">TOTAL SIZE</div>
-                    <div class="size-display-content">
+                <!-- Total Size Section - Using transport-stop styling -->
+                <div class="dimension-transport-section">
+                    <div class="dimension-section-header">TOTAL SIZE</div>
+                    <div class="dimension-size-display">
                         ${dimensions.totalSqFt ? `
-                            <div class="primary-size-text">${dimensions.totalSqFt.toLocaleString()} sq ft</div>
+                            <span class="dimension-primary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</span>
                         ` : ''}
                         ${dimensions.totalSqM ? `
-                            <div class="secondary-size-badge">${dimensions.totalSqM.toLocaleString()} sq m</div>
+                            <span class="dimension-secondary-size">${dimensions.totalSqM.toLocaleString()} sq m</span>
                         ` : ''}
                         ${!dimensions.totalSqFt && !dimensions.totalSqM ? `
-                            <div class="primary-size-text">Size not specified</div>
+                            <span class="dimension-primary-size">Size not specified</span>
                         ` : ''}
                     </div>
                 </div>
         
-                <!-- Room Breakdown Section - Matching other sections' blue boxes -->
-                <div class="transport-section room-breakdown-section">
-                    <div class="section-header">ROOM BREAKDOWN</div>
-                    <div class="room-content">
+                <!-- Room Breakdown Section - Using transport-stop styling -->
+                <div class="dimension-transport-section">
+                    <div class="dimension-section-header">ROOM BREAKDOWN</div>
+                    <div class="dimension-room-content">
                         ${generateRoomBreakdown(dimensions)}
                     </div>
                 </div>
@@ -1251,14 +1390,13 @@
         
         function generateRoomBreakdown(dimensions) {
             if (!dimensions.roomTypes || dimensions.roomTypes.length === 0) {
-                return `<div class="no-room-data">No room information available</div>`;
+                return `<div class="dimension-no-data">No room information available</div>`;
             }
         
             // Check if we have individual room dimensions
             const hasIndividualRooms = dimensions.rooms && dimensions.rooms.length > 0;
             
             if (hasIndividualRooms) {
-                // Show detailed room breakdown with dimensions
                 return generateDetailedRoomList(dimensions);
             } else {
                 // Show simple room list
@@ -1267,9 +1405,9 @@
                     const roomCount = room.count > 1 ? `${room.count} ` : '';
                     
                     return `
-                        <div class="room-item-line">
-                            <span class="room-icon-small">${icon}</span>
-                            <span class="room-text-white">${roomCount}${room.display}</span>
+                        <div class="dimension-room-line">
+                            <span class="dimension-room-icon">${icon}</span>
+                            <span class="dimension-room-text">${roomCount}${room.display}</span>
                         </div>
                     `;
                 }).join('');
@@ -1285,7 +1423,6 @@
                 const matchingRooms = findMatchingRooms(roomType, dimensions.rooms);
                 
                 if (matchingRooms.length > 0) {
-                    // Add rooms with dimensions
                     matchingRooms.forEach((room, index) => {
                         const roomNumber = matchingRooms.length > 1 ? ` ${index + 1}` : '';
                         const icon = getRoomIcon(roomType.type);
@@ -1298,7 +1435,6 @@
                         });
                     });
                 } else {
-                    // Add rooms without specific dimensions
                     const icon = getRoomIcon(roomType.type);
                     const roomCount = roomType.count > 1 ? `${roomType.count} ` : '';
                     
@@ -1311,34 +1447,32 @@
                 }
             });
             
-            // Combine and display
             const allRooms = [...roomsWithDimensions, ...roomsWithoutDimensions];
             
             return allRooms.map(room => {
                 if (room.dimensions) {
                     return `
-                        <div class="room-dimension-line">
-                            <div class="room-name-with-icon">
-                                <span class="room-icon-small">${room.icon}</span>
-                                <span class="room-name-text">${room.name}</span>
+                        <div class="dimension-detailed-room">
+                            <div class="dimension-room-name">
+                                <span class="dimension-room-icon">${room.icon}</span>
+                                ${room.name}
                             </div>
-                            <div class="room-dimension-text">
+                            <div class="dimension-room-measure">
                                 ${room.dimensions}${room.sqft ? ` (${room.sqft} sq ft)` : ''}
                             </div>
                         </div>
                     `;
                 } else {
                     return `
-                        <div class="room-item-line">
-                            <span class="room-icon-small">${room.icon}</span>
-                            <span class="room-text-white">${room.name}</span>
+                        <div class="dimension-room-line">
+                            <span class="dimension-room-icon">${room.icon}</span>
+                            <span class="dimension-room-text">${room.name}</span>
                         </div>
                     `;
                 }
             }).join('');
         }
         
-        // Keep existing helper functions
         function findMatchingRooms(roomType, individualRooms) {
             if (!individualRooms || individualRooms.length === 0) {
                 return [];
