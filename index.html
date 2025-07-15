@@ -631,6 +631,196 @@
             background: #e9ecef;
             border-left-color: #0056b3;
         }
+
+        /* Blue Gradient Dimensions Styling - ADD TO YOUR CSS */
+
+        /* Total Size Gradient Box */
+        .total-size-gradient-box {
+            background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            color: white;
+            text-align: center;
+        }
+        
+        /* Room Breakdown Gradient Box */
+        .room-breakdown-gradient-box {
+            background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+        }
+        
+        /* Gradient Section Titles */
+        .gradient-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: left;
+        }
+        
+        /* Total Size Display */
+        .gradient-size-display {
+            display: flex;
+            justify-content: center;
+            align-items: baseline;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .gradient-primary-size {
+            font-size: 32px;
+            font-weight: 700;
+            color: white;
+            line-height: 1;
+        }
+        
+        .gradient-secondary-size {
+            font-size: 18px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 4px 12px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Room Content Styling */
+        .gradient-room-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        /* Simple Room Items */
+        .gradient-room-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .gradient-room-item:last-child {
+            border-bottom: none;
+        }
+        
+        .gradient-room-icon {
+            font-size: 16px;
+            width: 24px;
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .gradient-room-text {
+            font-size: 16px;
+            color: white;
+            font-weight: 500;
+            text-transform: capitalize;
+            flex: 1;
+        }
+        
+        /* Room Items with Dimensions */
+        .gradient-room-dimension-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .gradient-room-dimension-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .gradient-room-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            color: white;
+            text-transform: capitalize;
+        }
+        
+        .gradient-room-name .gradient-room-icon {
+            font-size: 14px;
+            width: 18px;
+        }
+        
+        .gradient-room-size {
+            color: rgba(255, 255, 255, 0.9);
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        
+        /* No Data State */
+        .gradient-no-data {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: rgba(255, 255, 255, 0.7);
+            font-style: italic;
+        }
+        
+        .gradient-no-data-text {
+            font-size: 14px;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .gradient-size-display {
+                flex-direction: column;
+                gap: 8px;
+            }
+            
+            .gradient-primary-size {
+                font-size: 28px;
+            }
+            
+            .gradient-secondary-size {
+                font-size: 16px;
+            }
+            
+            .gradient-room-dimension-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+            
+            .gradient-room-size {
+                align-self: flex-end;
+                font-size: 12px;
+            }
+            
+            .total-size-gradient-box,
+            .room-breakdown-gradient-box {
+                padding: 16px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .gradient-primary-size {
+                font-size: 24px;
+            }
+            
+            .gradient-room-text {
+                font-size: 14px;
+            }
+            
+            .gradient-section-title {
+                font-size: 11px;
+            }
+        }
         
         .accessible-features-list {
             margin-top: 0.5rem;
@@ -1055,15 +1245,16 @@
         
         // ✅ IMPROVED DIMENSIONS DISPLAY FUNCTION - VERTICAL LAYOUT
         // Updated displayDimensions function - compatible with your existing CSS
+        // Updated displayDimensions function with blue gradient styling
         function displayDimensions(dimensions) {
-            const dimensionsContainer = document.getElementById('dimensionsCard'); // Changed from 'dimensions-info'
+            const dimensionsContainer = document.getElementById('dimensionsCard');
             
             if (!dimensionsContainer) {
                 console.error('Dimensions container #dimensionsCard not found in HTML');
                 return;
             }
             
-            // Also show the card
+            // Show the card
             dimensionsContainer.style.display = 'block';
             
             if (!dimensions) {
@@ -1086,26 +1277,28 @@
                     <span class="score-title">Property Dimensions</span>
                 </div>
                 
-                <!-- Total Size Section -->
-                <div class="dimension-section">
-                    <div class="section-label">Total Size</div>
-                    <div class="size-display">
+                <!-- Total Size Section - Blue Gradient Box -->
+                <div class="total-size-gradient-box">
+                    <div class="gradient-section-title">TOTAL SIZE</div>
+                    <div class="gradient-size-display">
                         ${dimensions.totalSqFt ? `
-                            <div class="primary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</div>
+                            <div class="gradient-primary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</div>
                         ` : ''}
                         ${dimensions.totalSqM ? `
-                            <div class="secondary-size">${dimensions.totalSqM.toLocaleString()} sq m</div>
+                            <div class="gradient-secondary-size">${dimensions.totalSqM.toLocaleString()} sq m</div>
                         ` : ''}
                         ${!dimensions.totalSqFt && !dimensions.totalSqM ? `
-                            <div class="primary-size">Size not specified</div>
+                            <div class="gradient-primary-size">Size not specified</div>
                         ` : ''}
                     </div>
                 </div>
         
-                <!-- Room Breakdown Section -->
-                <div class="dimension-section">
-                    <div class="section-label">Room Breakdown</div>
-                    ${generateRoomBreakdown(dimensions)}
+                <!-- Room Breakdown Section - Blue Gradient Box -->
+                <div class="room-breakdown-gradient-box">
+                    <div class="gradient-section-title">ROOM BREAKDOWN</div>
+                    <div class="gradient-room-content">
+                        ${generateRoomBreakdown(dimensions)}
+                    </div>
                 </div>
             `;
             
@@ -1115,9 +1308,8 @@
         function generateRoomBreakdown(dimensions) {
             if (!dimensions.roomTypes || dimensions.roomTypes.length === 0) {
                 return `
-                    <div class="no-data">
-                        <span class="no-data-icon">🏠</span>
-                        <span class="no-data-text">No room information available</span>
+                    <div class="gradient-no-data">
+                        <span class="gradient-no-data-text">No room information available</span>
                     </div>
                 `;
             }
@@ -1127,28 +1319,20 @@
             
             if (hasIndividualRooms) {
                 // Show detailed room breakdown with dimensions
-                return `
-                    <div class="room-dimensions-list">
-                        ${generateDetailedRoomList(dimensions)}
-                    </div>
-                `;
+                return generateDetailedRoomList(dimensions);
             } else {
-                // Show simple room list
-                return `
-                    <div class="room-list">
-                        ${dimensions.roomTypes.map(room => {
-                            const icon = getRoomIcon(room.type);
-                            const roomCount = room.count > 1 ? `${room.count} ` : '';
-                            
-                            return `
-                                <div class="room-item">
-                                    <span class="room-icon">${icon}</span>
-                                    <span class="room-text">${roomCount}${room.display}</span>
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
+                // Show simple room list in gradient style
+                return dimensions.roomTypes.map(room => {
+                    const icon = getRoomIcon(room.type);
+                    const roomCount = room.count > 1 ? `${room.count} ` : '';
+                    
+                    return `
+                        <div class="gradient-room-item">
+                            <span class="gradient-room-icon">${icon}</span>
+                            <span class="gradient-room-text">${roomCount}${room.display}</span>
+                        </div>
+                    `;
+                }).join('');
             }
         }
         
@@ -1187,33 +1371,34 @@
                 }
             });
             
-            // Combine and display
+            // Combine and display in gradient style
             const allRooms = [...roomsWithDimensions, ...roomsWithoutDimensions];
             
             return allRooms.map(room => {
                 if (room.dimensions) {
                     return `
-                        <div class="room-dimension-item">
-                            <div class="room-name">
-                                <span class="room-icon" style="margin-right: 6px;">${room.icon}</span>
+                        <div class="gradient-room-dimension-item">
+                            <div class="gradient-room-name">
+                                <span class="gradient-room-icon">${room.icon}</span>
                                 ${room.name}
                             </div>
-                            <div class="room-size">
+                            <div class="gradient-room-size">
                                 ${room.dimensions}${room.sqft ? ` (${room.sqft} sq ft)` : ''}
                             </div>
                         </div>
                     `;
                 } else {
                     return `
-                        <div class="room-item">
-                            <span class="room-icon">${room.icon}</span>
-                            <span class="room-text">${room.name}</span>
+                        <div class="gradient-room-item">
+                            <span class="gradient-room-icon">${room.icon}</span>
+                            <span class="gradient-room-text">${room.name}</span>
                         </div>
                     `;
                 }
             }).join('');
         }
         
+        // Keep existing helper functions
         function findMatchingRooms(roomType, individualRooms) {
             if (!individualRooms || individualRooms.length === 0) {
                 return [];
@@ -1224,7 +1409,6 @@
                 const typeToMatch = roomType.type.toLowerCase();
                 const displayToMatch = roomType.display.toLowerCase();
                 
-                // Match different room type variations
                 return roomName.includes(typeToMatch) || 
                        roomName.includes(displayToMatch) ||
                        (typeToMatch === 'bedroom' && roomName.includes('bed')) ||
@@ -1265,7 +1449,7 @@
             };
             
             return icons[roomType] || '🏠';
-        }
+}
         
         // Helper function to get icons for specific features - UPDATED
         function getFeatureIcon(feature) {
