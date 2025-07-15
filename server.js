@@ -336,9 +336,12 @@ if (hasDownstairsBathroom) {
 
     // 6. GARDEN ACCESS (SHARED/COMMUNAL) - New Feature
     const gardenKeywords = [
-        'communal garden', 'shared garden', 'communal grounds', 'shared outdoor space',
-        'communal courtyard', 'landscaped grounds', 'garden access', 'shared terrace',
-        'communal areas', 'residents garden', 'well maintained garden', 'landscaped garden'
+    'communal garden', 'shared garden', 'communal grounds', 'shared outdoor space',
+    'communal courtyard', 'landscaped grounds', 'garden access', 'shared terrace',
+    'communal areas', 'residents garden', 'well maintained garden', 'landscaped garden',
+    // ADD THESE for private gardens:
+    'private garden', 'own garden', 'rear garden', 'front garden', 'enclosed garden',
+    'garden flat', 'garden apartment', 'low-maintenance garden', 'low maintenance garden'
     ];
     
     const hasGarden = gardenKeywords.some(keyword => fullText.includes(keyword));
@@ -1075,6 +1078,20 @@ function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
                     console.log(`📐 Added dimensions for ${room.display}: ${roomDimension.dimensions}`);
                 }
             });
+        }
+        
+        // ADD THIS SECTION HERE - Remove duplicates after processing floor plan
+        const livingRoomTypes = ['livingRoom', 'reception', 'receptions'];
+        const hasFloorPlanLiving = floorplanRoomAnalysis.rooms.some(room => 
+            livingRoomTypes.includes(room.type)
+        );
+
+        if (hasFloorPlanLiving) {
+            // Remove living room from roomTypes since we have detailed floor plan data
+            dimensions.roomTypes = dimensions.roomTypes.filter(room => 
+                !livingRoomTypes.includes(room.type)
+            );
+            console.log('📐 Removed duplicate living/reception room from room types');
         }
     }
     
