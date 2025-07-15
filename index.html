@@ -1056,10 +1056,22 @@
         // ✅ IMPROVED DIMENSIONS DISPLAY FUNCTION - VERTICAL LAYOUT
         // Updated displayDimensions function - compatible with your existing CSS
         function displayDimensions(dimensions) {
-            const dimensionsContainer = document.getElementById('dimensions-info');
+            const dimensionsContainer = document.getElementById('dimensionsCard'); // Changed from 'dimensions-info'
+            
+            if (!dimensionsContainer) {
+                console.error('Dimensions container #dimensionsCard not found in HTML');
+                return;
+            }
+            
+            // Also show the card
+            dimensionsContainer.style.display = 'block';
             
             if (!dimensions) {
                 dimensionsContainer.innerHTML = `
+                    <div class="score-header">
+                        <span class="score-icon">📐</span>
+                        <span class="score-title">Property Dimensions</span>
+                    </div>
                     <div class="no-data">
                         <span class="no-data-icon">📐</span>
                         <span class="no-data-text">Dimension information not available</span>
@@ -1069,6 +1081,11 @@
             }
         
             let html = `
+                <div class="score-header">
+                    <span class="score-icon">📐</span>
+                    <span class="score-title">Property Dimensions</span>
+                </div>
+                
                 <!-- Total Size Section -->
                 <div class="dimension-section">
                     <div class="section-label">Total Size</div>
