@@ -563,33 +563,36 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Please analyze this floor plan image and identify the different rooms/spaces. 
+        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify only the clearly visible rooms/spaces.
 
-Look for and identify:
-- Kitchen areas (look for counters, appliances, sink symbols)
-- Living/lounge areas (open spaces, seating arrangements)
-- Dining areas (dining table symbols, designated eating spaces)
-- Study/office spaces (desk areas, smaller rooms)
-- Utility rooms (washing machine symbols, storage areas)
-- Reception rooms (formal living spaces)
-- Outdoor spaces (balconies, terraces, patios - indicated by different shading/hatching)
-- Storage areas (closets, storage rooms)
-- Garage/parking areas (if shown)
-- Any open-plan combined spaces (kitchen/living/dining)
+BE CONSERVATIVE - only identify rooms you can clearly see with obvious boundaries and purpose.
 
-Respond with ONLY a JSON object in this exact format:
+Look for:
+- Kitchen areas (clear counters, appliances, sink symbols)
+- Living areas (clear open spaces)
+- Dining areas (only if clearly separate from living/kitchen with walls)
+- Balconies/terraces (outdoor spaces with different shading/hatching)
+- Utility rooms (only if clearly separated with washing symbols and walls)
+
+DO NOT identify rooms unless you can clearly see:
+1. Physical boundaries (walls separating spaces)
+2. Clear room purpose indicators (appliances, furniture symbols)
+3. Obvious spatial separation
+
+For small flats/apartments, kitchen/living/dining are often one combined open space.
+If you see kitchen/living/dining without clear wall separation, treat as ONE open plan space.
+
+Respond with ONLY a JSON object:
 {
   "rooms": [
-    {"type": "kitchen", "display": "kitchen", "count": 1},
-    {"type": "livingRoom", "display": "living room", "count": 1},
+    {"type": "openPlan", "display": "open plan kitchen/living/dining", "count": 1},
     {"type": "balcony", "display": "balcony", "count": 1}
   ]
 }
 
-Use these type values: kitchen, livingRoom, diningRoom, study, utility, reception, openPlan, balcony, terrace, patio, garden, garage, parking, storage, laundry
-For openPlan, use display like "open plan kitchen/living"
-
-Only include rooms/spaces you can clearly identify. Do not include bedrooms or bathrooms as these are already detected from text.`;
+Type options: openPlan, kitchen, livingRoom, diningRoom, utility, balcony, terrace, storage
+Use openPlan for combined kitchen/living/dining spaces without clear wall separation.
+Only include rooms you are 100% confident about - when in doubt, don't include it.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-haiku-20240307',
