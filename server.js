@@ -572,6 +572,9 @@ Look for and identify:
 - Study/office spaces (desk areas, smaller rooms)
 - Utility rooms (washing machine symbols, storage areas)
 - Reception rooms (formal living spaces)
+- Outdoor spaces (balconies, terraces, patios - indicated by different shading/hatching)
+- Storage areas (closets, storage rooms)
+- Garage/parking areas (if shown)
 - Any open-plan combined spaces (kitchen/living/dining)
 
 Respond with ONLY a JSON object in this exact format:
@@ -579,14 +582,14 @@ Respond with ONLY a JSON object in this exact format:
   "rooms": [
     {"type": "kitchen", "display": "kitchen", "count": 1},
     {"type": "livingRoom", "display": "living room", "count": 1},
-    {"type": "diningRoom", "display": "dining room", "count": 1}
+    {"type": "balcony", "display": "balcony", "count": 1}
   ]
 }
 
-Use these type values: kitchen, livingRoom, diningRoom, study, utility, reception, openPlan
+Use these type values: kitchen, livingRoom, diningRoom, study, utility, reception, openPlan, balcony, terrace, patio, garden, garage, parking, storage, laundry
 For openPlan, use display like "open plan kitchen/living"
 
-Only include rooms you can clearly identify. Do not include bedrooms or bathrooms as these are already detected from text.`;
+Only include rooms/spaces you can clearly identify. Do not include bedrooms or bathrooms as these are already detected from text.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-haiku-20240307',
@@ -793,23 +796,23 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     }        
             
     // Extract all property spaces (outdoor, utility, and storage spaces)
-    // MOVE THIS OUTSIDE THE LOOP ABOVE
     const propertySpacePatterns = {
         balcony: /balcony|balconies/i,
         terrace: /terrace/i,
         patio: /patio/i,
-        garden: /garden|yard/i,
+        garden: /private\s*garden|own\s*garden|rear\s*garden|front\s*garden|enclosed\s*garden|garden\s*flat|garden\s*apartment/i,
         courtyard: /courtyard/i,
         roof_terrace: /roof\s*terrace/i,
         garage: /garage/i,
-        parking: /parking\s*space|car\s*park/i,
-        storage: /storage\s*room|storage\s*space/i,
+        parking: /parking\s*space|car\s*park|allocated\s*parking|designated\s*parking/i,
+        storage: /storage\s*room|storage\s*space|storage\s*cupboard/i,
         basement: /basement|cellar/i,
         attic: /attic|loft\s*space/i,
         shed: /shed|outbuilding/i,
-        gym: /gym|fitness\s*room/i,
+        gym: /private\s*gym|home\s*gym|personal\s*gym/i,
         wine_cellar: /wine\s*cellar/i,
-        laundry: /laundry\s*room/i
+        laundry: /laundry\s*room/i,
+        utility: /utility\s*room|utility\s*cupboard/i
     };
     
     Object.entries(propertySpacePatterns).forEach(([spaceType, pattern]) => {
@@ -817,6 +820,17 @@ async function extractDimensions(propertyDescription, title, features, floorplan
             const alreadyExists = dimensions.roomTypes.some(room => room.type === spaceType);
             
             if (!alreadyExists) {
+                // Filter out communal facilities
+                const communalTerms = /communal|shared|onsite|residents|development|complex|building|site/i;
+                const patternMatch = fullText.search(pattern);
+                const context = fullText.substring(Math.max(0, patternMatch - 100), patternMatch + 100);
+                
+                // Skip if it's clearly communal (especially for garden and gym)
+                if ((spaceType === 'garden' || spaceType === 'gym') && context.match(communalTerms)) {
+                    console.log(`📐 Skipping communal ${spaceType} (context: "${context.substring(0, 50)}...")`);
+                    return;
+                }
+                
                 let displayName = spaceType.replace('_', ' ');
                 dimensions.roomTypes.push({
                     type: spaceType,
