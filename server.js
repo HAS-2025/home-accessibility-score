@@ -566,37 +566,35 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify rooms AND their dimensions if visible.
+        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify rooms AND outdoor spaces with their dimensions if visible.
 
-IMPORTANT: Look for both room identification AND dimension measurements.
+IMPORTANT: Look for both INDOOR rooms and OUTDOOR spaces.
 
-For each room, identify:
-1. Room type (kitchen, livingRoom, bedroom, bathroom, etc.)
-2. Dimensions if shown (look for measurements like "13'1" x 7'6"" or "3.99 x 2.29m")
-
-Look for:
+INDOOR SPACES:
 - Kitchen areas (clear counters, appliances, sink symbols)
 - Living/reception areas (clear open spaces, often labeled "Reception Room")
 - Bedroom areas (bed symbols, labeled bedrooms)
 - Bathroom areas (toilet/bath symbols)
-- Balconies/terraces (outdoor spaces with different shading)
 - Utility rooms (washing symbols, storage)
 
-DIMENSION EXTRACTION:
-- Look for text showing measurements like "13'1" x 7'6"" or "4.27 x 3.38m"
-- Look for dimension lines and arrows
-- Extract both imperial (feet/inches) and metric (meters) if available
-- Include the room area in sq ft or sq m if shown
+OUTDOOR SPACES:
+- Gardens (large outdoor areas, often shaded differently)
+- Terraces and patios (outdoor areas connected to building)
+- Balconies (smaller outdoor spaces)
+- Courtyards (enclosed outdoor areas)
 
-BE CONSERVATIVE - only identify rooms you can clearly see with obvious boundaries.
-Only include dimensions that are clearly readable and associated with specific rooms.
+DIMENSION EXTRACTION:
+- Look for text showing measurements like "13'1" x 7'6"" or "3.99 x 2.29m"
+- Look for garden dimensions like "17' x 20'" in outdoor areas
+- Look for dimension lines and arrows
+- Include both indoor AND outdoor space dimensions
 
 Respond with ONLY a JSON object:
 {
   "rooms": [
     {
       "type": "kitchen",
-      "display": "kitchen",
+      "display": "kitchen", 
       "count": 1,
       "dimensions": {
         "imperial": "13'1\" x 7'6\"",
@@ -606,40 +604,23 @@ Respond with ONLY a JSON object:
       }
     },
     {
-      "type": "livingRoom",
-      "display": "reception room",
+      "type": "garden",
+      "display": "rear garden",
       "count": 1,
       "dimensions": {
-        "imperial": "13'1\" x 11'1\"",
-        "metric": "3.99 x 3.38m",
+        "imperial": "17'0\" x 20'0\"",
+        "metric": "5.18 x 6.1m", 
         "area_sqft": null,
         "area_sqm": null
       }
-    },
-    {
-      "type": "bedroom",
-      "display": "bedroom",
-      "count": 1,
-      "dimensions": {
-        "imperial": "14'0\" x 11'1\"",
-        "metric": "4.27 x 3.38m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "bathroom",
-      "display": "bathroom",
-      "count": 1,
-      "dimensions": null
     }
   ]
 }
 
-Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balcony, terrace, storage, reception
-- Use "reception" for reception rooms/living rooms
+Type options: kitchen, livingRoom, bedroom, bathroom, utility, balcony, terrace, garden, patio, courtyard
+- Include outdoor spaces like garden, terrace, patio
 - Set dimensions to null if not clearly visible
-- Only include rooms you are 100% confident about
+- Only include spaces you are 100% confident about`
 - If no dimensions visible, set dimensions to null`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
