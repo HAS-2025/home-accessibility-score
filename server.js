@@ -1978,6 +1978,9 @@ function getCityFromCoordinates(coordinates) {
 async function scrapeRightmoveProperty(url) {
     try {
         console.log('Scraping Rightmove URL:', url);
+        
+        // Add random delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 3000 + 2000));
 
         const rightmoveResponse = await axios.get(url, {
             headers: {
