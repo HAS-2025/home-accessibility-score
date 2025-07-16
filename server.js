@@ -1,3 +1,4 @@
+
 // server.js - Updated with Accessible Features scoring
 const express = require('express');
 const cors = require('cors');
@@ -431,7 +432,7 @@ async function tryFloorplanURL(propertyId) {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             },
-            timeout: 15000
+            timeout: 8000
         });
 
         const $ = cheerio.load(response.data);
@@ -566,10 +567,84 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = "Analyze this floor plan and list rooms with dimensions. Respond with JSON only.";
+        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify rooms AND their dimensions if visible.
+
+IMPORTANT: Look for both room identification AND dimension measurements.
+
+For each room, identify:
+1. Room type (kitchen, livingRoom, bedroom, bathroom, etc.)
+2. Dimensions if shown (look for measurements like "13'1" x 7'6"" or "3.99 x 2.29m")
+
+Look for:
+- Kitchen areas (clear counters, appliances, sink symbols)
+- Living/reception areas (clear open spaces, often labeled "Reception Room")
+- Bedroom areas (bed symbols, labeled bedrooms)
+- Bathroom areas (toilet/bath symbols)
+- Balconies/terraces (outdoor spaces with different shading)
+- Utility rooms (washing symbols, storage)
+
+DIMENSION EXTRACTION:
+- Look for text showing measurements like "13'1" x 7'6"" or "4.27 x 3.38m"
+- Look for dimension lines and arrows
+- Extract both imperial (feet/inches) and metric (meters) if available
+- Include the room area in sq ft or sq m if shown
+
+BE CONSERVATIVE - only identify rooms you can clearly see with obvious boundaries.
+Only include dimensions that are clearly readable and associated with specific rooms.
+
+Respond with ONLY a JSON object:
+{
+  "rooms": [
+    {
+      "type": "kitchen",
+      "display": "kitchen",
+      "count": 1,
+      "dimensions": {
+        "imperial": "13'1\" x 7'6\"",
+        "metric": "3.99 x 2.29m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "livingRoom",
+      "display": "reception room",
+      "count": 1,
+      "dimensions": {
+        "imperial": "13'1\" x 11'1\"",
+        "metric": "3.99 x 3.38m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "bedroom",
+      "display": "bedroom",
+      "count": 1,
+      "dimensions": {
+        "imperial": "14'0\" x 11'1\"",
+        "metric": "4.27 x 3.38m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "bathroom",
+      "display": "bathroom",
+      "count": 1,
+      "dimensions": null
+    }
+  ]
+}
+
+Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balcony, terrace, storage, reception
+- Use "reception" for reception rooms/living rooms
+- Set dimensions to null if not clearly visible
+- Only include rooms you are 100% confident about
+- If no dimensions visible, set dimensions to null`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-sonnet-20240229',
+            model: 'claude-3-haiku-20240307',
             max_tokens: 500,
             messages: [{
                 role: 'user',
@@ -1947,7 +2022,7 @@ async function scrapeRightmoveProperty(url) {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             },
-            timeout: 15000
+            timeout: 8000
         });
 
         const $ = cheerio.load(response.data);
