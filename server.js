@@ -621,7 +621,6 @@ Type options: kitchen, livingRoom, bedroom, bathroom, utility, balcony, terrace,
 - Include outdoor spaces like garden, terrace, patio
 - Set dimensions to null if not clearly visible
 - Only include spaces you are 100% confident about`
-- If no dimensions visible, set dimensions to null`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-haiku-20240307',
