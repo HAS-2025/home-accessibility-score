@@ -1999,6 +1999,12 @@ async function scrapeRightmoveProperty(url) {
             timeout: 15000
         });
 
+        if (rightmoveResponse.status !== 200 || !rightmoveResponse.data) {
+            throw new Error(`Rightmove response invalid. Status: ${rightmoveResponse.status}`);
+        }
+        console.log('🔍 Preview of HTML:', rightmoveResponse.data.substring(0, 300));
+
+
         const $ = cheerio.load(rightmoveResponse.data);
         const pageText = $('body').text();
 
@@ -2637,10 +2643,18 @@ if (epcResult && epcResult.rating) {
         };
 
     } catch (error) {
-        console.error('Scraping error:', error.message);
+        if (error.response) {
+            console.error('❌ Axios response error:', error.response.status, error.response.statusText);
+            console.error('Response body preview:', error.response.data?.substring(0, 300));
+        } else if (error.request) {
+            console.error('❌ No response received from Rightmove:', error.request);
+        } else {
+            console.error('❌ Unexpected error:', error.message);
+        }
+    
         throw new Error('Failed to scrape property data');
     }
-}
+
 
 // ✅ UPDATED ACCESSIBILITY ANALYSIS with new Accessible Features
 async function analyzePropertyAccessibility(property) {
