@@ -1833,7 +1833,7 @@ async function extractEPCFromRightmoveDropdown(url) {
             timeout: 15000
         });
 
-        const $ = cheerio.load(response.data);
+        const $ = cheerio.load(rightmoveResponse.data);
         const epcImageUrls = [];
         
         // Strategy 1: Look for PDF brochures
@@ -2299,7 +2299,7 @@ async function scrapeRightmoveProperty(url) {
             ];
 
             // FIXED: Include ALL text sources including page HTML
-            const pageHTML = response.data;
+            const pageHTML = rightmoveResponse.data;
             const fullPageText = $('body').text();
             const allTextSources = `${title} ${description} ${features.join(' ')} ${fullPageText}`.toLowerCase();
             
