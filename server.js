@@ -1999,7 +1999,7 @@ async function scrapeRightmoveProperty(url) {
             timeout: 15000
         });
 
-        const $ = cheerio.load(response.data);
+        const $ = cheerio.load(rightmoveResponse.data);
         const pageText = $('body').text();
 
         const propertyIdMatch = url.match(/properties\/(\d+)/);
