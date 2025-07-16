@@ -623,7 +623,7 @@ Type options: kitchen, livingRoom, bedroom, bathroom, utility, balcony, terrace,
 - Only include spaces you are 100% confident about`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-haiku-20240307',
+            model: 'claude-3-sonnet-20240229',
             max_tokens: 500,
             messages: [{
                 role: 'user',
