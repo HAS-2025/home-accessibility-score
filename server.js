@@ -2654,7 +2654,7 @@ if (epcResult && epcResult.rating) {
     
         throw new Error('Failed to scrape property data');
     }
-
+}
 
 // ✅ UPDATED ACCESSIBILITY ANALYSIS with new Accessible Features
 async function analyzePropertyAccessibility(property) {
