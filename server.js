@@ -431,7 +431,7 @@ async function tryFloorplanURL(propertyId) {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             },
-            timeout: 45000
+            timeout: 15000
         });
 
         const $ = cheerio.load(response.data);
@@ -566,61 +566,7 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify rooms AND outdoor spaces with their dimensions if visible.
-
-IMPORTANT: Look for both INDOOR rooms and OUTDOOR spaces.
-
-INDOOR SPACES:
-- Kitchen areas (clear counters, appliances, sink symbols)
-- Living/reception areas (clear open spaces, often labeled "Reception Room")
-- Bedroom areas (bed symbols, labeled bedrooms)
-- Bathroom areas (toilet/bath symbols)
-- Utility rooms (washing symbols, storage)
-
-OUTDOOR SPACES:
-- Gardens (large outdoor areas, often shaded differently)
-- Terraces and patios (outdoor areas connected to building)
-- Balconies (smaller outdoor spaces)
-- Courtyards (enclosed outdoor areas)
-
-DIMENSION EXTRACTION:
-- Look for text showing measurements like "13'1" x 7'6"" or "3.99 x 2.29m"
-- Look for garden dimensions like "17' x 20'" in outdoor areas
-- Look for dimension lines and arrows
-- Include both indoor AND outdoor space dimensions
-
-Respond with ONLY a JSON object:
-{
-  "rooms": [
-    {
-      "type": "kitchen",
-      "display": "kitchen", 
-      "count": 1,
-      "dimensions": {
-        "imperial": "13'1\" x 7'6\"",
-        "metric": "3.99 x 2.29m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "garden",
-      "display": "rear garden",
-      "count": 1,
-      "dimensions": {
-        "imperial": "17'0\" x 20'0\"",
-        "metric": "5.18 x 6.1m", 
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    }
-  ]
-}
-
-Type options: kitchen, livingRoom, bedroom, bathroom, utility, balcony, terrace, garden, patio, courtyard
-- Include outdoor spaces like garden, terrace, patio
-- Set dimensions to null if not clearly visible
-- Only include spaces you are 100% confident about`;
+        const prompt = "Analyze this floor plan and list rooms with dimensions. Respond with JSON only.";
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-sonnet-20240229',
@@ -2001,7 +1947,7 @@ async function scrapeRightmoveProperty(url) {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             },
-            timeout: 45000
+            timeout: 15000
         });
 
         const $ = cheerio.load(response.data);
