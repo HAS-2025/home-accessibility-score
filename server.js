@@ -585,83 +585,78 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify ALL SPACES (indoor rooms AND outdoor areas) with their dimensions if visible.
+        const prompt = `Analyze this floor plan and extract EXACTLY what is labeled on the plan.
 
-IMPORTANT: Look for both indoor rooms AND outdoor spaces like gardens, patios, terraces.
+IMPORTANT: Read the text labels directly from the floor plan image. Do not interpret or assume room types.
 
-For each space, identify:
-1. Space type (kitchen, livingRoom, bedroom, bathroom, garden, patio, terrace, etc.)
-2. Dimensions if shown (look for measurements like "13'1" x 7'6"" or "3.99 x 2.29m")
+For each labeled space, identify:
+1. The EXACT text label shown (e.g. "Bedroom 1", "Kitchen/Reception/Dining Room", "Roof Terrace", "Storage")
+2. The dimensions shown next to or below each room label
+3. Any area measurements if visible
 
 Look for:
-- Kitchen areas (clear counters, appliances, sink symbols)
-- Living/reception areas (clear open spaces, often labeled "Reception Room")
-- Bedroom areas (bed symbols, labeled bedrooms)
-- Bathroom areas (toilet/bath symbols)
-- GARDENS (outdoor areas, often shaded differently, may have dimension markings)
-- Patios/terraces (outdoor spaces connected to building)
-- Balconies (smaller outdoor spaces)
-- Utility rooms (washing symbols, storage)
+- Room labels with numbers (e.g. "Bedroom 1", "Bedroom 2")
+- Combined space labels (e.g. "Kitchen/Reception/Dining Room")
+- Outdoor spaces (e.g. "Roof Terrace", "Balcony", "Garden")
+- Storage/utility spaces (e.g. "Storage", "Utility")
+- Dimensions in format like "4.50 x 3.40m" or "14'9\" x 11'2\""
 
-DIMENSION EXTRACTION:
-- Look for text showing measurements like "13'1" x 7'6"" or "4.27 x 3.38m"
-- Look for dimension lines and arrows
-- Extract both imperial (feet/inches) and metric (meters) if available
-- Include outdoor space dimensions (gardens often have measurements like "20' x 15'")
-- Include the room area in sq ft or sq m if shown
+Extract the measurements exactly as shown on the plan.
 
-BE CONSERVATIVE - only identify spaces you can clearly see with obvious boundaries.
-Only include dimensions that are clearly readable and associated with specific spaces.
-
-Respond with ONLY a JSON object:
+Respond with ONLY a JSON object using the EXACT labels from the floor plan:
 {
   "rooms": [
     {
-      "type": "kitchen",
-      "display": "kitchen",
-      "count": 1,
-      "dimensions": {
-        "imperial": "13'1\" x 7'6\"",
-        "metric": "3.99 x 2.29m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "livingRoom",
-      "display": "reception room",
-      "count": 1,
-      "dimensions": {
-        "imperial": "13'1\" x 11'1\"",
-        "metric": "3.99 x 3.38m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
       "type": "bedroom",
-      "display": "bedroom",
+      "display": "Bedroom 1",
       "count": 1,
       "dimensions": {
-        "imperial": "14'0\" x 11'1\"",
-        "metric": "4.27 x 3.38m",
+        "imperial": "14'9\" x 11'2\"",
+        "metric": "4.50 x 3.40m",
         "area_sqft": null,
         "area_sqm": null
       }
     },
     {
-      "type": "bathroom",
-      "display": "bathroom",
-      "count": 1,
-      "dimensions": null
-    },
-    {
-      "type": "garden",
-      "display": "rear garden",
+      "type": "bedroom", 
+      "display": "Bedroom 2",
       "count": 1,
       "dimensions": {
-        "imperial": "25'0\" x 30'0\"",
-        "metric": "7.62 x 9.14m",
+        "imperial": "12'6\" x 9'8\"",
+        "metric": "3.81 x 2.95m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "reception",
+      "display": "Kitchen/Reception/Dining Room",
+      "count": 1,
+      "dimensions": {
+        "imperial": "20'4\" x 16'5\"",
+        "metric": "6.20 x 5.00m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "terrace",
+      "display": "Roof Terrace",
+      "count": 1,
+      "dimensions": {
+        "imperial": "20'0\" x 12'0\"",
+        "metric": "6.10 x 3.66m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "storage",
+      "display": "Storage",
+      "count": 1,
+      "dimensions": {
+        "imperial": "6'0\" x 4'0\"",
+        "metric": "1.83 x 1.22m",
         "area_sqft": null,
         "area_sqm": null
       }
@@ -669,12 +664,9 @@ Respond with ONLY a JSON object:
   ]
 }
 
-Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balcony, terrace, storage, reception, garden, patio, courtyard
-- Use "reception" for reception rooms/living rooms
-- Use "garden" for any garden/outdoor space with dimensions
-- Set dimensions to null if not clearly visible
-- Only include spaces you are 100% confident about
-- If no dimensions visible, set dimensions to null`;
+Use the exact room labels from the floor plan as the "display" value.
+Extract dimensions exactly as shown.
+Set dimensions to null only if no measurements are visible for that specific room.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
@@ -1054,25 +1046,24 @@ async function extractDimensions(propertyDescription, title, features, floorplan
 } // ← MISSING: Close the main extractDimensions function 
 
 // Updated function to process floor plan results with dimensions
+// Updated function to process floor plan results with dimensions
 function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
     if (floorplanRoomAnalysis && floorplanRoomAnalysis.rooms) {
-        console.log('📐 Floor plan analysis successful, adding detected rooms...');
+        console.log('📐 Floor plan analysis successful, replacing room data with detailed floor plan results...');
         
-        // Add rooms detected from floor plan
+        // Clear existing room types since we have detailed floor plan data
+        dimensions.roomTypes = [];
+        
+        // Process each room from floor plan
         floorplanRoomAnalysis.rooms.forEach(room => {
-            // Check if room type already exists
-            const alreadyExists = dimensions.roomTypes.some(existingRoom => 
-                existingRoom.type === room.type
-            );
-            
-            if (!alreadyExists) {
-                dimensions.roomTypes.push({
-                    type: room.type,
-                    count: room.count || 1,
-                    display: room.display
-                });
-                console.log(`📐 Added from floor plan: ${room.display}`);
-            }
+            // Add room type with exact display name from floor plan
+            dimensions.roomTypes.push({
+                type: room.type,
+                count: room.count || 1,
+                display: room.display, // Use exact label from floor plan
+                source: 'floorplan'
+            });
+            console.log(`📐 Added from floor plan: ${room.display}`);
         });
         
         // Process dimensions if available
@@ -1087,7 +1078,7 @@ function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
             roomsWithDimensions.forEach(room => {
                 if (room.dimensions) {
                     const roomDimension = {
-                        name: room.display,
+                        name: room.display, // Use exact label from floor plan
                         type: room.type,
                         imperial: room.dimensions.imperial || null,
                         metric: room.dimensions.metric || null,
@@ -1114,19 +1105,7 @@ function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
             });
         }
         
-        // ADD THIS SECTION HERE - Remove duplicates after processing floor plan
-        const livingRoomTypes = ['livingRoom', 'reception', 'receptions'];
-        const hasFloorPlanLiving = floorplanRoomAnalysis.rooms.some(room => 
-            livingRoomTypes.includes(room.type)
-        );
-
-        if (hasFloorPlanLiving) {
-            // Remove living room from roomTypes since we have detailed floor plan data
-            dimensions.roomTypes = dimensions.roomTypes.filter(room => 
-                !livingRoomTypes.includes(room.type)
-            );
-            console.log('📐 Removed duplicate living/reception room from room types');
-        }
+        console.log('📐 Using detailed floor plan data instead of text-based room detection');
     }
     
     return dimensions;
