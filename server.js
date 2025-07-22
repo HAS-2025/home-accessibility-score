@@ -575,7 +575,6 @@ Be conservative - only say BALCONY_FOUND if you're confident.`;
 }
 
 // Add this validation function for floor plan analysis (similar to EPC validation)
-// Add this validation function for floor plan analysis (similar to EPC validation)
 function validateFloorPlanResponse(visionText) {
     console.log('🔍 Validating floor plan response:', visionText);
     
@@ -592,34 +591,22 @@ function validateFloorPlanResponse(visionText) {
         const dimensionText = dimensionMatches[i] ? dimensionMatches[i][1].trim() : null;
         
         if (roomLabel && roomLabel !== 'null' && roomLabel !== 'undefined') {
-            // Enhanced room type determination with better outdoor space detection
+            // Determine room type from label
             let roomType = 'room'; // default
             const labelLower = roomLabel.toLowerCase();
             
-            // Indoor spaces
             if (labelLower.includes('bedroom')) roomType = 'bedroom';
             else if (labelLower.includes('kitchen') || labelLower.includes('reception') || labelLower.includes('dining')) roomType = 'reception';
-            else if (labelLower.includes('bathroom') || labelLower.includes('shower') || labelLower.includes('wc')) roomType = 'bathroom';
-            else if (labelLower.includes('utility') || labelLower.includes('laundry')) roomType = 'utility';
-            
-            // Outdoor spaces - ENHANCED DETECTION
-            else if (labelLower.includes('roof terrace') || labelLower.includes('roof garden')) roomType = 'terrace';
-            else if (labelLower.includes('terrace') || labelLower.includes('balcony') || labelLower.includes('patio')) roomType = 'terrace';
-            else if (labelLower.includes('garden') || labelLower.includes('yard')) roomType = 'garden';
-            else if (labelLower.includes('courtyard') || labelLower.includes('deck')) roomType = 'terrace';
-            
-            // Storage and utility spaces
-            else if (labelLower.includes('storage') || labelLower.includes('cupboard') || labelLower.includes('pantry')) roomType = 'storage';
-            else if (labelLower.includes('garage') || labelLower.includes('parking')) roomType = 'garage';
-            else if (labelLower.includes('study') || labelLower.includes('office')) roomType = 'study';
-            else if (labelLower.includes('conservatory') || labelLower.includes('sunroom')) roomType = 'conservatory';
+            else if (labelLower.includes('bathroom') || labelLower.includes('shower')) roomType = 'bathroom';
+            else if (labelLower.includes('terrace') || labelLower.includes('balcony')) roomType = 'terrace';
+            else if (labelLower.includes('storage') || labelLower.includes('utility')) roomType = 'storage';
             
             // Parse dimensions if available
             let dimensions = null;
-            if (dimensionText && dimensionText !== 'No dimensions visible' && !dimensionText.includes('not visible') && !dimensionText.includes('not shown')) {
+            if (dimensionText && dimensionText !== 'No dimensions visible' && !dimensionText.includes('not visible')) {
                 // Extract imperial and metric dimensions
                 const imperialMatch = dimensionText.match(/(\d+['\"]\d*[\"']?\s*x\s*\d+['\"]\d*[\"']?)/i);
-                const metricMatch = dimensionText.match(/(\d+\.\d+m?\s*x\s*\d+\.\d+m?)/i);
+                const metricMatch = dimensionText.match(/(\d+\.\d+\s*x\s*\d+\.\d+m?)/i);
                 
                 if (imperialMatch || metricMatch) {
                     dimensions = {
@@ -645,6 +632,81 @@ function validateFloorPlanResponse(visionText) {
     return { rooms };
 }
 
+// Update the floor plan analysis function to use validation
+async function analyzeFloorplanForRoomsWithValidation(floorplanUrl) {
+    console.log('🏠 Analyzing floor plan for room layout:', floorplanUrl);
+    
+    if (!process.env.CLAUDE_API_KEY) {
+        console.log('⚠️ No Claude API key available for floor plan room analysis');
+        return null;
+    }
+    
+    try {
+        // ... (use the updated prompt from the artifact above)
+        
+        const response = await axios.post('https://api.anthropic.com/v1/messages', {
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1000,
+            messages: [{
+                role: 'user',
+                content: [{
+                    type: 'text',
+                    text: prompt // from artifact above
+                }, {
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: 'image/jpeg',
+                        data: await convertImageToBase64(floorplanUrl)
+                    }
+                }]
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            timeout: 20000
+        });
+
+        const analysisText = response.data.content[0].text.trim();
+        console.log('🏠 Floor plan room analysis result:', analysisText);
+        
+        // Try standard JSON parsing first
+        let roomData = null;
+        try {
+            const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                roomData = JSON.parse(jsonMatch[0]);
+                console.log('🏠 Standard JSON parsing successful');
+            }
+        } catch (parseError) {
+            console.log('🏠 Standard JSON parsing failed, trying validation approach...');
+        }
+        
+        // If standard parsing fails, use validation function
+        if (!roomData || !roomData.rooms || roomData.rooms.length === 0) {
+            console.log('🏠 Using validation function to parse response...');
+            roomData = validateFloorPlanResponse(analysisText);
+        }
+        
+        if (roomData && roomData.rooms && roomData.rooms.length > 0) {
+            console.log('🏠 Parsed room data:', roomData);
+            return roomData;
+        } else {
+            console.log('🏠 No valid room data found in response');
+            return null;
+        }
+        
+    } catch (error) {
+        console.log('🏠 Floor plan room analysis failed:', error.message);
+        return null;
+    }
+}
+
+// Add this function near your existing analyzeFloorplanForBalcony function
+
 async function analyzeFloorplanForRooms(floorplanUrl) {
     console.log('🏠 Analyzing floor plan for room layout:', floorplanUrl);
     
@@ -654,40 +716,59 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `You are a TEXT READER for floor plans. Your job is to READ THE EXACT TEXT that appears on this floor plan.
+        const prompt = `You are analyzing a property floor plan to extract room labels and dimensions with PERFECT ACCURACY.
 
-CRITICAL TASK: Find and read EVERY text label on this floor plan, character by character.
+CRITICAL INSTRUCTIONS:
+1. Read EVERY text label on this floor plan, no matter how small
+2. Look for room numbers (like "Bedroom 1", "Bedroom 2")  
+3. Look for combined labels (like "Kitchen/Reception/Dining Room")
+4. Look for outdoor spaces (like "Roof Terrace", "Balcony", "Garden", "Terrace") - THESE ARE CRITICAL TO FIND
+5. Look for utility spaces (like "Storage", "Utility")
 
-WHAT TO LOOK FOR:
-1. Room labels with numbers: "Bedroom 1", "Bedroom 2"
-2. Combined room labels: "Kitchen/Reception/Dining Room" 
-3. Outdoor space labels: "Roof Terrace", "Balcony", "Garden"
-4. Utility labels: "Storage", "Utility"
-5. Measurements next to each label: like "4.60 x 4.10m" or "15'1\" x 13'5\""
+SPECIAL FOCUS ON OUTDOOR SPACES:
+- Check the TOP area of the floor plan for "Roof Terrace"
+- Look for any outdoor/external areas labeled
+- These might be separated from main indoor areas
+- Don't miss balconies, terraces, or gardens
 
-DO NOT INTERPRET - ONLY READ THE ACTUAL TEXT.
+DIMENSION READING:
+- Find measurements next to each room (like "4.50 x 3.40m" or "14'9\" x 11'2\"")
+- Look for dimension lines with arrows
+- Read both metric and imperial if shown
+- Be EXACT with the numbers you see
+- If no dimensions visible for a space, note "Dimensions not shown"
 
-If you see "Kitchen/Reception/Dining Room" written on the plan, report exactly that.
-If you see "Roof Terrace" written on the plan, report exactly that.
-If you see "Storage" written on the plan, report exactly that.
+TEXT READING STRATEGY:
+- Scan the entire image systematically
+- Look for small text labels inside room boundaries
+- Check corners and edges of rooms for labels
+- Look for text near dimension lines
+- Some text may be rotated or small - read carefully
+- Pay special attention to areas that might be outdoor spaces
 
-Scan the ENTIRE floor plan systematically:
-- Top area (look for outdoor spaces like "Roof Terrace")
-- Main living areas (look for "Kitchen/Reception/Dining Room")
-- Bedroom areas (look for "Bedroom 1", "Bedroom 2") 
-- Utility areas (look for "Storage")
-- Check corners and edges for small text
+RESPOND EXACTLY IN THIS FORMAT:
+Room 1: [EXACT LABEL FROM PLAN]
+Dimensions 1: [EXACT DIMENSIONS] 
+Room 2: [EXACT LABEL FROM PLAN]
+Dimensions 2: [EXACT DIMENSIONS]
+Room 3: [EXACT LABEL FROM PLAN]
+Dimensions 3: [EXACT DIMENSIONS]
+Room 4: [EXACT LABEL FROM PLAN - including Roof Terrace if visible]
+Dimensions 4: [EXACT DIMENSIONS or "Dimensions not shown"]
+Room 5: [EXACT LABEL FROM PLAN - including Storage if visible]
+Dimensions 5: [EXACT DIMENSIONS or "Dimensions not shown"]
+(continue for all rooms found)
 
-Respond with ONLY a JSON object using the EXACT text you see:
+Then provide the JSON:
 {
   "rooms": [
     {
-      "type": "reception",
+      "type": "kitchen_reception_dining",
       "display": "Kitchen/Reception/Dining Room",
       "count": 1,
       "dimensions": {
         "imperial": "24'11\" x 17'4\"",
-        "metric": "7.60 x 5.30m",
+        "metric": "7.60m x 5.30m",
         "area_sqft": null,
         "area_sqm": null
       }
@@ -698,18 +779,7 @@ Respond with ONLY a JSON object using the EXACT text you see:
       "count": 1,
       "dimensions": {
         "imperial": "15'1\" x 11'2\"",
-        "metric": "4.60 x 3.40m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "bedroom", 
-      "display": "Bedroom 2",
-      "count": 1,
-      "dimensions": {
-        "imperial": "13'5\" x 9'2\"",
-        "metric": "4.10 x 2.80m",
+        "metric": "4.60m x 3.40m",
         "area_sqft": null,
         "area_sqm": null
       }
@@ -719,8 +789,8 @@ Respond with ONLY a JSON object using the EXACT text you see:
       "display": "Roof Terrace",
       "count": 1,
       "dimensions": {
-        "imperial": "20'0\" x 12'0\"",
-        "metric": "6.10 x 3.66m",
+        "imperial": "22'0\" x 6'0\"",
+        "metric": "6.71 x 1.83m",
         "area_sqft": null,
         "area_sqm": null
       }
@@ -730,8 +800,8 @@ Respond with ONLY a JSON object using the EXACT text you see:
       "display": "Storage",
       "count": 1,
       "dimensions": {
-        "imperial": "6'0\" x 4'0\"",
-        "metric": "1.83 x 1.22m",
+        "imperial": null,
+        "metric": null,
         "area_sqft": null,
         "area_sqm": null
       }
@@ -739,7 +809,7 @@ Respond with ONLY a JSON object using the EXACT text you see:
   ]
 }
 
-READ THE EXACT TEXT - do not interpret or assume room types.`;
+Be extremely careful to read the EXACT text labels and dimensions as they appear on the plan. DO NOT MISS OUTDOOR SPACES.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
@@ -778,18 +848,85 @@ READ THE EXACT TEXT - do not interpret or assume room types.`;
                 console.log('🏠 Parsed room data:', roomData);
                 return roomData;
             } else {
-                console.log('🏠 No JSON found in floor plan response');
-                return null;
+                console.log('🏠 No JSON found in floor plan response, trying validation...');
+                // Use your validation function as backup
+                return validateFloorPlanResponse(analysisText);
             }
         } catch (parseError) {
-            console.log('🏠 Failed to parse floor plan room JSON:', parseError.message);
-            return null;
+            console.log('🏠 Failed to parse floor plan room JSON, trying validation...', parseError.message);
+            // Use your validation function as backup
+            return validateFloorPlanResponse(analysisText);
         }
         
     } catch (error) {
         console.log('🏠 Floor plan room analysis failed:', error.message);
         return null;
     }
+}
+
+// Keep your validation function as backup
+function validateFloorPlanResponse(visionText) {
+    console.log('🔍 Validating floor plan response:', visionText);
+    
+    const rooms = [];
+    
+    // Try to extract room information from the structured response
+    const roomMatches = [...visionText.matchAll(/Room\s+\d+:\s*(.+?)(?:\n|Dimensions)/gi)];
+    const dimensionMatches = [...visionText.matchAll(/Dimensions\s+\d+:\s*(.+?)(?:\n|Room|$)/gi)];
+    
+    console.log(`🔍 Found ${roomMatches.length} room labels, ${dimensionMatches.length} dimension sets`);
+    
+    for (let i = 0; i < roomMatches.length; i++) {
+        const roomLabel = roomMatches[i][1].trim();
+        const dimensionText = dimensionMatches[i] ? dimensionMatches[i][1].trim() : null;
+        
+        if (roomLabel && roomLabel !== 'null' && roomLabel !== 'undefined') {
+            // Determine room type from label
+            let roomType = 'room'; // default
+            const labelLower = roomLabel.toLowerCase();
+            
+            if (labelLower.includes('bedroom')) roomType = 'bedroom';
+            else if (labelLower.includes('kitchen') && (labelLower.includes('reception') || labelLower.includes('dining'))) roomType = 'kitchen_reception_dining';
+            else if (labelLower.includes('kitchen')) roomType = 'kitchen';
+            else if (labelLower.includes('reception') || labelLower.includes('living')) roomType = 'reception';
+            else if (labelLower.includes('bathroom') || labelLower.includes('shower')) roomType = 'bathroom';
+            else if (labelLower.includes('terrace') || labelLower.includes('balcony')) roomType = 'terrace';
+            else if (labelLower.includes('storage') || labelLower.includes('utility')) roomType = 'storage';
+            
+            // Parse dimensions if available
+            let dimensions = null;
+            if (dimensionText && dimensionText !== 'No dimensions visible' && !dimensionText.includes('not visible') && !dimensionText.includes('not shown')) {
+                // Extract imperial and metric dimensions
+                const imperialMatch = dimensionText.match(/(\d+['\"]\d*[\"']?\s*x\s*\d+['\"]\d*[\"']?)/i);
+                const metricMatch = dimensionText.match(/(\d+\.\d+\s*x\s*\d+\.\d+m?)/i);
+                
+                dimensions = {
+                    imperial: imperialMatch ? imperialMatch[1] : null,
+                    metric: metricMatch ? metricMatch[1] : null,
+                    area_sqft: null,
+                    area_sqm: null
+                };
+            } else {
+                dimensions = {
+                    imperial: null,
+                    metric: null,
+                    area_sqft: null,
+                    area_sqm: null
+                };
+            }
+            
+            rooms.push({
+                type: roomType,
+                display: roomLabel,
+                count: 1,
+                dimensions: dimensions
+            });
+            
+            console.log(`✅ Parsed room: ${roomLabel} (${roomType}) - Dimensions: ${dimensionText || 'none'}`);
+        }
+    }
+    
+    return { rooms };
 }
 
 // ✅ DIMENSIONS EXTRACTION
@@ -1090,7 +1227,7 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     ];
     
     for (const pattern of combinedPatterns) {
-        if (!dimensions.hasDetailedFloorPlan && fullText.match(pattern)) {
+        if (fullText.match(pattern)) {
             // Add open plan living space if no rooms detected yet
             const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
             const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
@@ -1118,6 +1255,7 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     return dimensions;
 } // ← MISSING: Close the main extractDimensions function 
 
+// Updated function to process floor plan results with dimensions
 // Updated function to process floor plan results with dimensions
 function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
     if (floorplanRoomAnalysis && floorplanRoomAnalysis.rooms) {
@@ -1178,9 +1316,6 @@ function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
         }
         
         console.log('📐 Using detailed floor plan data instead of text-based room detection');
-        
-        // PREVENT duplicate detection when we have detailed floor plan data
-        dimensions.hasDetailedFloorPlan = true;
     }
     
     return dimensions;
