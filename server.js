@@ -3079,7 +3079,7 @@ app.post('/api/analyze', async (req, res) => {
 
         // Overall timeout for the request
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Analysis timeout')), 30000) // 30 seconds
+            setTimeout(() => reject(new Error('Analysis timeout')), 60000) // 30 seconds
         );
 
         const analysisPromise = async () => {
