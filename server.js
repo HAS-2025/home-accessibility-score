@@ -585,12 +585,12 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify rooms AND their dimensions if visible.
+        const prompt = `Please analyze this floor plan image VERY CAREFULLY and identify ALL SPACES (indoor rooms AND outdoor areas) with their dimensions if visible.
 
-IMPORTANT: Look for both room identification AND dimension measurements.
+IMPORTANT: Look for both indoor rooms AND outdoor spaces like gardens, patios, terraces.
 
-For each room, identify:
-1. Room type (kitchen, livingRoom, bedroom, bathroom, etc.)
+For each space, identify:
+1. Space type (kitchen, livingRoom, bedroom, bathroom, garden, patio, terrace, etc.)
 2. Dimensions if shown (look for measurements like "13'1" x 7'6"" or "3.99 x 2.29m")
 
 Look for:
@@ -598,17 +598,20 @@ Look for:
 - Living/reception areas (clear open spaces, often labeled "Reception Room")
 - Bedroom areas (bed symbols, labeled bedrooms)
 - Bathroom areas (toilet/bath symbols)
-- Balconies/terraces (outdoor spaces with different shading)
+- GARDENS (outdoor areas, often shaded differently, may have dimension markings)
+- Patios/terraces (outdoor spaces connected to building)
+- Balconies (smaller outdoor spaces)
 - Utility rooms (washing symbols, storage)
 
 DIMENSION EXTRACTION:
 - Look for text showing measurements like "13'1" x 7'6"" or "4.27 x 3.38m"
 - Look for dimension lines and arrows
 - Extract both imperial (feet/inches) and metric (meters) if available
+- Include outdoor space dimensions (gardens often have measurements like "20' x 15'")
 - Include the room area in sq ft or sq m if shown
 
-BE CONSERVATIVE - only identify rooms you can clearly see with obvious boundaries.
-Only include dimensions that are clearly readable and associated with specific rooms.
+BE CONSERVATIVE - only identify spaces you can clearly see with obvious boundaries.
+Only include dimensions that are clearly readable and associated with specific spaces.
 
 Respond with ONLY a JSON object:
 {
@@ -651,19 +654,31 @@ Respond with ONLY a JSON object:
       "display": "bathroom",
       "count": 1,
       "dimensions": null
+    },
+    {
+      "type": "garden",
+      "display": "rear garden",
+      "count": 1,
+      "dimensions": {
+        "imperial": "25'0\" x 30'0\"",
+        "metric": "7.62 x 9.14m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
     }
   ]
 }
 
-Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balcony, terrace, storage, reception
+Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balcony, terrace, storage, reception, garden, patio, courtyard
 - Use "reception" for reception rooms/living rooms
+- Use "garden" for any garden/outdoor space with dimensions
 - Set dimensions to null if not clearly visible
-- Only include rooms you are 100% confident about
+- Only include spaces you are 100% confident about
 - If no dimensions visible, set dimensions to null`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-haiku-20240307',
-            max_tokens: 500,
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1000,
             messages: [{
                 role: 'user',
                 content: [{
@@ -673,7 +688,7 @@ Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balco
                     type: 'image',
                     source: {
                         type: 'base64',
-                        media_type: 'image/png',
+                        media_type: 'image/jpeg',
                         data: await convertImageToBase64(floorplanUrl)
                     }
                 }]
@@ -684,7 +699,7 @@ Type options: kitchen, livingRoom, diningRoom, bedroom, bathroom, utility, balco
                 'x-api-key': process.env.CLAUDE_API_KEY,
                 'anthropic-version': '2023-06-01'
             },
-            timeout: 15000
+            timeout: 20000
         });
 
         const analysisText = response.data.content[0].text.trim();
