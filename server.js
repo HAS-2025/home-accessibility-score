@@ -574,6 +574,137 @@ Be conservative - only say BALCONY_FOUND if you're confident.`;
     }
 }
 
+// Add this validation function for floor plan analysis (similar to EPC validation)
+function validateFloorPlanResponse(visionText) {
+    console.log('🔍 Validating floor plan response:', visionText);
+    
+    const rooms = [];
+    
+    // Try to extract room information from the structured response
+    const roomMatches = [...visionText.matchAll(/Room\s+\d+:\s*(.+?)(?:\n|Dimensions)/gi)];
+    const dimensionMatches = [...visionText.matchAll(/Dimensions\s+\d+:\s*(.+?)(?:\n|Room|$)/gi)];
+    
+    console.log(`🔍 Found ${roomMatches.length} room labels, ${dimensionMatches.length} dimension sets`);
+    
+    for (let i = 0; i < roomMatches.length; i++) {
+        const roomLabel = roomMatches[i][1].trim();
+        const dimensionText = dimensionMatches[i] ? dimensionMatches[i][1].trim() : null;
+        
+        if (roomLabel && roomLabel !== 'null' && roomLabel !== 'undefined') {
+            // Determine room type from label
+            let roomType = 'room'; // default
+            const labelLower = roomLabel.toLowerCase();
+            
+            if (labelLower.includes('bedroom')) roomType = 'bedroom';
+            else if (labelLower.includes('kitchen') || labelLower.includes('reception') || labelLower.includes('dining')) roomType = 'reception';
+            else if (labelLower.includes('bathroom') || labelLower.includes('shower')) roomType = 'bathroom';
+            else if (labelLower.includes('terrace') || labelLower.includes('balcony')) roomType = 'terrace';
+            else if (labelLower.includes('storage') || labelLower.includes('utility')) roomType = 'storage';
+            
+            // Parse dimensions if available
+            let dimensions = null;
+            if (dimensionText && dimensionText !== 'No dimensions visible' && !dimensionText.includes('not visible')) {
+                // Extract imperial and metric dimensions
+                const imperialMatch = dimensionText.match(/(\d+['\"]\d*[\"']?\s*x\s*\d+['\"]\d*[\"']?)/i);
+                const metricMatch = dimensionText.match(/(\d+\.\d+\s*x\s*\d+\.\d+m?)/i);
+                
+                if (imperialMatch || metricMatch) {
+                    dimensions = {
+                        imperial: imperialMatch ? imperialMatch[1] : null,
+                        metric: metricMatch ? metricMatch[1] : null,
+                        area_sqft: null,
+                        area_sqm: null
+                    };
+                }
+            }
+            
+            rooms.push({
+                type: roomType,
+                display: roomLabel,
+                count: 1,
+                dimensions: dimensions
+            });
+            
+            console.log(`✅ Parsed room: ${roomLabel} (${roomType}) - Dimensions: ${dimensionText || 'none'}`);
+        }
+    }
+    
+    return { rooms };
+}
+
+// Update the floor plan analysis function to use validation
+async function analyzeFloorplanForRoomsWithValidation(floorplanUrl) {
+    console.log('🏠 Analyzing floor plan for room layout:', floorplanUrl);
+    
+    if (!process.env.CLAUDE_API_KEY) {
+        console.log('⚠️ No Claude API key available for floor plan room analysis');
+        return null;
+    }
+    
+    try {
+        // ... (use the updated prompt from the artifact above)
+        
+        const response = await axios.post('https://api.anthropic.com/v1/messages', {
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 1000,
+            messages: [{
+                role: 'user',
+                content: [{
+                    type: 'text',
+                    text: prompt // from artifact above
+                }, {
+                    type: 'image',
+                    source: {
+                        type: 'base64',
+                        media_type: 'image/jpeg',
+                        data: await convertImageToBase64(floorplanUrl)
+                    }
+                }]
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            },
+            timeout: 20000
+        });
+
+        const analysisText = response.data.content[0].text.trim();
+        console.log('🏠 Floor plan room analysis result:', analysisText);
+        
+        // Try standard JSON parsing first
+        let roomData = null;
+        try {
+            const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                roomData = JSON.parse(jsonMatch[0]);
+                console.log('🏠 Standard JSON parsing successful');
+            }
+        } catch (parseError) {
+            console.log('🏠 Standard JSON parsing failed, trying validation approach...');
+        }
+        
+        // If standard parsing fails, use validation function
+        if (!roomData || !roomData.rooms || roomData.rooms.length === 0) {
+            console.log('🏠 Using validation function to parse response...');
+            roomData = validateFloorPlanResponse(analysisText);
+        }
+        
+        if (roomData && roomData.rooms && roomData.rooms.length > 0) {
+            console.log('🏠 Parsed room data:', roomData);
+            return roomData;
+        } else {
+            console.log('🏠 No valid room data found in response');
+            return null;
+        }
+        
+    } catch (error) {
+        console.log('🏠 Floor plan room analysis failed:', error.message);
+        return null;
+    }
+}
+
 // Add this function near your existing analyzeFloorplanForBalcony function
 
 async function analyzeFloorplanForRooms(floorplanUrl) {
@@ -585,28 +716,43 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Look at this floor plan very carefully and read ALL the text labels exactly as written.
+        const prompt = `You are analyzing a property floor plan to extract room labels and dimensions with PERFECT ACCURACY.
 
-CRITICAL: I need you to read the EXACT text that appears on the floor plan, including:
-- Room numbers (e.g. "Bedroom 1", "Bedroom 2") 
-- Combined room labels (e.g. "Kitchen/Reception/Dining Room")
-- Outdoor spaces (e.g. "Roof Terrace", "Balcony", "Garden")
-- Storage areas (e.g. "Storage")
-- Any other labeled spaces
+CRITICAL INSTRUCTIONS:
+1. Read EVERY text label on this floor plan, no matter how small
+2. Look for room numbers (like "Bedroom 1", "Bedroom 2")  
+3. Look for combined labels (like "Kitchen/Reception/Dining Room")
+4. Look for outdoor spaces (like "Roof Terrace", "Balcony", "Garden")
+5. Look for utility spaces (like "Storage", "Utility")
 
-For each labeled room/space, extract:
-1. The EXACT text label as written on the plan
-2. The dimensions shown (in both imperial and metric if available)
-3. Look for measurements like "4.50 x 3.40m" or "14'9\" x 11'2\""
+DIMENSION READING:
+- Find measurements next to each room (like "4.50 x 3.40m" or "14'9\" x 11'2\"")
+- Look for dimension lines with arrows
+- Read both metric and imperial if shown
+- Be EXACT with the numbers you see
 
-Please read every single text label on this floor plan, including small text and numbers.
+TEXT READING STRATEGY:
+- Scan the entire image systematically
+- Look for small text labels inside room boundaries
+- Check corners and edges of rooms for labels
+- Look for text near dimension lines
+- Some text may be rotated or small - read carefully
 
-Respond with ONLY a JSON object using the EXACT labels from the floor plan:
+RESPOND EXACTLY IN THIS FORMAT:
+Room 1: [EXACT LABEL FROM PLAN]
+Dimensions 1: [EXACT DIMENSIONS] 
+Room 2: [EXACT LABEL FROM PLAN]
+Dimensions 2: [EXACT DIMENSIONS]
+Room 3: [EXACT LABEL FROM PLAN]
+Dimensions 3: [EXACT DIMENSIONS]
+(continue for all rooms found)
+
+Then provide the JSON:
 {
   "rooms": [
     {
       "type": "bedroom",
-      "display": "Bedroom 1", 
+      "display": "Bedroom 1",
       "count": 1,
       "dimensions": {
         "imperial": "14'9\" x 11'2\"",
@@ -614,56 +760,11 @@ Respond with ONLY a JSON object using the EXACT labels from the floor plan:
         "area_sqft": null,
         "area_sqm": null
       }
-    },
-    {
-      "type": "bedroom", 
-      "display": "Bedroom 2",
-      "count": 1,
-      "dimensions": {
-        "imperial": "12'6\" x 9'8\"",
-        "metric": "3.81 x 2.95m", 
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "reception",
-      "display": "Kitchen/Reception/Dining Room",
-      "count": 1,
-      "dimensions": {
-        "imperial": "20'4\" x 16'5\"",
-        "metric": "6.20 x 5.00m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "terrace",
-      "display": "Roof Terrace", 
-      "count": 1,
-      "dimensions": {
-        "imperial": "20'0\" x 12'0\"",
-        "metric": "6.10 x 3.66m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "storage",
-      "display": "Storage",
-      "count": 1, 
-      "dimensions": {
-        "imperial": "6'0\" x 4'0\"",
-        "metric": "1.83 x 1.22m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
     }
   ]
 }
 
-IMPORTANT: Use the exact room labels as they appear on the floor plan for the "display" field.
-Read all text carefully including room numbers and combined labels.`;
+Be extremely careful to read the EXACT text labels and dimensions as they appear on the plan.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
