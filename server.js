@@ -654,33 +654,51 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Look at this floor plan very carefully and read ALL the text labels exactly as written.
+        const prompt = `You are a TEXT READER for floor plans. Your job is to READ THE EXACT TEXT that appears on this floor plan.
 
-CRITICAL: I need you to read the EXACT text that appears on the floor plan, including:
-- Room numbers (e.g. "Bedroom 1", "Bedroom 2") 
-- Combined room labels (e.g. "Kitchen/Reception/Dining Room")
-- Outdoor spaces (e.g. "Roof Terrace", "Balcony", "Garden") - LOOK CAREFULLY for "Roof Terrace"
-- Storage areas (e.g. "Storage")
-- Any other labeled spaces
+CRITICAL TASK: Find and read EVERY text label on this floor plan, character by character.
 
-For each labeled room/space, extract:
-1. The EXACT text label as written on the plan
-2. The dimensions shown (in both imperial and metric if available)
-3. Look for measurements like "4.50 x 3.40m" or "14'9\" x 11'2\""
+WHAT TO LOOK FOR:
+1. Room labels with numbers: "Bedroom 1", "Bedroom 2"
+2. Combined room labels: "Kitchen/Reception/Dining Room" 
+3. Outdoor space labels: "Roof Terrace", "Balcony", "Garden"
+4. Utility labels: "Storage", "Utility"
+5. Measurements next to each label: like "4.60 x 4.10m" or "15'1\" x 13'5\""
 
-Please read every single text label on this floor plan, including small text and numbers.
-Pay special attention to outdoor areas which might have "Roof Terrace" or similar labels.
+DO NOT INTERPRET - ONLY READ THE ACTUAL TEXT.
 
-Respond with ONLY a JSON object using the EXACT labels from the floor plan:
+If you see "Kitchen/Reception/Dining Room" written on the plan, report exactly that.
+If you see "Roof Terrace" written on the plan, report exactly that.
+If you see "Storage" written on the plan, report exactly that.
+
+Scan the ENTIRE floor plan systematically:
+- Top area (look for outdoor spaces like "Roof Terrace")
+- Main living areas (look for "Kitchen/Reception/Dining Room")
+- Bedroom areas (look for "Bedroom 1", "Bedroom 2") 
+- Utility areas (look for "Storage")
+- Check corners and edges for small text
+
+Respond with ONLY a JSON object using the EXACT text you see:
 {
   "rooms": [
     {
-      "type": "bedroom",
-      "display": "Bedroom 1", 
+      "type": "reception",
+      "display": "Kitchen/Reception/Dining Room",
       "count": 1,
       "dimensions": {
-        "imperial": "14'9\" x 11'2\"",
-        "metric": "4.50 x 3.40m",
+        "imperial": "24'11\" x 17'4\"",
+        "metric": "7.60 x 5.30m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "bedroom",
+      "display": "Bedroom 1",
+      "count": 1,
+      "dimensions": {
+        "imperial": "15'1\" x 11'2\"",
+        "metric": "4.60 x 3.40m",
         "area_sqft": null,
         "area_sqm": null
       }
@@ -690,26 +708,15 @@ Respond with ONLY a JSON object using the EXACT labels from the floor plan:
       "display": "Bedroom 2",
       "count": 1,
       "dimensions": {
-        "imperial": "12'6\" x 9'8\"",
-        "metric": "3.81 x 2.95m", 
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "reception",
-      "display": "Kitchen/Reception/Dining Room",
-      "count": 1,
-      "dimensions": {
-        "imperial": "20'4\" x 16'5\"",
-        "metric": "6.20 x 5.00m",
+        "imperial": "13'5\" x 9'2\"",
+        "metric": "4.10 x 2.80m",
         "area_sqft": null,
         "area_sqm": null
       }
     },
     {
       "type": "terrace",
-      "display": "Roof Terrace", 
+      "display": "Roof Terrace",
       "count": 1,
       "dimensions": {
         "imperial": "20'0\" x 12'0\"",
@@ -721,7 +728,7 @@ Respond with ONLY a JSON object using the EXACT labels from the floor plan:
     {
       "type": "storage",
       "display": "Storage",
-      "count": 1, 
+      "count": 1,
       "dimensions": {
         "imperial": "6'0\" x 4'0\"",
         "metric": "1.83 x 1.22m",
@@ -732,8 +739,7 @@ Respond with ONLY a JSON object using the EXACT labels from the floor plan:
   ]
 }
 
-IMPORTANT: Use the exact room labels as they appear on the floor plan for the "display" field.
-Read all text carefully including room numbers and combined labels.`;
+READ THE EXACT TEXT - do not interpret or assume room types.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
