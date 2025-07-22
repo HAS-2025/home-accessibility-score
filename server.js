@@ -716,47 +716,40 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `You are analyzing a property floor plan to extract room labels and dimensions with PERFECT ACCURACY.
+        const prompt = `Analyze this UK property floor plan and read ALL labeled text exactly as shown.
 
-CRITICAL INSTRUCTIONS:
-1. Read EVERY text label on this floor plan, no matter how small
-2. Look for room numbers (like "Bedroom 1", "Bedroom 2")  
-3. Look for combined labels (like "Kitchen/Reception/Dining Room")
-4. Look for outdoor spaces (like "Roof Terrace", "Balcony", "Garden")
-5. Look for utility spaces (like "Storage", "Utility")
+CRITICAL: Read the EXACT labels and dimensions from the image:
+- Look for room labels like "Kitchen/Reception/Dining", "Bedroom 1", "Bedroom 2"
+- Look for outdoor spaces like "Roof Terrace", "Balcony", "Garden"  
+- Look for storage areas labeled "Storage"
+- Read dimensions EXACTLY as written (like "30'8 (9.35)max x 24'4 (7.42)max")
 
-DIMENSION READING:
-- Find measurements next to each room (like "4.50 x 3.40m" or "14'9\" x 11'2\"")
-- Look for dimension lines with arrows
-- Read both metric and imperial if shown
-- Be EXACT with the numbers you see
-
-TEXT READING STRATEGY:
-- Scan the entire image systematically
-- Look for small text labels inside room boundaries
-- Check corners and edges of rooms for labels
-- Look for text near dimension lines
-- Some text may be rotated or small - read carefully
+SPACES TO IDENTIFY:
+1. Kitchen/Reception/Dining areas (large main living space)
+2. All Bedrooms (Bedroom 1, Bedroom 2, etc.)
+3. Bathrooms (main bathroom, not tiny WCs)
+4. Storage rooms (if labeled)
+5. Outdoor spaces (Roof Terrace, Balcony)
 
 RESPOND EXACTLY IN THIS FORMAT:
-Room 1: [EXACT LABEL FROM PLAN]
-Dimensions 1: [EXACT DIMENSIONS] 
-Room 2: [EXACT LABEL FROM PLAN]
-Dimensions 2: [EXACT DIMENSIONS]
-Room 3: [EXACT LABEL FROM PLAN]
-Dimensions 3: [EXACT DIMENSIONS]
+Room 1: [EXACT LABEL FROM FLOOR PLAN]
+Dimensions 1: [EXACT DIMENSIONS AS WRITTEN] 
+Room 2: [EXACT LABEL FROM FLOOR PLAN]
+Dimensions 2: [EXACT DIMENSIONS AS WRITTEN]
+Room 3: [EXACT LABEL FROM FLOOR PLAN]
+Dimensions 3: [EXACT DIMENSIONS AS WRITTEN]
 (continue for all rooms found)
 
-Then provide the JSON:
+Then provide JSON:
 {
   "rooms": [
     {
-      "type": "bedroom",
-      "display": "Bedroom 1",
+      "type": "reception",
+      "display": "Kitchen/Reception/Dining Room",
       "count": 1,
       "dimensions": {
-        "imperial": "14'9\" x 11'2\"",
-        "metric": "4.50 x 3.40m",
+        "imperial": "30'8 x 24'4",
+        "metric": "9.35m x 7.42m",
         "area_sqft": null,
         "area_sqm": null
       }
@@ -764,7 +757,7 @@ Then provide the JSON:
   ]
 }
 
-Be extremely careful to read the EXACT text labels and dimensions as they appear on the plan.`;
+Read EVERYTHING visible on the floor plan, including outdoor spaces.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
