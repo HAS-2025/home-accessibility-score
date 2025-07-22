@@ -585,30 +585,28 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Analyze this floor plan and extract EXACTLY what is labeled on the plan.
+        const prompt = `Look at this floor plan very carefully and read ALL the text labels exactly as written.
 
-IMPORTANT: Read the text labels directly from the floor plan image. Do not interpret or assume room types.
-
-For each labeled space, identify:
-1. The EXACT text label shown (e.g. "Bedroom 1", "Kitchen/Reception/Dining Room", "Roof Terrace", "Storage")
-2. The dimensions shown next to or below each room label
-3. Any area measurements if visible
-
-Look for:
-- Room labels with numbers (e.g. "Bedroom 1", "Bedroom 2")
-- Combined space labels (e.g. "Kitchen/Reception/Dining Room")
+CRITICAL: I need you to read the EXACT text that appears on the floor plan, including:
+- Room numbers (e.g. "Bedroom 1", "Bedroom 2") 
+- Combined room labels (e.g. "Kitchen/Reception/Dining Room")
 - Outdoor spaces (e.g. "Roof Terrace", "Balcony", "Garden")
-- Storage/utility spaces (e.g. "Storage", "Utility")
-- Dimensions in format like "4.50 x 3.40m" or "14'9\" x 11'2\""
+- Storage areas (e.g. "Storage")
+- Any other labeled spaces
 
-Extract the measurements exactly as shown on the plan.
+For each labeled room/space, extract:
+1. The EXACT text label as written on the plan
+2. The dimensions shown (in both imperial and metric if available)
+3. Look for measurements like "4.50 x 3.40m" or "14'9\" x 11'2\""
+
+Please read every single text label on this floor plan, including small text and numbers.
 
 Respond with ONLY a JSON object using the EXACT labels from the floor plan:
 {
   "rooms": [
     {
       "type": "bedroom",
-      "display": "Bedroom 1",
+      "display": "Bedroom 1", 
       "count": 1,
       "dimensions": {
         "imperial": "14'9\" x 11'2\"",
@@ -623,7 +621,7 @@ Respond with ONLY a JSON object using the EXACT labels from the floor plan:
       "count": 1,
       "dimensions": {
         "imperial": "12'6\" x 9'8\"",
-        "metric": "3.81 x 2.95m",
+        "metric": "3.81 x 2.95m", 
         "area_sqft": null,
         "area_sqm": null
       }
@@ -641,7 +639,7 @@ Respond with ONLY a JSON object using the EXACT labels from the floor plan:
     },
     {
       "type": "terrace",
-      "display": "Roof Terrace",
+      "display": "Roof Terrace", 
       "count": 1,
       "dimensions": {
         "imperial": "20'0\" x 12'0\"",
@@ -653,7 +651,7 @@ Respond with ONLY a JSON object using the EXACT labels from the floor plan:
     {
       "type": "storage",
       "display": "Storage",
-      "count": 1,
+      "count": 1, 
       "dimensions": {
         "imperial": "6'0\" x 4'0\"",
         "metric": "1.83 x 1.22m",
@@ -664,9 +662,8 @@ Respond with ONLY a JSON object using the EXACT labels from the floor plan:
   ]
 }
 
-Use the exact room labels from the floor plan as the "display" value.
-Extract dimensions exactly as shown.
-Set dimensions to null only if no measurements are visible for that specific room.`;
+IMPORTANT: Use the exact room labels as they appear on the floor plan for the "display" field.
+Read all text carefully including room numbers and combined labels.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
