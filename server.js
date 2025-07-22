@@ -654,73 +654,92 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `You are an OCR TEXT SCANNER reading a floor plan image. Your ONLY job is to find and transcribe every piece of text visible on this image.
+        const prompt = `You are a TEXT READER for floor plans. Your job is to READ THE EXACT TEXT that appears on this floor plan.
 
-IGNORE EVERYTHING EXCEPT TEXT LABELS.
+CRITICAL TASK: Find and read EVERY text label on this floor plan, character by character.
 
-Look at every corner, every room, every space and transcribe the exact text you see. Common text patterns include:
+WHAT TO LOOK FOR:
+1. Room labels with numbers: "Bedroom 1", "Bedroom 2"
+2. Combined room labels: "Kitchen/Reception/Dining Room" 
+3. Outdoor space labels: "Roof Terrace", "Balcony", "Garden"
+4. Utility labels: "Storage", "Utility"
+5. Measurements next to each label: like "4.60 x 4.10m" or "15'1\" x 13'5\""
 
-ROOM LABELS (transcribe exactly as written):
-- "Kitchen/Reception/Dining Room"  
-- "Bedroom 1", "Bedroom 2", "Master Bedroom"
-- "Living Room", "Lounge", "Reception Room"
-- "Kitchen", "Dining Room" 
-- "Bathroom", "WC", "En-Suite"
+DO NOT INTERPRET - ONLY READ THE ACTUAL TEXT.
 
-OUTDOOR LABELS (transcribe exactly as written):
-- "Roof Terrace", "Terrace", "Balcony"
-- "Garden", "Private Garden", "Patio"
-- "Courtyard", "Outside Space"
+If you see "Kitchen/Reception/Dining Room" written on the plan, report exactly that.
+If you see "Roof Terrace" written on the plan, report exactly that.
+If you see "Storage" written on the plan, report exactly that.
 
-UTILITY LABELS (transcribe exactly as written):  
-- "Storage", "Store", "Cupboard"
-- "Utility", "Utility Room"
-- "Hallway", "Landing", "Entrance"
+Scan the ENTIRE floor plan systematically:
+- Top area (look for outdoor spaces like "Roof Terrace")
+- Main living areas (look for "Kitchen/Reception/Dining Room")
+- Bedroom areas (look for "Bedroom 1", "Bedroom 2") 
+- Utility areas (look for "Storage")
+- Check corners and edges for small text
 
-DIMENSIONS (transcribe exactly as written):
-- "24'11\" x 17'4\"" or "7.60 x 5.30m"
-- "15'1\" x 11'2\"" or "4.60 x 3.40m"
-
-SCAN SYSTEMATICALLY:
-1. Top of image (outdoor spaces)
-2. Left side rooms
-3. Center areas  
-4. Right side rooms
-5. Bottom areas
-6. Small text in corners
-
-For each text label you find, determine if it appears to be:
-- A room/space name
-- Dimensions for that space
-
-Return ONLY what you actually see written on the image:
-
+Respond with ONLY a JSON object using the EXACT text you see:
 {
-  "text_found": [
+  "rooms": [
     {
-      "label": "Kitchen/Reception/Dining Room",
-      "dimensions": "24'11\" x 17'4\"",
-      "location": "main area"
+      "type": "reception",
+      "display": "Kitchen/Reception/Dining Room",
+      "count": 1,
+      "dimensions": {
+        "imperial": "24'11\" x 17'4\"",
+        "metric": "7.60 x 5.30m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
     },
     {
-      "label": "Bedroom 1", 
-      "dimensions": "15'1\" x 11'2\"",
-      "location": "upper left"
+      "type": "bedroom",
+      "display": "Bedroom 1",
+      "count": 1,
+      "dimensions": {
+        "imperial": "15'1\" x 11'2\"",
+        "metric": "4.60 x 3.40m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
     },
     {
-      "label": "Roof Terrace",
-      "dimensions": "20'0\" x 12'0\"", 
-      "location": "top area"
+      "type": "bedroom", 
+      "display": "Bedroom 2",
+      "count": 1,
+      "dimensions": {
+        "imperial": "13'5\" x 9'2\"",
+        "metric": "4.10 x 2.80m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
     },
     {
-      "label": "Storage",
-      "dimensions": "6'0\" x 4'0\"",
-      "location": "utility area"
+      "type": "terrace",
+      "display": "Roof Terrace",
+      "count": 1,
+      "dimensions": {
+        "imperial": "20'0\" x 12'0\"",
+        "metric": "6.10 x 3.66m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    },
+    {
+      "type": "storage",
+      "display": "Storage",
+      "count": 1,
+      "dimensions": {
+        "imperial": "6'0\" x 4'0\"",
+        "metric": "1.83 x 1.22m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
     }
   ]
 }
 
-DO NOT make up room names. DO NOT interpret. ONLY transcribe the actual text visible on the image.`;
+READ THE EXACT TEXT - do not interpret or assume room types.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
@@ -749,67 +768,26 @@ DO NOT make up room names. DO NOT interpret. ONLY transcribe the actual text vis
         });
 
         const analysisText = response.data.content[0].text.trim();
-        console.log('🏠 Floor plan text scan result:', analysisText);
+        console.log('🏠 Floor plan room analysis result:', analysisText);
         
-        // Parse the JSON response and convert to expected format
+        // Parse the JSON response
         try {
             const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
-                const textData = JSON.parse(jsonMatch[0]);
-                console.log('🏠 Raw text found:', textData);
-                
-                // Convert to expected room format
-                const roomData = {
-                    rooms: textData.text_found.map(item => {
-                        // Determine room type from the actual label
-                        let roomType = 'other';
-                        const label = item.label.toLowerCase();
-                        
-                        if (label.includes('kitchen') && (label.includes('reception') || label.includes('dining'))) {
-                            roomType = 'reception'; // Combined space
-                        } else if (label.includes('bedroom')) {
-                            roomType = 'bedroom';
-                        } else if (label.includes('reception') || label.includes('living') || label.includes('lounge')) {
-                            roomType = 'reception';
-                        } else if (label.includes('kitchen')) {
-                            roomType = 'kitchen';
-                        } else if (label.includes('bathroom') || label.includes('wc')) {
-                            roomType = 'bathroom';
-                        } else if (label.includes('terrace') || label.includes('balcony') || label.includes('patio')) {
-                            roomType = 'terrace';
-                        } else if (label.includes('garden')) {
-                            roomType = 'garden';
-                        } else if (label.includes('storage') || label.includes('store') || label.includes('utility')) {
-                            roomType = 'storage';
-                        }
-                        
-                        return {
-                            type: roomType,
-                            display: item.label, // Keep the exact text as found
-                            count: 1,
-                            dimensions: {
-                                imperial: item.dimensions || null,
-                                metric: null,
-                                area_sqft: null,
-                                area_sqm: null
-                            }
-                        };
-                    })
-                };
-                
-                console.log('🏠 Converted room data:', roomData);
+                const roomData = JSON.parse(jsonMatch[0]);
+                console.log('🏠 Parsed room data:', roomData);
                 return roomData;
             } else {
                 console.log('🏠 No JSON found in floor plan response');
                 return null;
             }
         } catch (parseError) {
-            console.log('🏠 Failed to parse floor plan text JSON:', parseError.message);
+            console.log('🏠 Failed to parse floor plan room JSON:', parseError.message);
             return null;
         }
         
     } catch (error) {
-        console.log('🏠 Floor plan text scan failed:', error.message);
+        console.log('🏠 Floor plan room analysis failed:', error.message);
         return null;
     }
 }
