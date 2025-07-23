@@ -717,48 +717,62 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Analyze this UK property floor plan and read ALL labeled text exactly as shown.
+        const prompt = `Analyze this UK property floor plan and identify EVERY SINGLE SPACE shown, regardless of size.
 
-CRITICAL: Read the EXACT labels and dimensions from the image:
-- Look for room labels like "Kitchen/Reception/Dining", "Bedroom 1", "Bedroom 2"
-- Look for outdoor spaces like "Roof Terrace", "Balcony", "Garden"  
-- Look for storage areas labeled "Storage"
-- Read dimensions EXACTLY as written (like "30'8 (9.35)max x 24'4 (7.42)max")
+CRITICAL: Find ALL spaces including:
+- Main rooms (Reception, Kitchen, Bedrooms, Bathroom)
+- Outdoor spaces (Roof Terrace, Balcony, Terrace, Garden)
+- Utility spaces (Storage, Utility Room, WC, Cloakroom)
+- Circulation spaces (Entrance Hall, Corridor)
+- Any other labeled space you can see
 
-SPACES TO IDENTIFY:
-1. Kitchen/Reception/Dining areas (large main living space)
-2. All Bedrooms (Bedroom 1, Bedroom 2, etc.)
-3. Bathrooms (main bathroom, not tiny WCs)
-4. Storage rooms (if labeled)
-5. Outdoor spaces (Roof Terrace, Balcony)
+INCLUDE EVERYTHING - even if dimensions are not visible or readable.
 
-RESPOND EXACTLY IN THIS FORMAT:
-Room 1: [EXACT LABEL FROM FLOOR PLAN]
-Dimensions 1: [EXACT DIMENSIONS AS WRITTEN] 
-Room 2: [EXACT LABEL FROM FLOOR PLAN]
-Dimensions 2: [EXACT DIMENSIONS AS WRITTEN]
-Room 3: [EXACT LABEL FROM FLOOR PLAN]
-Dimensions 3: [EXACT DIMENSIONS AS WRITTEN]
-(continue for all rooms found)
+For each space found, provide:
+Room X: [EXACT LABEL FROM FLOOR PLAN]
+Dimensions X: [EXACT DIMENSIONS if visible, otherwise "Dimensions not shown"]
 
-Then provide JSON:
+Look carefully for these common spaces:
+- Reception Room/Living Room/Lounge
+- Kitchen (separate or combined with reception)
+- All Bedrooms (Bedroom 1, Bedroom 2, etc.)
+- Bathroom/Shower Room/WC
+- Storage areas/cupboards
+- Roof Terrace/Balcony/Outdoor space
+- Entrance Hall/Hallway
+- Utility Room/Laundry
+
+RESPOND WITH EVERY SPACE YOU CAN SEE (could be 3 rooms or 10 rooms):
+Room 1: [SPACE NAME]
+Dimensions 1: [DIMENSIONS or "Dimensions not shown"]
+Room 2: [SPACE NAME]
+Dimensions 2: [DIMENSIONS or "Dimensions not shown"]
+(continue for ALL spaces found)
+
+Then provide JSON with ALL rooms found:
 {
   "rooms": [
     {
       "type": "reception",
-      "display": "Kitchen/Reception/Dining Room",
+      "display": "Reception Room/Kitchen",
       "count": 1,
       "dimensions": {
-        "imperial": "30'8 x 24'4",
+        "imperial": "30'8\" x 24'4\"",
         "metric": "9.35m x 7.42m",
         "area_sqft": null,
         "area_sqm": null
       }
+    },
+    {
+      "type": "bathroom",
+      "display": "Bathroom",
+      "count": 1,
+      "dimensions": null
     }
   ]
 }
 
-Read EVERYTHING visible on the floor plan, including outdoor spaces.`;
+Report exactly what you see - no more, no less.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
@@ -1207,37 +1221,26 @@ function calculateFloorPlanConfidence(roomData) {
     
     let confidence = 70; // Start with baseline confidence
     
-    // Adjust based on data quality indicators
     const rooms = roomData.rooms || [];
     
-    // Penalty for too few rooms (likely missed some)
-    if (rooms.length < 4) {
-        confidence -= 20;
-        console.log('   📉 Confidence reduced: Too few rooms detected');
-    }
-    
-    // Bonus for reasonable room count
-    if (rooms.length >= 5 && rooms.length <= 7) {
-        confidence += 10;
-        console.log('   📈 Confidence boost: Good room count');
-    }
+    // No room count penalties - just report what's found
     
     // Bonus for having dimensions
     const roomsWithDimensions = rooms.filter(room => 
         room.dimensions && (room.dimensions.imperial || room.dimensions.metric)
     );
     
-    if (roomsWithDimensions.length === rooms.length) {
+    if (roomsWithDimensions.length === rooms.length && rooms.length > 0) {
         confidence += 15;
         console.log('   📈 Confidence boost: All rooms have dimensions');
-    } else if (roomsWithDimensions.length === 0) {
-        confidence -= 25;
+    } else if (roomsWithDimensions.length === 0 && rooms.length > 0) {
+        confidence -= 10;
         console.log('   📉 Confidence reduced: No room dimensions found');
     }
     
-    // Bonus for finding outdoor spaces (roof terrace, balcony)
+    // Bonus for finding outdoor spaces
     const hasOutdoorSpace = rooms.some(room => 
-        room.type === 'outdoor' || 
+        room.type === 'outdoor' || room.type === 'terrace' ||
         room.display.toLowerCase().includes('terrace') ||
         room.display.toLowerCase().includes('balcony')
     );
@@ -1272,41 +1275,36 @@ function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
         });
         
         // Process dimensions if available
-        const roomsWithDimensions = floorplanRoomAnalysis.rooms.filter(room => 
-            room.dimensions && room.dimensions !== null
-        );
+        // Process ALL rooms (with or without dimensions)
+        const allRoomsFromFloorPlan = floorplanRoomAnalysis.rooms || [];
         
-        if (roomsWithDimensions.length > 0) {
-            console.log('📐 Found rooms with dimensions from floor plan...');
+        if (allRoomsFromFloorPlan.length > 0) {
+            console.log('📐 Found rooms from floor plan (including those without dimensions)...');
             
             // Add to dimensions.rooms array for detailed display
-            roomsWithDimensions.forEach(room => {
-                if (room.dimensions) {
-                    const roomDimension = {
-                        name: room.display, // Use exact label from floor plan
-                        type: room.type,
-                        imperial: room.dimensions.imperial || null,
-                        metric: room.dimensions.metric || null,
-                        area_sqft: room.dimensions.area_sqft || null,
-                        area_sqm: room.dimensions.area_sqm || null
-                    };
-                    
-                    // Create dimensions string for display
-                    if (room.dimensions.imperial) {
-                        roomDimension.dimensions = room.dimensions.imperial;
-                        
-                        // Calculate area if dimensions available
-                        const area = calculateAreaFromDimensions(room.dimensions.imperial);
-                        if (area) {
-                            roomDimension.sqft = area;
-                        }
-                    } else if (room.dimensions.metric) {
-                        roomDimension.dimensions = room.dimensions.metric;
-                    }
-                    
-                    dimensions.rooms.push(roomDimension);
-                    console.log(`📐 Added dimensions for ${room.display}: ${roomDimension.dimensions}`);
+            allRoomsFromFloorPlan.forEach(room => {
+                const roomDimension = {
+                    name: room.display,
+                    type: room.type,
+                    imperial: room.dimensions?.imperial || null,
+                    metric: room.dimensions?.metric || null,
+                    area_sqft: room.dimensions?.area_sqft || null,
+                    area_sqm: room.dimensions?.area_sqm || null
+                };
+                
+                // Create dimensions string for display
+                if (room.dimensions?.imperial && room.dimensions?.metric) {
+                    roomDimension.dimensions = `${room.dimensions.imperial} (${room.dimensions.metric})`;
+                } else if (room.dimensions?.imperial) {
+                    roomDimension.dimensions = room.dimensions.imperial;
+                } else if (room.dimensions?.metric) {
+                    roomDimension.dimensions = room.dimensions.metric;
+                } else {
+                    roomDimension.dimensions = "Dimensions not available";
                 }
+                
+                dimensions.rooms.push(roomDimension);
+                console.log(`📐 Added dimensions for ${room.display}: ${roomDimension.dimensions}`);
             });
         }
         
