@@ -1372,23 +1372,50 @@ function analyzeCostInformation(property, dimensions) {
         }
     }
 
-    // Extract council tax from description
-    const description = property.description || '';
-    const councilTaxMatch = description.match(/council\s+tax\s+band\s+([a-h])/i) ||
-                           description.match(/band\s+([a-h])\s+council\s+tax/i) ||
-                           description.match(/council\s+tax\s+([a-h])/i) ||
-                           description.match(/band\s+([a-h])/i);
     
-    if (councilTaxMatch) {
-        cost.councilTax = `Band ${councilTaxMatch[1].toUpperCase()}`;
+    // ENHANCED: Extract council tax (prioritize actual bands over TBC)
+    const description = property.description || '';
+    const councilTaxPatterns = [
+        /council\s*tax\s*band[:\s]*([a-h])/i,
+        /band[:\s]*([a-h])\s*council\s*tax/i,
+        /council\s*tax[:\s]*([a-h])/i,
+        /band[:\s]*([a-h])/i
+    ];
+    
+    // First, look for actual council tax bands (A-H)
+    for (const pattern of councilTaxPatterns) {
+        const match = description.match(pattern);
+        if (match && match[1] && match[1].toLowerCase() !== 'tbc') {
+            cost.councilTax = `Band ${match[1].toUpperCase()}`;
+            break;
+        }
+    }
+    
+    // Only if no actual band found, then check for TBC
+    if (!cost.councilTax) {
+        const tbcPatterns = [
+            /council\s*tax\s*band[:\s]*tbc/i,
+            /band[:\s]*tbc/i
+        ];
+        
+        for (const pattern of tbcPatterns) {
+            const match = description.match(pattern);
+            if (match) {
+                cost.councilTax = "Band TBC";
+                break;
+            }
+        }
     }
 
-    // Extract service charge
+    // ENHANCED: Extract service charge (look for £4116 format)
     const serviceChargePatterns = [
-        /service\s+charge[:\s]+£([\d,]+)(?:\s+per\s+(annum|year|month))?/i,
-        /service\s+charges?[:\s]+£([\d,]+)(?:\s+per\s+(annum|year|month))?/i,
-        /maintenance[:\s]+£([\d,]+)(?:\s+per\s+(annum|year|month))?/i,
-        /£([\d,]+)(?:\s+per\s+(annum|year|month))?\s+service\s+charge/i
+        /annual\s*service\s*charge[:\s]*£([\d,]+)/i,
+        /service\s*charge[:\s]*£([\d,]+)(?:\s*per\s*(annum|year|month))?/i,
+        /service\s*charges?[:\s]*£([\d,]+)(?:\s*per\s*(annum|year|month))?/i,
+        /maintenance[:\s]*£([\d,]+)(?:\s*per\s*(annum|year|month))?/i,
+        /£([\d,]+)(?:\s*per\s*(annum|year|month))?\s*service\s*charge/i,
+        /£([\d,]+)\s*annual.*service/i,  // For standalone amounts near "service"
+        /service.*£([\d,]+)/i  // Catch "service £4116" patterns
     ];
     
     for (const pattern of serviceChargePatterns) {
@@ -1410,18 +1437,24 @@ function analyzeCostInformation(property, dimensions) {
         }
     }
 
-    // Extract ground rent
+    // ENHANCED: Extract ground rent (including "Ask agent")
     const groundRentPatterns = [
         /ground\s+rent[:\s]+£([\d,]+)(?:\s+per\s+(annum|year|month))?/i,
-        /£([\d,]+)(?:\s+per\s+(annum|year|month))?\s+ground\s+rent/i
+        /£([\d,]+)(?:\s+per\s+(annum|year|month))?\s+ground\s+rent/i,
+        /ground\s+rent[:\s]+ask\s+agent/i,
+        /ground\s+rent.*ask.*agent/i
     ];
     
     for (const pattern of groundRentPatterns) {
         const match = description.match(pattern);
         if (match) {
-            const amount = match[1];
-            const period = match[2] ? match[2].toLowerCase() : 'annum';
-            cost.groundRent = `£${amount} per ${period === 'year' ? 'annum' : period}`;
+            if (match[0].toLowerCase().includes('ask')) {
+                cost.groundRent = "Ask agent";
+            } else {
+                const amount = match[1];
+                const period = match[2] ? match[2].toLowerCase() : 'annum';
+                cost.groundRent = `£${amount} per ${period === 'year' ? 'annum' : period}`;
+            }
             break;
         }
     }
@@ -1431,26 +1464,43 @@ function analyzeCostInformation(property, dimensions) {
         cost.groundRent = "Peppercorn ground rent";
     }
 
-    // Extract leasehold information
-    const leaseholdPatterns = [
-        /(\d+)\s+years?\s+remaining/i,
-        /lease\s+(\d+)\s+years/i,
-        /(\d+)\s+year\s+lease/i,
-        /approximately\s+(\d+)\s+years/i
-    ];
-    
-    for (const pattern of leaseholdPatterns) {
-        const match = description.match(pattern);
-        if (match) {
-            const years = parseInt(match[1]);
-            cost.leaseholdInfo = `${years} years remaining`;
-            break;
+    // ENHANCED: Extract leasehold information (including "136 years left")
+    if (property.tenure) {
+        if (property.tenure.toLowerCase().includes('leasehold')) {
+            cost.leaseholdInfo = "Leasehold";
+        } else if (property.tenure.toLowerCase().includes('freehold')) {
+            cost.leaseholdInfo = "Freehold";
         }
     }
-
-    // Check if it's freehold
-    if (!cost.leaseholdInfo && description.match(/freehold/i)) {
-        cost.leaseholdInfo = "Freehold";
+    
+    // Enhanced leasehold pattern matching
+    if (!cost.leaseholdInfo || cost.leaseholdInfo === "Leasehold") {
+        const leaseholdPatterns = [
+            /(\d+)\s+years?\s+left/i,  // "136 years left"
+            /(\d+)\s+years?\s+remaining/i,
+            /lease\s+(\d+)\s+years/i,
+            /(\d+)\s+year\s+lease/i,
+            /approximately\s+(\d+)\s+years/i,
+            /length\s+of\s+lease[:\s]*(\d+)\s+years/i
+        ];
+        
+        for (const pattern of leaseholdPatterns) {
+            const match = description.match(pattern);
+            if (match) {
+                const years = parseInt(match[1]);
+                cost.leaseholdInfo = `${years} years remaining`;
+                break;
+            }
+        }
+        
+        // Check if it's freehold or leasehold mentioned without years
+        if (!cost.leaseholdInfo) {
+            if (description.match(/freehold/i)) {
+                cost.leaseholdInfo = "Freehold";
+            } else if (description.match(/leasehold/i)) {
+                cost.leaseholdInfo = "Leasehold";
+            }
+        }
     }
 
     return cost;
