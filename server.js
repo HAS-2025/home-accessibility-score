@@ -1159,30 +1159,36 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     }
     
     // Check for combined spaces when no individual rooms were detected
-    const combinedPatterns = [
-        /open[- ]plan/i,
-        /kitchen[\/\-\s]*(?:living|diner|dining)/i,
-        /living[\/\-\s]*(?:kitchen|dining)/i,
-        /kitchen[\/\-\s]*diner/i
-    ];
+    // Skip duplicate room combination when we have detailed floor plan data
+    if (!dimensions.floorplanAnalyzed) {
+        // Check for combined spaces when no individual rooms were detected
+        const combinedPatterns = [
+            /open[- ]plan/i,
+            /kitchen[\/\-\s]*(?:living|diner|dining)/i,
+            /living[\/\-\s]*(?:kitchen|dining)/i,
+            /kitchen[\/\-\s]*diner/i
+        ];
     
-    for (const pattern of combinedPatterns) {
-        if (fullText.match(pattern)) {
-            // Add open plan living space if no rooms detected yet
-            const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
-            const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
-            const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
-            
-            if (!hasLiving && !hasKitchen && !hasOpenPlan) {
-                dimensions.roomTypes.push({
-                    type: 'openPlan',
-                    count: 1,
-                    display: 'open plan living/kitchen'
-                });
-                console.log('📐 Found combined space: open plan living/kitchen');
+        for (const pattern of combinedPatterns) {
+            if (fullText.match(pattern)) {
+                // Add open plan living space if no rooms detected yet
+                const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
+                const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
+                const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
+                
+                if (!hasLiving && !hasKitchen && !hasOpenPlan) {
+                    dimensions.roomTypes.push({
+                        type: 'openPlan',
+                        count: 1,
+                        display: 'open plan living/kitchen'
+                    });
+                    console.log('📐 Found combined space: open plan living/kitchen');
+                }
+                break;
             }
-            break;
         }
+    } else {
+        console.log('📐 Skipping duplicate room combination - using floor plan data');
     }
     
     console.log('📐 Dimension extraction complete:', {
