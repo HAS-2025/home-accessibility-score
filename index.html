@@ -1203,6 +1203,7 @@
                 <div class="score-details" id="publicTransportDetails"></div>
             </div>
                 <div id="dimensionsCard" class="score-card" style="display: none;"></div>
+                <div id="costCard" class="score-card" style="display: none;"></div>
             </div>
             
             <div class="summary-section">
@@ -1274,6 +1275,7 @@
             displayAccessibleFeatures(analysis.accessibleFeatures);
             displayPublicTransport(analysis.publicTransport);
             displayDimensions(analysis.dimensions);
+            displayCostAnalysis(analysis.cost);
             document.getElementById('summaryText').textContent = analysis.summary;
         }
 
@@ -1656,6 +1658,90 @@
                 if (featureLower.includes(key)) return icon;
             }
             return '🏠'; // Default icon
+        }
+
+        function displayCostAnalysis(cost) {
+            const costContainer = document.getElementById('costCard');
+            
+            if (!costContainer) {
+                console.error('Cost container #costCard not found in HTML');
+                return;
+            }
+            
+            // Show the card
+            costContainer.style.display = 'block';
+            
+            if (!cost) {
+                costContainer.innerHTML = `
+                    <div class="score-header">
+                        <span class="score-icon">💷</span>
+                        <span class="score-title">Property Costs</span>
+                    </div>
+                    <div class="score-description">Cost information not available</div>
+                `;
+                return;
+            }
+        
+            let html = `
+                <div class="score-header">
+                    <span class="score-icon">💷</span>
+                    <span class="score-title">Property Costs</span>
+                </div>
+                
+                <!-- Property Price Section -->
+                <div class="dimension-transport-wrapper">
+                    <div class="dimension-transport-section">
+                        <div class="dimension-section-header">${cost.isRental ? 'MONTHLY RENTAL' : 'PROPERTY PRICE'}</div>
+                        <div class="dimension-size-display">
+                            <span class="dimension-primary-size">${cost.price || 'Price on application'}</span>
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- Price per Sq Ft Section -->
+                <div class="dimension-transport-wrapper">
+                    <div class="dimension-transport-section">
+                        <div class="dimension-section-header">PRICE PER SQ FT</div>
+                        <div class="dimension-size-display">
+                            <span class="dimension-primary-size">${cost.pricePerSqFt || 'Unable to calculate'}</span>
+                            ${cost.pricePerSqFtNote ? `
+                                <span class="dimension-secondary-size">${cost.pricePerSqFtNote}</span>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+        
+                <!-- Additional Costs Section -->
+                <div class="dimension-transport-wrapper">
+                    <div class="dimension-transport-section">
+                        <div class="dimension-section-header">ADDITIONAL COSTS</div>
+                        <div class="dimension-room-content">
+                            <div class="dimension-room-line">
+                                <span class="dimension-room-icon">🏛️</span>
+                                <span class="dimension-room-text">Council Tax: ${cost.councilTax || 'Not specified'}</span>
+                            </div>
+                            <div class="dimension-room-line">
+                                <span class="dimension-room-icon">🏢</span>
+                                <span class="dimension-room-text">Service Charge: ${cost.serviceCharge || 'Not mentioned'}</span>
+                            </div>
+                            ${cost.groundRent ? `
+                                <div class="dimension-room-line">
+                                    <span class="dimension-room-icon">🏡</span>
+                                    <span class="dimension-room-text">Ground Rent: ${cost.groundRent}</span>
+                                </div>
+                            ` : ''}
+                            ${cost.leaseholdInfo ? `
+                                <div class="dimension-room-line">
+                                    <span class="dimension-room-icon">📋</span>
+                                    <span class="dimension-room-text">Leasehold: ${cost.leaseholdInfo}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            costContainer.innerHTML = html;
         }
         
         function displayPublicTransport(transport) {
