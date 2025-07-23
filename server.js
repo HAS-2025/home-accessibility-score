@@ -1334,6 +1334,144 @@ function calculateAreaFromDimensions(dimensionString) {
     return null;
 }
 
+function analyzeCostInformation(property, dimensions) {
+    const cost = {
+        price: property.price || null,
+        isRental: false,
+        pricePerSqFt: null,
+        pricePerSqFtNote: null,
+        councilTax: null,
+        serviceCharge: null,
+        groundRent: null,
+        leaseholdInfo: null
+    };
+
+    // Determine if it's rental or sale
+    if (property.price) {
+        cost.isRental = property.price.toLowerCase().includes('pcm') || 
+                       property.price.toLowerCase().includes('per month') ||
+                       property.price.toLowerCase().includes('monthly');
+    }
+
+    // Calculate price per sq ft
+    if (property.price && dimensions && dimensions.totalSqFt) {
+        const priceNumber = extractPriceNumber(property.price);
+        if (priceNumber) {
+            const pricePerSqFt = Math.round(priceNumber / dimensions.totalSqFt);
+            cost.pricePerSqFt = `£${pricePerSqFt.toLocaleString()} per sq ft`;
+            
+            if (cost.isRental) {
+                cost.pricePerSqFtNote = "Based on monthly rent";
+            }
+        }
+    } else if (property.price) {
+        if (!dimensions || !dimensions.totalSqFt) {
+            cost.pricePerSqFt = "Unable to calculate - property size not available";
+        } else {
+            cost.pricePerSqFt = "Unable to calculate - price format not recognized";
+        }
+    }
+
+    // Extract council tax from description
+    const description = property.description || '';
+    const councilTaxMatch = description.match(/council\s+tax\s+band\s+([a-h])/i) ||
+                           description.match(/band\s+([a-h])\s+council\s+tax/i) ||
+                           description.match(/council\s+tax\s+([a-h])/i) ||
+                           description.match(/band\s+([a-h])/i);
+    
+    if (councilTaxMatch) {
+        cost.councilTax = `Band ${councilTaxMatch[1].toUpperCase()}`;
+    }
+
+    // Extract service charge
+    const serviceChargePatterns = [
+        /service\s+charge[:\s]+£([\d,]+)(?:\s+per\s+(annum|year|month))?/i,
+        /service\s+charges?[:\s]+£([\d,]+)(?:\s+per\s+(annum|year|month))?/i,
+        /maintenance[:\s]+£([\d,]+)(?:\s+per\s+(annum|year|month))?/i,
+        /£([\d,]+)(?:\s+per\s+(annum|year|month))?\s+service\s+charge/i
+    ];
+    
+    for (const pattern of serviceChargePatterns) {
+        const match = description.match(pattern);
+        if (match) {
+            const amount = match[1];
+            const period = match[2] ? match[2].toLowerCase() : 'annum';
+            cost.serviceCharge = `£${amount} per ${period === 'year' ? 'annum' : period}`;
+            break;
+        }
+    }
+
+    // Check for "no service charge" mentions
+    if (!cost.serviceCharge) {
+        if (description.match(/no\s+service\s+charge/i) || 
+            description.match(/service\s+charge[:\s]+nil/i) ||
+            description.match(/service\s+charge[:\s]+none/i)) {
+            cost.serviceCharge = "No service charge";
+        }
+    }
+
+    // Extract ground rent
+    const groundRentPatterns = [
+        /ground\s+rent[:\s]+£([\d,]+)(?:\s+per\s+(annum|year|month))?/i,
+        /£([\d,]+)(?:\s+per\s+(annum|year|month))?\s+ground\s+rent/i
+    ];
+    
+    for (const pattern of groundRentPatterns) {
+        const match = description.match(pattern);
+        if (match) {
+            const amount = match[1];
+            const period = match[2] ? match[2].toLowerCase() : 'annum';
+            cost.groundRent = `£${amount} per ${period === 'year' ? 'annum' : period}`;
+            break;
+        }
+    }
+
+    // Check for peppercorn ground rent
+    if (!cost.groundRent && description.match(/peppercorn\s+ground\s+rent/i)) {
+        cost.groundRent = "Peppercorn ground rent";
+    }
+
+    // Extract leasehold information
+    const leaseholdPatterns = [
+        /(\d+)\s+years?\s+remaining/i,
+        /lease\s+(\d+)\s+years/i,
+        /(\d+)\s+year\s+lease/i,
+        /approximately\s+(\d+)\s+years/i
+    ];
+    
+    for (const pattern of leaseholdPatterns) {
+        const match = description.match(pattern);
+        if (match) {
+            const years = parseInt(match[1]);
+            cost.leaseholdInfo = `${years} years remaining`;
+            break;
+        }
+    }
+
+    // Check if it's freehold
+    if (!cost.leaseholdInfo && description.match(/freehold/i)) {
+        cost.leaseholdInfo = "Freehold";
+    }
+
+    return cost;
+}
+
+// Helper function to extract price number from string
+function extractPriceNumber(priceString) {
+    if (!priceString) return null;
+    
+    // Remove common price prefixes and suffixes
+    const cleanPrice = priceString
+        .replace(/£|,/g, '')
+        .replace(/\s+(pcm|per month|pw|per week)/i, '')
+        .replace(/offers (in excess of|over|around)/i, '')
+        .replace(/guide price/i, '')
+        .trim();
+    
+    // Extract the first number found
+    const numberMatch = cleanPrice.match(/(\d+)/);
+    return numberMatch ? parseInt(numberMatch[1]) : null;
+}
 
 // Enhanced coordinate extraction using Geocoding API as fallback
 async function getPropertyCoordinates(address, existingCoords) {
@@ -3017,10 +3155,15 @@ const epcDetails = epcAnalysis.description;
     // Step 5: NEW - Analyze Property Dimensions  
     console.log('📐 Analyzing property dimensions...');
     const dimensions = property.dimensions || null;
+
+    // ADD THIS NEW STEP 6:
+    // Step 6: NEW - Analyze Cost Information
+    console.log('💷 Analyzing cost information...');
+    const cost = analyzeCostInformation(property, dimensions);
     
     // Updated overall score calculation (4 categories now)
     const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score + publicTransport.score) / 4;
-    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, overallScore, property.title, property.epcRating, property.location);
+    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, overallScore, property.title, property.epcRating, property.location);
     
     return {
         gpProximity: {
@@ -3059,13 +3202,14 @@ const epcDetails = epcAnalysis.description;
             trainStations: publicTransport.trainStations || []
         },
         dimensions: property.dimensions || null,
+        cost: cost,
         overall: Math.round((overallScore || 0) * 10) / 10,
         summary: summary || 'Analysis completed successfully'
     };
 }
 
 // Add publicTransport parameter to the function
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, overallScore, title, epcRating, location) {
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, overallScore, title, epcRating, location) {
     let summary = "";
     
     const accessibleFeaturesScore = accessibleFeatures.score || 0;
@@ -3097,6 +3241,15 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     else if (overallScore >= 2) overallRating = "Fair";
     
     summary += ` offers ${overallRating.toLowerCase()} accessibility features for older adults, with an overall accessibility score of ${Math.round(overallScore * 10) / 10}/5 (${overallRating}). `;
+    
+    // NEW: Cost information early in summary
+    if (cost && cost.price) {
+        summary += `The property is priced at ${cost.price}`;
+        if (cost.pricePerSqFt && !cost.pricePerSqFt.includes('Unable')) {
+            summary += ` (${cost.pricePerSqFt})`;
+        }
+        summary += '. ';
+    }
     
     // 2. Key accessibility strengths - focus on what works well
     if (accessibleFeaturesScore >= 3) {
@@ -3218,6 +3371,31 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
             summary += ` with a ${epcRating} rating`;
         }
         summary += ", which may result in higher heating costs that could impact comfort for temperature-sensitive residents. ";
+    }
+    
+    // NEW: Additional cost considerations
+    if (cost) {
+        const costConsiderations = [];
+        
+        if (cost.councilTax) {
+            costConsiderations.push(`council tax is ${cost.councilTax}`);
+        }
+        
+        if (cost.serviceCharge && !cost.serviceCharge.includes('Not mentioned') && !cost.serviceCharge.includes('No service charge')) {
+            costConsiderations.push(`service charges of ${cost.serviceCharge}`);
+        }
+        
+        if (cost.groundRent && !cost.groundRent.includes('Peppercorn')) {
+            costConsiderations.push(`ground rent of ${cost.groundRent}`);
+        }
+        
+        if (costConsiderations.length > 0) {
+            summary += `Additional ongoing costs include ${costConsiderations.join(' and ')}. `;
+        }
+        
+        if (cost.leaseholdInfo && !cost.leaseholdInfo.includes('Freehold')) {
+            summary += `The property is leasehold with ${cost.leaseholdInfo}. `;
+        }
     }
     
     // 6. Final recommendation integrated into sentence
