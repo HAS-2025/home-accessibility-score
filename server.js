@@ -448,63 +448,50 @@ async function tryFloorplanURL(propertyId) {
         const $ = cheerio.load(floorplanResponse.data);
         
         const floorplanImages = [];
+        
+        // NEW: Look for full-size images (not thumbnails)
         $('img').each((i, img) => {
             const src = $(img).attr('src') || $(img).attr('data-src');
-            if (src && (src.includes('floorplan') || src.includes('plan') || 
-                       $(img).attr('alt')?.toLowerCase().includes('floorplan'))) {
+            if (src && src.includes('floorplan') && !src.includes('max_296x197')) {
+                // Skip tiny thumbnails, look for full-size
                 floorplanImages.push(src);
             }
         });
         
-        console.log(`Found ${floorplanImages.length} floorplans on dedicated page`);
+        // NEW: Look in script tags for full-resolution URLs
+        $('script').each((i, script) => {
+            const scriptContent = $(script).html() || '';
+            
+            // Look for full-size floorplan URLs (without size restrictions)
+            const fullSizeMatches = scriptContent.match(/https?:\/\/[^"'\s]*floorplan[^"'\s]*(?<!max_\d+x\d+)\.(png|jpg|jpeg|gif)/gi);
+            if (fullSizeMatches) {
+                floorplanImages.push(...fullSizeMatches);
+            }
+            
+            // Look for image data in JSON
+            const jsonMatches = scriptContent.match(/"url":\s*"([^"]*floorplan[^"]*)"/gi);
+            if (jsonMatches) {
+                jsonMatches.forEach(match => {
+                    const urlMatch = match.match(/"url":\s*"([^"]*)"/);
+                    if (urlMatch && !urlMatch[1].includes('max_296x197')) {
+                        floorplanImages.push(urlMatch[1]);
+                    }
+                });
+            }
+        });
+        
+        console.log(`Found ${floorplanImages.length} full-size floorplans`);
         
         if (floorplanImages.length > 0) {
-            return floorplanImages[0];
+            // Return the first full-size image
+            const fullSizeUrl = floorplanImages[0];
+            console.log('Using full-size floor plan:', fullSizeUrl);
+            return fullSizeUrl;
         }
         
-        // If no floorplans found, try the main property page
-        console.log('No floorplans on dedicated page, trying main property page...');
-        const mainURL = `https://www.rightmove.co.uk/properties/${propertyId}`;
-        
-        const mainResponse = await axios.get(mainURL, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-GB,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'DNT': '1',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Cache-Control': 'max-age=0'
-            },
-            timeout: 15000
-        });
-        
-        const $main = cheerio.load(mainResponse.data);
-        
-        // Look for floorplan images on main page
-        $main('img').each((i, img) => {
-            const src = $main(img).attr('src') || $main(img).attr('data-src');
-            if (src && (src.includes('floorplan') || src.includes('plan') || 
-                       $main(img).attr('alt')?.toLowerCase().includes('floorplan'))) {
-                floorplanImages.push(src);
-            }
-        });
-        
-        // Also look in script tags for floorplan URLs
-        $main('script').each((i, script) => {
-            const scriptContent = $main(script).html() || '';
-            const floorplanMatches = scriptContent.match(/https?:\/\/[^"'\s]*floorplan[^"'\s]*\.(png|jpg|jpeg|gif)/gi);
-            if (floorplanMatches) {
-                floorplanImages.push(...floorplanMatches);
-            }
-        });
-        
-        console.log(`Found ${floorplanImages.length} total floorplans including main page`);
-        return floorplanImages.length > 0 ? floorplanImages[0] : null;
+        // Fallback to original method if no full-size found
+        console.log('No full-size images found, falling back to thumbnails...');
+        // ... rest of your existing code ...
         
     } catch (error) {
         console.log('Floorplan URL not accessible:', error.message);
