@@ -20,12 +20,22 @@ const cache = new Map();
 // Helper function for EPC image conversion
 async function convertImageToBase64(imageUrl) {
     try {
+        console.log('🔍 Converting to base64:', imageUrl.substring(0, 100));
+        console.log('🔍 File type:', imageUrl.split('.').pop());
+        
         const response = await axios.get(imageUrl, { 
             responseType: 'arraybuffer',
             timeout: 10000
         });
-        return Buffer.from(response.data, 'binary').toString('base64');
+        
+        console.log('🔍 Image downloaded successfully, size:', response.data.byteLength, 'bytes');
+        
+        const base64 = Buffer.from(response.data, 'binary').toString('base64');
+        console.log('🔍 Base64 conversion successful, length:', base64.length);
+        
+        return base64;
     } catch (error) {
+        console.log('❌ Image conversion failed:', error.message);
         throw new Error(`Failed to fetch image: ${error.message}`);
     }
 }
