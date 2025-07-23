@@ -462,9 +462,13 @@ async function tryFloorplanURL(propertyId) {
         // NEW: Look for full-size images (not thumbnails)
         $('img').each((i, img) => {
             const src = $(img).attr('src') || $(img).attr('data-src');
-            if (src && src.includes('floorplan') && !src.includes('max_296x197')) {
-                // Skip tiny thumbnails, look for full-size
-                floorplanImages.push(src);
+            if (src && (src.includes('floorplan') || src.includes('plan') || 
+                       $(img).attr('alt')?.toLowerCase().includes('floorplan'))) {
+                
+                // Skip GIF files for Claude compatibility
+                if (!src.includes('.gif')) {
+                    floorplanImages.push(src);
+                }
             }
         });
         
