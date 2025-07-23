@@ -815,10 +815,10 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     console.log('📐 Extracting property dimensions...');
     
     let dimensions = {
-    totalSqFt: null,
-    totalSqM: null,
-    rooms: [],
-    roomTypes: []
+        totalSqFt: null,
+        totalSqM: null,
+        rooms: [],
+        roomTypes: []
     };
     
     const fullText = `${title} ${propertyDescription} ${features.join(' ')}`.toLowerCase();
@@ -1021,7 +1021,19 @@ async function extractDimensions(propertyDescription, title, features, floorplan
         
         try {
             // Use Claude API to analyze floor plan for room layout
-            const floorplanRoomAnalysis = await analyzeFloorplanForRooms(floorplan);
+            // Try both floor plan images if available
+            let floorplanRoomAnalysis = await analyzeFloorplanForRooms(floorplan);
+            
+            // If first attempt gives unclear results, try the second floor plan
+            if (!floorplanRoomAnalysis || (floorplanRoomAnalysis.rooms && floorplanRoomAnalysis.rooms.length < 5)) {
+                console.log('🔄 Trying second floor plan image...');
+                const secondFloorplan = floorplan.replace('FLP_00', 'FLP_01');
+                const secondAttempt = await analyzeFloorplanForRooms(secondFloorplan);
+                if (secondAttempt && secondAttempt.rooms && 
+                    secondAttempt.rooms.length > (floorplanRoomAnalysis?.rooms?.length || 0)) {
+                    floorplanRoomAnalysis = secondAttempt;
+                }
+            }
             
             if (floorplanRoomAnalysis && floorplanRoomAnalysis.rooms) {
                 // Use the new processFloorPlanResults function
@@ -1029,8 +1041,8 @@ async function extractDimensions(propertyDescription, title, features, floorplan
             }
         } catch (error) {
             console.log('📐 Floor plan analysis failed:', error.message);
-        } // ← MISSING: Close the try block
-    } // ← MISSING: Close the if statement
+        }
+    } // ← ADD THIS: closes the if (floorplan && !dimensions.floorplanAnalyzed)
 
     // Remove individual rooms if open plan space detected
     const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
@@ -1134,7 +1146,7 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     });
     
     return dimensions;
-} // ← MISSING: Close the main extractDimensions function 
+} // ← This was already there - closes the main extractDimensions function
 
 // Updated function to process floor plan results with dimensions
 // Updated function to process floor plan results with dimensions
