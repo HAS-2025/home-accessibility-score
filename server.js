@@ -1020,25 +1020,71 @@ async function extractDimensions(propertyDescription, title, features, floorplan
         dimensions.floorplanAnalyzed = true; // Set flag to prevent re-analysis
         
         try {
-            // Use Claude API to analyze floor plan for room layout
-            // Try both floor plan images if available
-            let floorplanRoomAnalysis = await analyzeFloorplanForRooms(floorplan);
+            console.log('📐 Analyzing all available floor plans with confidence scoring...');
             
-            // If first attempt gives unclear results, try the second floor plan
-            if (!floorplanRoomAnalysis || (floorplanRoomAnalysis.rooms && floorplanRoomAnalysis.rooms.length < 5)) {
-                console.log('🔄 Trying second floor plan image...');
-                const secondFloorplan = floorplan.replace('FLP_00', 'FLP_01');
-                const secondAttempt = await analyzeFloorplanForRooms(secondFloorplan);
-                if (secondAttempt && secondAttempt.rooms && 
-                    secondAttempt.rooms.length > (floorplanRoomAnalysis?.rooms?.length || 0)) {
-                    floorplanRoomAnalysis = secondAttempt;
+            const floorplanAttempts = [];
+            
+            // Try first floor plan
+            console.log('📐 Analyzing first floor plan...');
+            const firstAttempt = await analyzeFloorplanForRooms(floorplan);
+            if (firstAttempt) {
+                const confidence = calculateFloorPlanConfidence(firstAttempt);
+                floorplanAttempts.push({
+                    source: 'FLP_00 (first)',
+                    data: firstAttempt,
+                    confidence: confidence,
+                    roomCount: firstAttempt.rooms?.length || 0
+                });
+            }
+            
+            // Try second floor plan
+            console.log('📐 Analyzing second floor plan...');
+            const secondFloorplan = floorplan.replace('FLP_00', 'FLP_01');
+            const secondAttempt = await analyzeFloorplanForRooms(secondFloorplan);
+            if (secondAttempt) {
+                const confidence = calculateFloorPlanConfidence(secondAttempt);
+                floorplanAttempts.push({
+                    source: 'FLP_01 (second)', 
+                    data: secondAttempt,
+                    confidence: confidence,
+                    roomCount: secondAttempt.rooms?.length || 0
+                });
+            }
+            
+            // Log all attempts
+            floorplanAttempts.forEach((attempt, index) => {
+                console.log(`📐 Floor plan ${index + 1} (${attempt.source}):`);
+                console.log(`   Rooms found: ${attempt.roomCount}`);
+                console.log(`   Confidence: ${attempt.confidence}/100`);
+            });
+            
+            // Select best floor plan based on confidence + room count
+            let selectedAttempt = null;
+            if (floorplanAttempts.length > 0) {
+                // Sort by confidence first, then by room count
+                floorplanAttempts.sort((a, b) => {
+                    const confidenceDiff = b.confidence - a.confidence;
+                    if (Math.abs(confidenceDiff) < 15) { // If confidence is close (within 15 points)
+                        return b.roomCount - a.roomCount; // Prefer more rooms
+                    }
+                    return confidenceDiff; // Otherwise prefer higher confidence
+                });
+                
+                selectedAttempt = floorplanAttempts[0];
+                console.log(`✅ Selected floor plan: ${selectedAttempt.source}`);
+                console.log(`   Final confidence: ${selectedAttempt.confidence}/100`);
+                console.log(`   Final room count: ${selectedAttempt.roomCount}`);
+                
+                // Only use if confidence is acceptable
+                if (selectedAttempt.confidence >= 50) {
+                    dimensions = processFloorPlanResults(selectedAttempt.data, dimensions);
+                } else {
+                    console.log(`⚠️ Floor plan confidence too low (${selectedAttempt.confidence}/100), skipping floor plan analysis`);
                 }
+            } else {
+                console.log('❌ No valid floor plan analysis results');
             }
             
-            if (floorplanRoomAnalysis && floorplanRoomAnalysis.rooms) {
-                // Use the new processFloorPlanResults function
-                dimensions = processFloorPlanResults(floorplanRoomAnalysis, dimensions);
-            }
         } catch (error) {
             console.log('📐 Floor plan analysis failed:', error.message);
         }
