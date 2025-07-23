@@ -717,62 +717,31 @@ async function analyzeFloorplanForRooms(floorplanUrl) {
     }
     
     try {
-        const prompt = `Analyze this UK property floor plan and identify EVERY SINGLE SPACE shown, regardless of size.
+        const prompt = `Analyze this UK property floor plan and read ALL labeled text exactly as shown.
 
-CRITICAL: Find ALL spaces including:
-- Main rooms (Reception, Kitchen, Bedrooms, Bathroom)
-- Outdoor spaces (Roof Terrace, Balcony, Terrace, Garden)
-- Utility spaces (Storage, Utility Room, WC, Cloakroom)
-- Circulation spaces (Entrance Hall, Corridor)
-- Any other labeled space you can see
+CRITICAL: Read the EXACT labels and dimensions from the image:
+- Look for room labels like "Kitchen/Reception/Dining", "Bedroom 1", "Bedroom 2"
+- Look for outdoor spaces like "Roof Terrace", "Balcony", "Garden"  
+- Look for storage areas labeled "Storage"
+- Read dimensions EXACTLY as written (like "30'8 (9.35)max x 24'4 (7.42)max")
 
-INCLUDE EVERYTHING - even if dimensions are not visible or readable.
+SPACES TO IDENTIFY:
+1. Kitchen/Reception/Dining areas (large main living space)
+2. All Bedrooms (Bedroom 1, Bedroom 2, etc.)
+3. Bathrooms (main bathroom, not tiny WCs)
+4. Storage rooms (if labeled)
+5. Outdoor spaces (Roof Terrace, Balcony)
 
-For each space found, provide:
-Room X: [EXACT LABEL FROM FLOOR PLAN]
-Dimensions X: [EXACT DIMENSIONS if visible, otherwise "Dimensions not shown"]
+RESPOND EXACTLY IN THIS FORMAT:
+Room 1: [EXACT LABEL FROM FLOOR PLAN]
+Dimensions 1: [EXACT DIMENSIONS AS WRITTEN] 
+Room 2: [EXACT LABEL FROM FLOOR PLAN]
+Dimensions 2: [EXACT DIMENSIONS AS WRITTEN]
+(continue for all rooms found)
 
-Look carefully for these common spaces:
-- Reception Room/Living Room/Lounge
-- Kitchen (separate or combined with reception)
-- All Bedrooms (Bedroom 1, Bedroom 2, etc.)
-- Bathroom/Shower Room/WC
-- Storage areas/cupboards
-- Roof Terrace/Balcony/Outdoor space
-- Entrance Hall/Hallway
-- Utility Room/Laundry
+Then provide JSON with all rooms found.
 
-RESPOND WITH EVERY SPACE YOU CAN SEE (could be 3 rooms or 10 rooms):
-Room 1: [SPACE NAME]
-Dimensions 1: [DIMENSIONS or "Dimensions not shown"]
-Room 2: [SPACE NAME]
-Dimensions 2: [DIMENSIONS or "Dimensions not shown"]
-(continue for ALL spaces found)
-
-Then provide JSON with ALL rooms found:
-{
-  "rooms": [
-    {
-      "type": "reception",
-      "display": "Reception Room/Kitchen",
-      "count": 1,
-      "dimensions": {
-        "imperial": "30'8\" x 24'4\"",
-        "metric": "9.35m x 7.42m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    },
-    {
-      "type": "bathroom",
-      "display": "Bathroom",
-      "count": 1,
-      "dimensions": null
-    }
-  ]
-}
-
-Report exactly what you see - no more, no less.`;
+Read EVERYTHING visible on the floor plan, including outdoor spaces.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-3-5-sonnet-20241022',
