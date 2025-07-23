@@ -1,4 +1,5 @@
 
+
 // server.js - Updated with Accessible Features scoring
 const express = require('express');
 const cors = require('cors');
@@ -737,9 +738,26 @@ Room 1: [EXACT LABEL FROM FLOOR PLAN]
 Dimensions 1: [EXACT DIMENSIONS AS WRITTEN] 
 Room 2: [EXACT LABEL FROM FLOOR PLAN]
 Dimensions 2: [EXACT DIMENSIONS AS WRITTEN]
+Room 3: [EXACT LABEL FROM FLOOR PLAN]
+Dimensions 3: [EXACT DIMENSIONS AS WRITTEN]
 (continue for all rooms found)
 
-Then provide JSON with all rooms found.
+Then provide JSON:
+{
+  "rooms": [
+    {
+      "type": "reception",
+      "display": "Kitchen/Reception/Dining Room",
+      "count": 1,
+      "dimensions": {
+        "imperial": "30'8 x 24'4",
+        "metric": "9.35m x 7.42m",
+        "area_sqft": null,
+        "area_sqm": null
+      }
+    }
+  ]
+}
 
 Read EVERYTHING visible on the floor plan, including outdoor spaces.`;
 
@@ -1142,36 +1160,30 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     }
     
     // Check for combined spaces when no individual rooms were detected
-    // Skip duplicate room combination when we have detailed floor plan data
-    if (!dimensions.floorplanAnalyzed) {
-        // Check for combined spaces when no individual rooms were detected
-        const combinedPatterns = [
-            /open[- ]plan/i,
-            /kitchen[\/\-\s]*(?:living|diner|dining)/i,
-            /living[\/\-\s]*(?:kitchen|dining)/i,
-            /kitchen[\/\-\s]*diner/i
-        ];
+    const combinedPatterns = [
+        /open[- ]plan/i,
+        /kitchen[\/\-\s]*(?:living|diner|dining)/i,
+        /living[\/\-\s]*(?:kitchen|dining)/i,
+        /kitchen[\/\-\s]*diner/i
+    ];
     
-        for (const pattern of combinedPatterns) {
-            if (fullText.match(pattern)) {
-                // Add open plan living space if no rooms detected yet
-                const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
-                const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
-                const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
-                
-                if (!hasLiving && !hasKitchen && !hasOpenPlan) {
-                    dimensions.roomTypes.push({
-                        type: 'openPlan',
-                        count: 1,
-                        display: 'open plan living/kitchen'
-                    });
-                    console.log('📐 Found combined space: open plan living/kitchen');
-                }
-                break;
+    for (const pattern of combinedPatterns) {
+        if (fullText.match(pattern)) {
+            // Add open plan living space if no rooms detected yet
+            const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
+            const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
+            const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
+            
+            if (!hasLiving && !hasKitchen && !hasOpenPlan) {
+                dimensions.roomTypes.push({
+                    type: 'openPlan',
+                    count: 1,
+                    display: 'open plan living/kitchen'
+                });
+                console.log('📐 Found combined space: open plan living/kitchen');
             }
+            break;
         }
-    } else {
-        console.log('📐 Skipping duplicate room combination - using floor plan data');
     }
     
     console.log('📐 Dimension extraction complete:', {
@@ -1190,26 +1202,37 @@ function calculateFloorPlanConfidence(roomData) {
     
     let confidence = 70; // Start with baseline confidence
     
+    // Adjust based on data quality indicators
     const rooms = roomData.rooms || [];
     
-    // No room count penalties - just report what's found
+    // Penalty for too few rooms (likely missed some)
+    if (rooms.length < 4) {
+        confidence -= 20;
+        console.log('   📉 Confidence reduced: Too few rooms detected');
+    }
+    
+    // Bonus for reasonable room count
+    if (rooms.length >= 5 && rooms.length <= 7) {
+        confidence += 10;
+        console.log('   📈 Confidence boost: Good room count');
+    }
     
     // Bonus for having dimensions
     const roomsWithDimensions = rooms.filter(room => 
         room.dimensions && (room.dimensions.imperial || room.dimensions.metric)
     );
     
-    if (roomsWithDimensions.length === rooms.length && rooms.length > 0) {
+    if (roomsWithDimensions.length === rooms.length) {
         confidence += 15;
         console.log('   📈 Confidence boost: All rooms have dimensions');
-    } else if (roomsWithDimensions.length === 0 && rooms.length > 0) {
-        confidence -= 10;
+    } else if (roomsWithDimensions.length === 0) {
+        confidence -= 25;
         console.log('   📉 Confidence reduced: No room dimensions found');
     }
     
-    // Bonus for finding outdoor spaces
+    // Bonus for finding outdoor spaces (roof terrace, balcony)
     const hasOutdoorSpace = rooms.some(room => 
-        room.type === 'outdoor' || room.type === 'terrace' ||
+        room.type === 'outdoor' || 
         room.display.toLowerCase().includes('terrace') ||
         room.display.toLowerCase().includes('balcony')
     );
@@ -1244,36 +1267,41 @@ function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
         });
         
         // Process dimensions if available
-        // Process ALL rooms (with or without dimensions)
-        const allRoomsFromFloorPlan = floorplanRoomAnalysis.rooms || [];
+        const roomsWithDimensions = floorplanRoomAnalysis.rooms.filter(room => 
+            room.dimensions && room.dimensions !== null
+        );
         
-        if (allRoomsFromFloorPlan.length > 0) {
-            console.log('📐 Found rooms from floor plan (including those without dimensions)...');
+        if (roomsWithDimensions.length > 0) {
+            console.log('📐 Found rooms with dimensions from floor plan...');
             
             // Add to dimensions.rooms array for detailed display
-            allRoomsFromFloorPlan.forEach(room => {
-                const roomDimension = {
-                    name: room.display,
-                    type: room.type,
-                    imperial: room.dimensions?.imperial || null,
-                    metric: room.dimensions?.metric || null,
-                    area_sqft: room.dimensions?.area_sqft || null,
-                    area_sqm: room.dimensions?.area_sqm || null
-                };
-                
-                // Create dimensions string for display
-                if (room.dimensions?.imperial && room.dimensions?.metric) {
-                    roomDimension.dimensions = `${room.dimensions.imperial} (${room.dimensions.metric})`;
-                } else if (room.dimensions?.imperial) {
-                    roomDimension.dimensions = room.dimensions.imperial;
-                } else if (room.dimensions?.metric) {
-                    roomDimension.dimensions = room.dimensions.metric;
-                } else {
-                    roomDimension.dimensions = "Dimensions not available";
+            roomsWithDimensions.forEach(room => {
+                if (room.dimensions) {
+                    const roomDimension = {
+                        name: room.display, // Use exact label from floor plan
+                        type: room.type,
+                        imperial: room.dimensions.imperial || null,
+                        metric: room.dimensions.metric || null,
+                        area_sqft: room.dimensions.area_sqft || null,
+                        area_sqm: room.dimensions.area_sqm || null
+                    };
+                    
+                    // Create dimensions string for display
+                    if (room.dimensions.imperial) {
+                        roomDimension.dimensions = room.dimensions.imperial;
+                        
+                        // Calculate area if dimensions available
+                        const area = calculateAreaFromDimensions(room.dimensions.imperial);
+                        if (area) {
+                            roomDimension.sqft = area;
+                        }
+                    } else if (room.dimensions.metric) {
+                        roomDimension.dimensions = room.dimensions.metric;
+                    }
+                    
+                    dimensions.rooms.push(roomDimension);
+                    console.log(`📐 Added dimensions for ${room.display}: ${roomDimension.dimensions}`);
                 }
-                
-                dimensions.rooms.push(roomDimension);
-                console.log(`📐 Added dimensions for ${room.display}: ${roomDimension.dimensions}`);
             });
         }
         
