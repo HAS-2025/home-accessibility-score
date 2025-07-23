@@ -323,6 +323,78 @@
             border: 2px dashed #d1d5db;
         }
 
+        /* Tooltip Styles */
+        .tooltip {
+            position: relative;
+            display: inline-flex;
+            margin-left: 8px;
+        }
+        
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background: #007bff;
+            color: white;
+            border-radius: 50%;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            transition: all 0.2s ease;
+        }
+        
+        .info-icon:hover {
+            background: #0056b3;
+            transform: scale(1.1);
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 280px;
+            background-color: #333;
+            color: #fff;
+            text-align: left;
+            border-radius: 6px;
+            padding: 12px;
+            position: absolute;
+            z-index: 1000;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -140px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 13px;
+            line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .tooltip .tooltiptext::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 480px) {
+            .tooltip .tooltiptext {
+                width: 250px;
+                margin-left: -125px;
+                font-size: 12px;
+            }
+        }
+
         .gp-details {
             margin-top: 1rem;
         }
@@ -1357,9 +1429,16 @@
             if (!dimensions) {
                 dimensionsContainer.innerHTML = `
                     <div class="score-header">
-                        <span class="score-icon">📐</span>
-                        <span class="score-title">Property Dimensions</span>
+                    <span class="score-icon">📐</span>
+                    <span class="score-title">Property Dimensions</span>
+                    <div class="tooltip">
+                        <div class="info-icon">i</div>
+                        <span class="tooltiptext">
+                            <strong>AI-Generated Analysis</strong><br>
+                            Room dimensions are analyzed via AI and may vary from actual measurements. Please verify exact dimensions with the estate agent and refer to the official floor plan for precise measurements.
+                        </span>
                     </div>
+                </div>
                     <div class="score-description">Dimension information not available</div>
                 `;
                 return;
