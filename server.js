@@ -1194,6 +1194,55 @@ async function extractDimensions(propertyDescription, title, features, floorplan
     return dimensions;
 } // ← This was already there - closes the main extractDimensions function
 
+// Calculate confidence score based on multiple factors
+function calculateFloorPlanConfidence(roomData) {
+    if (!roomData) return 0;
+    
+    let confidence = 70; // Start with baseline confidence
+    
+    // Adjust based on data quality indicators
+    const rooms = roomData.rooms || [];
+    
+    // Penalty for too few rooms (likely missed some)
+    if (rooms.length < 4) {
+        confidence -= 20;
+        console.log('   📉 Confidence reduced: Too few rooms detected');
+    }
+    
+    // Bonus for reasonable room count
+    if (rooms.length >= 5 && rooms.length <= 7) {
+        confidence += 10;
+        console.log('   📈 Confidence boost: Good room count');
+    }
+    
+    // Bonus for having dimensions
+    const roomsWithDimensions = rooms.filter(room => 
+        room.dimensions && (room.dimensions.imperial || room.dimensions.metric)
+    );
+    
+    if (roomsWithDimensions.length === rooms.length) {
+        confidence += 15;
+        console.log('   📈 Confidence boost: All rooms have dimensions');
+    } else if (roomsWithDimensions.length === 0) {
+        confidence -= 25;
+        console.log('   📉 Confidence reduced: No room dimensions found');
+    }
+    
+    // Bonus for finding outdoor spaces (roof terrace, balcony)
+    const hasOutdoorSpace = rooms.some(room => 
+        room.type === 'outdoor' || 
+        room.display.toLowerCase().includes('terrace') ||
+        room.display.toLowerCase().includes('balcony')
+    );
+    
+    if (hasOutdoorSpace) {
+        confidence += 10;
+        console.log('   📈 Confidence boost: Outdoor space detected');
+    }
+    
+    return Math.max(0, Math.min(100, confidence));
+}
+
 // Updated function to process floor plan results with dimensions
 // Updated function to process floor plan results with dimensions
 function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
