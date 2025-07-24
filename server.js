@@ -1479,9 +1479,21 @@ function analyzeCostInformation(property, dimensions) {
             break;
         }
     }
-    // ADD THIS - Use leasehold details if available and no ground rent found yet
+    // Use leasehold details if available and no ground rent found yet
     if (!cost.groundRent && property.leaseholdDetails && property.leaseholdDetails.groundRent) {
-        cost.groundRent = `£${property.leaseholdDetails.groundRent} per annum`;
+        const groundRentValue = property.leaseholdDetails.groundRent;
+        
+        // Check if it's "Ask agent" or a monetary amount
+        if (groundRentValue.toLowerCase().includes('ask') || groundRentValue.toLowerCase().includes('agent')) {
+            cost.groundRent = "Ask agent";
+        } else if (!isNaN(parseInt(groundRentValue)) && parseInt(groundRentValue) > 0) {
+            // It's a number, format as currency
+            cost.groundRent = `£${groundRentValue} per annum`;
+        } else {
+            // Use as-is for other cases
+            cost.groundRent = groundRentValue;
+        }
+        
         console.log('💷 DEBUG: Using leasehold details ground rent:', cost.groundRent);
     }
 
