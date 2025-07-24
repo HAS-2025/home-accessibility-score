@@ -2820,8 +2820,44 @@ async function scrapeRightmoveProperty(url) {
                 leaseholdDetails.serviceCharge = '4116';
             }
         }
+
+        // ADD THIS NEW SECTION HERE - Look for lease years more comprehensively
+        if (!leaseholdDetails.leaseYears) {
+            console.log('🏠 Looking for lease years in page text...');
+            
+            // Look for "136 years left" pattern anywhere in page
+            const leaseYearsPatterns = [
+                /(\d+)\s*years?\s*left/i,
+                /(\d+)\s*years?\s*remaining/i,
+                /lease.*?(\d+)\s*years/i,
+                /(\d+)\s*year\s*lease/i
+            ];
+            
+            for (const pattern of leaseYearsPatterns) {
+                const match = allBodyText.match(pattern);
+                if (match) {
+                    const years = parseInt(match[1]);
+                    // Validate it's a reasonable lease length (typically 99-999 years)
+                    if (years >= 50 && years <= 999) {
+                        leaseholdDetails.leaseYears = years.toString();
+                        console.log('🏠 Found lease years in page text:', years);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Look for ground rent "Ask agent" if not found yet
+        if (!leaseholdDetails.groundRent) {
+            if (allBodyText.toLowerCase().includes('ground rent') && 
+                allBodyText.toLowerCase().includes('ask agent')) {
+                leaseholdDetails.groundRent = 'Ask agent';
+                console.log('🏠 Found ground rent: Ask agent');
+            }
+        }
         
         console.log('🏠 Final leasehold details:', leaseholdDetails);
+        
 
         // ✅ RESTORED: Enhanced EPC extraction with comprehensive approach
         console.log('👁️ Starting comprehensive EPC extraction...');
