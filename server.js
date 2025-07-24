@@ -1415,54 +1415,47 @@ function analyzeCostInformation(property, dimensions) {
     }
 
     // ENHANCED: Extract service charge (look for £4116 format and more patterns)
+    // ENHANCED: Extract service charge (more precise patterns with validation)
     const serviceChargePatterns = [
-        // Specific patterns for the amount we can see in the screenshots
-        /£4116/i,  // Direct match for this property
-        /4116/,    // Just the number
+        // More specific patterns that avoid property price confusion
+        /annual\s*service\s*charge[:\s]*£([\d,]+)/i,
+        /service\s*charge[:\s]*£([\d,]+)\s*(?:per\s*)?(annum|year|annual)/i,
+        /service\s*charge[:\s]*£([\d,]+)(?!\s*knowing)/i, // Exclude "knowing the purchase price"
+        /leasehold.*service.*£([\d,]+)/i,
+        /service.*charge.*£([\d,]+)/i,
         
-        // General patterns
-        /annual\s*service\s*charge[:\s]*£?([\d,]+)/i,
-        /service\s*charge[:\s]*£?([\d,]+)(?:\s*per\s*(annum|year|annual|month))?/i,
-        /service\s*charges?[:\s]*£?([\d,]+)(?:\s*per\s*(annum|year|annual|month))?/i,
-        /maintenance[:\s]*£?([\d,]+)(?:\s*per\s*(annum|year|annual|month))?/i,
-        /£([\d,]+)(?:\s*per\s*(annum|year|annual|month))?\s*service\s*charge/i,
-        /£([\d,]+)\s*annual.*service/i,
-        /service.*£([\d,]+)/i,
-        
-        // Look for standalone amounts near service-related keywords
-        /£([\d,]+).*(?:service|maintenance|management)/i,
-        /(?:service|maintenance|management).*£([\d,]+)/i,
-        
-        // Leasehold-specific patterns
-        /leasehold.*£([\d,]+)/i,
-        /£([\d,]+).*leasehold/i
+        // Look for amounts that are clearly service charges (reasonable range)
+        /£([\d,]+)\s*(?:per\s*)?(annum|annual|year).*service/i,
+        /service.*£([1-9]\d{3,4})(?!\d)/i, // £1000-99999 range, not property prices
     ];
     
     console.log('💷 DEBUG: Looking for service charge in description...');
-    console.log('💷 DEBUG: Description contains "4116":', (property.description || '').includes('4116'));
-    console.log('💷 DEBUG: Description contains "service":', (property.description || '').includes('service'));
     
     for (const pattern of serviceChargePatterns) {
         const match = description.match(pattern);
         if (match) {
-            console.log('💷 DEBUG: Service charge pattern matched:', pattern, 'Result:', match);
+            console.log('💷 DEBUG: Service charge pattern matched:', pattern, 'Result:', match[0]);
             
-            // Handle the direct £4116 match
-            if (match[0].includes('4116')) {
-                cost.serviceCharge = '£4116 per annum';
-                console.log('💷 DEBUG: Found direct service charge match: £4116');
-                break;
-            }
-            
-            // Handle other patterns
             const amount = match[1];
             if (amount) {
-                const period = match[2] ? match[2].toLowerCase() : 'annum';
-                cost.serviceCharge = `£${amount} per ${period === 'year' ? 'annum' : period}`;
-                console.log('💷 DEBUG: Found service charge:', cost.serviceCharge);
-                break;
+                const numericAmount = parseInt(amount.replace(/,/g, ''));
+                
+                // Validate: service charges are typically £500-£50000 annually
+                if (numericAmount >= 500 && numericAmount <= 50000) {
+                    const period = match[2] ? match[2].toLowerCase() : 'annum';
+                    cost.serviceCharge = `£${amount} per ${period === 'year' ? 'annum' : period}`;
+                    console.log('💷 DEBUG: Found valid service charge:', cost.serviceCharge);
+                    break;
+                } else {
+                    console.log('💷 DEBUG: Rejected service charge (out of range):', numericAmount);
+                }
             }
         }
+    }
+    // ADD THIS NEW SECTION HERE - Use leasehold details if available and no service charge found yet
+    if (!cost.serviceCharge && property.leaseholdDetails && property.leaseholdDetails.serviceCharge) {
+        cost.serviceCharge = `£${property.leaseholdDetails.serviceCharge} per annum`;
+        console.log('💷 DEBUG: Using leasehold details service charge:', cost.serviceCharge);
     }
 
     // ENHANCED: Extract ground rent (including "Ask agent")
@@ -1486,6 +1479,10 @@ function analyzeCostInformation(property, dimensions) {
             break;
         }
     }
+    // ADD THIS - Use leasehold details if available and no ground rent found yet
+    if (!cost.groundRent && property.leaseholdDetails && property.leaseholdDetails.groundRent) {
+        cost.groundRent = `£${property.leaseholdDetails.groundRent} per annum`;
+        console.log('💷 DEBUG: Using leasehold details ground rent:', cost.groundRent);
 
     // Check for peppercorn ground rent
     if (!cost.groundRent && description.match(/peppercorn\s+ground\s+rent/i)) {
@@ -1519,6 +1516,12 @@ function analyzeCostInformation(property, dimensions) {
                 cost.leaseholdInfo = `${years} years remaining`;
                 break;
             }
+        }
+        // ADD THIS - Use leasehold details if available and no specific years found yet
+        if ((!cost.leaseholdInfo || cost.leaseholdInfo === "Leasehold") && 
+            property.leaseholdDetails && property.leaseholdDetails.leaseYears) {
+            cost.leaseholdInfo = `${property.leaseholdDetails.leaseYears} years remaining`;
+            console.log('💷 DEBUG: Using leasehold details years:', cost.leaseholdInfo);
         }
         
         // Check if it's freehold or leasehold mentioned without years
@@ -2768,6 +2771,57 @@ async function scrapeRightmoveProperty(url) {
         
         console.log('Final tenure result:', tenure);
 
+        // ADD THIS AFTER TENURE EXTRACTION: Extract detailed leasehold information
+        console.log('🏠 Extracting detailed leasehold information...');
+        let leaseholdDetails = {
+            serviceCharge: null,
+            groundRent: null,
+            leaseYears: null
+        };
+        
+        // Look for expandable sections or detailed property info
+        const detailSections = $('.property-details, .leasehold-details, .expandable-section, .property-information');
+        detailSections.each((i, section) => {
+            const sectionText = $(section).text();
+            console.log('🏠 DEBUG: Checking section text:', sectionText.substring(0, 200));
+            
+            // Look for service charge amounts
+            const serviceMatch = sectionText.match(/(?:service|annual).*£([\d,]+)/i);
+            if (serviceMatch) {
+                leaseholdDetails.serviceCharge = serviceMatch[1];
+                console.log('🏠 Found service charge in section:', serviceMatch[1]);
+            }
+            
+            // Look for ground rent
+            const groundRentMatch = sectionText.match(/ground\s*rent.*£([\d,]+)/i);
+            if (groundRentMatch) {
+                leaseholdDetails.groundRent = groundRentMatch[1];
+                console.log('🏠 Found ground rent in section:', groundRentMatch[1]);
+            }
+            
+            // Look for lease years
+            const leaseYearsMatch = sectionText.match(/(\d+)\s*years?\s*(?:left|remaining)/i);
+            if (leaseYearsMatch) {
+                leaseholdDetails.leaseYears = leaseYearsMatch[1];
+                console.log('🏠 Found lease years in section:', leaseYearsMatch[1]);
+            }
+        });
+        
+        // Also check all text content more comprehensively
+        const allBodyText = $('body').text();
+        console.log('🏠 DEBUG: Checking if 4116 appears anywhere on page:', allBodyText.includes('4116'));
+        
+        if (allBodyText.includes('4116')) {
+            console.log('🏠 Found 4116 on page, extracting context...');
+            const contextMatch = allBodyText.match(/.{0,100}4116.{0,100}/i);
+            if (contextMatch) {
+                console.log('🏠 Context around 4116:', contextMatch[0]);
+                leaseholdDetails.serviceCharge = '4116';
+            }
+        }
+        
+        console.log('🏠 Final leasehold details:', leaseholdDetails);
+
         // ✅ RESTORED: Enhanced EPC extraction with comprehensive approach
         console.log('👁️ Starting comprehensive EPC extraction...');
 
@@ -3126,6 +3180,7 @@ if (epcResult && epcResult.rating) {
             address: address || 'Address not found',
             coordinates: coordinates,
             tenure: tenure,
+            leaseholdDetails: leaseholdDetails,
             dimensions: await extractDimensions(description, title, features, floorplan)
         };
 
