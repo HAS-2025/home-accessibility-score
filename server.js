@@ -2905,6 +2905,14 @@ if (!leaseholdDetails.leaseYears) {
                 console.log('🏠 Found ground rent: Ask agent');
             }
         }
+
+        // ADD THIS NEW SECTION HERE - Handle null/empty ground rent values
+        if (leaseholdDetails.groundRent === 'null' || 
+            leaseholdDetails.groundRent === null || 
+            leaseholdDetails.groundRent === '') {
+            leaseholdDetails.groundRent = 'Ask agent';
+            console.log('🏠 Converting null ground rent to: Ask agent');
+        }
         
         console.log('🏠 Final leasehold details:', leaseholdDetails);
         
