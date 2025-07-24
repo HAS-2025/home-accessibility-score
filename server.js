@@ -1483,6 +1483,7 @@ function analyzeCostInformation(property, dimensions) {
     if (!cost.groundRent && property.leaseholdDetails && property.leaseholdDetails.groundRent) {
         cost.groundRent = `£${property.leaseholdDetails.groundRent} per annum`;
         console.log('💷 DEBUG: Using leasehold details ground rent:', cost.groundRent);
+    }
 
     // Check for peppercorn ground rent
     if (!cost.groundRent && description.match(/peppercorn\s+ground\s+rent/i)) {
