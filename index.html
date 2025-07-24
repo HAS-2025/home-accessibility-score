@@ -957,27 +957,36 @@
             min-height: 40px; /* Give minimum height */
         }
         
-        .dimension-detailed-room:last-child {
-            margin-bottom: 0;
+        .dimension-detailed-room {
+        display: flex;
+        flex-direction: column; /* Changed from row to column */
+        align-items: flex-start;
+        padding: 8px 12px;
+        background: rgba(59, 130, 246, 0.05);
+        border-radius: 6px;
+        margin-bottom: 6px;
+        gap: 4px; /* Add gap between room name and dimensions */
         }
         
         .dimension-room-name {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-weight: 500;
-            color: #1e40af;
-            text-transform: capitalize;
-            font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+        color: #1e40af;
+        text-transform: capitalize;
+        font-size: 13px;
+        width: 100%; /* Take full width */
         }
         
         .dimension-room-measure {
-            color: #6b7280;
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 12px; /* Increased from 11px */
-            font-weight: 500;
-            white-space: nowrap; /* Prevent text wrapping */
-            text-align: right;
+        color: #6b7280;
+        font-family: 'Monaco', 'Consolas', monospace;
+        font-size: 12px;
+        font-weight: 500;
+        text-align: right;
+        align-self: flex-end; /* Align to right */
+        margin-top: 2px;
         }
         
         /* No data styling */
@@ -1791,7 +1800,7 @@
             else if (score >= 3) ratingText = 'Good';
             else if (score >= 2) ratingText = 'Fair';
             
-            document.getElementById('publicTransportScore').textContent = `${ratingText} - ${score}/5`;
+            document.getElementById('publicTransportScore').textContent = ratingText;
             
             let scoreClass = 'poor';
             if (score >= 4) scoreClass = 'excellent';
