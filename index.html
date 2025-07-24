@@ -704,6 +704,26 @@
             border-left-color: #0056b3;
         }
 
+        /* Better handling of cost items */
+        .cost-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            flex: 1;
+        }
+        
+        .cost-label {
+            font-weight: 600;
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .cost-value {
+            font-weight: 500;
+            font-size: 14px;
+            color: #333;
+        }
+
         /* REPLACE THE GRADIENT CSS WITH THIS - MATCHING EXISTING SECTIONS */
 
         /* Use existing transport-section class styling */
@@ -1718,30 +1738,40 @@
                         <div class="dimension-room-content">
                             <div class="dimension-room-line">
                                 <span class="dimension-room-icon">🏛️</span>
-                                <span class="dimension-room-text">Council Tax: ${cost.councilTax || 'Not specified'}</span>
+                                <div class="cost-item">
+                                    <span class="cost-label">Council Tax</span>
+                                    <span class="cost-value">${cost.councilTax || 'Not specified'}</span>
+                                </div>
                             </div>
                             <div class="dimension-room-line">
                                 <span class="dimension-room-icon">🏢</span>
-                                <span class="dimension-room-text">Service Charge: ${cost.serviceCharge || 'Not mentioned'}</span>
+                                <div class="cost-item">
+                                    <span class="cost-label">Service Charge</span>
+                                    <span class="cost-value">${cost.serviceCharge || 'Not mentioned'}</span>
+                                </div>
                             </div>
                             ${cost.groundRent ? `
                                 <div class="dimension-room-line">
                                     <span class="dimension-room-icon">🏡</span>
-                                    <span class="dimension-room-text">Ground Rent: ${cost.groundRent}</span>
+                                    <div class="cost-item">
+                                        <span class="cost-label">Ground Rent</span>
+                                        <span class="cost-value">${cost.groundRent}</span>
+                                    </div>
                                 </div>
                             ` : ''}
-                            ${cost.leaseholdInfo ? `
-                                <div class="dimension-room-line">
-                                    <span class="dimension-room-icon">📋</span>
-                                    <span class="dimension-room-text">Leasehold: ${cost.leaseholdInfo}</span>
+                            <div class="dimension-room-line">
+                                <span class="dimension-room-icon">📋</span>
+                                <div class="cost-item">
+                                    <span class="cost-label">Leasehold</span>
+                                    <span class="cost-value">${cost.leaseholdInfo || 'Leasehold'}</span>
                                 </div>
-                            ` : ''}
+                            </div>
                         </div>
                     </div>
                 </div>
-            `;
-            
-            costContainer.innerHTML = html;
+                `;
+                
+                costContainer.innerHTML = html;
         }
         
         function displayPublicTransport(transport) {
