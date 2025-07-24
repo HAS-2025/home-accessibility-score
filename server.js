@@ -2821,35 +2821,85 @@ async function scrapeRightmoveProperty(url) {
             }
         }
 
-        // ADD THIS NEW SECTION HERE - Look for lease years more comprehensively
-        if (!leaseholdDetails.leaseYears) {
-            console.log('🏠 Looking for lease years in page text...');
+        // Enhanced search for lease years - look in JSON data sources
+if (!leaseholdDetails.leaseYears) {
+    console.log('🏠 Looking for lease years in JSON data...');
+    
+    // Look for lease years in a broader context around where we found the service charge
+    if (allBodyText.includes('4116')) {
+        // Get a much larger context to find related lease data
+        const broadContextMatch = allBodyText.match(/.{0,1000}4116.{0,1000}/i);
+        if (broadContextMatch) {
+            console.log('🏠 Broad JSON context around 4116:', broadContextMatch[0].substring(0, 500));
             
-            // Look for "136 years left" pattern anywhere in page
-            const leaseYearsPatterns = [
-                /(\d+)\s*years?\s*left/i,
-                /(\d+)\s*years?\s*remaining/i,
-                /lease.*?(\d+)\s*years/i,
-                /(\d+)\s*year\s*lease/i
+            // Look for lease-related JSON fields
+            const leaseJsonPatterns = [
+                /"leaseYears?"\s*:\s*(\d+)/i,
+                /"remainingLeaseYears?"\s*:\s*(\d+)/i,
+                /"lengthOfLease"\s*:\s*(\d+)/i,
+                /"leaseLength"\s*:\s*(\d+)/i,
+                /"yearsRemaining"\s*:\s*(\d+)/i
             ];
             
-            for (const pattern of leaseYearsPatterns) {
-                const match = allBodyText.match(pattern);
+            for (const pattern of leaseJsonPatterns) {
+                const match = broadContextMatch[0].match(pattern);
                 if (match) {
-                    const years = parseInt(match[1]);
-                    // Validate it's a reasonable lease length (typically 99-999 years)
-                    if (years >= 50 && years <= 999) {
-                        leaseholdDetails.leaseYears = years.toString();
-                        console.log('🏠 Found lease years in page text:', years);
-                        break;
-                    }
+                    leaseholdDetails.leaseYears = match[1];
+                    console.log('🏠 Found lease years in JSON context:', match[1]);
+                    break;
                 }
             }
         }
+    }
+    
+    // If still not found, look for any JSON-like data with lease info
+    if (!leaseholdDetails.leaseYears) {
+        const jsonLeasePatterns = [
+            /"lease[^"]*"\s*:\s*"?(\d+)\s*years?/i,
+            /lease[^:]*:\s*(\d+)/i,
+            /(\d{2,3})\s*years?\s*(?:left|remaining)/i
+        ];
         
-        // Look for ground rent "Ask agent" if not found yet
+        for (const pattern of jsonLeasePatterns) {
+            const match = allBodyText.match(pattern);
+            if (match) {
+                const years = parseInt(match[1]);
+                if (years >= 50 && years <= 999) {
+                    leaseholdDetails.leaseYears = years.toString();
+                    console.log('🏠 Found lease years in broader JSON search:', years);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+        // Look for ground rent in JSON context too
         if (!leaseholdDetails.groundRent) {
-            if (allBodyText.toLowerCase().includes('ground rent') && 
+            // Look for ground rent in the JSON context
+            if (allBodyText.includes('4116')) {
+                const broadContextMatch = allBodyText.match(/.{0,1000}4116.{0,1000}/i);
+                if (broadContextMatch) {
+                    // Look for ground rent patterns in JSON
+                    const groundRentJsonPatterns = [
+                        /"groundRent"\s*:\s*"([^"]+)"/i,
+                        /"groundRent"\s*:\s*(\d+)/i,
+                        /groundRent[^:]*:\s*"?([^",}]+)/i
+                    ];
+                    
+                    for (const pattern of groundRentJsonPatterns) {
+                        const match = broadContextMatch[0].match(pattern);
+                        if (match) {
+                            leaseholdDetails.groundRent = match[1];
+                            console.log('🏠 Found ground rent in JSON context:', match[1]);
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Fallback: if ground rent mentions "ask agent" anywhere
+            if (!leaseholdDetails.groundRent && allBodyText.toLowerCase().includes('ground rent') && 
                 allBodyText.toLowerCase().includes('ask agent')) {
                 leaseholdDetails.groundRent = 'Ask agent';
                 console.log('🏠 Found ground rent: Ask agent');
