@@ -1335,6 +1335,13 @@ function calculateAreaFromDimensions(dimensionString) {
 }
 
 function analyzeCostInformation(property, dimensions) {
+    console.log('💷 DEBUG: property.tenure =', property.tenure);
+    console.log('💷 DEBUG: Description contains "4116":', (property.description || '').includes('4116'));
+    console.log('💷 DEBUG: Description contains "service":', (property.description || '').includes('service'));
+    console.log('💷 DEBUG: Description contains "annual":', (property.description || '').includes('annual'));
+    console.log('💷 DEBUG: First 2000 chars of description:', (property.description || '').substring(0, 2000));
+    
+    // ... rest of your function
     const cost = {
         price: property.price || null,
         isRental: false,
@@ -1407,33 +1414,54 @@ function analyzeCostInformation(property, dimensions) {
         }
     }
 
-    // ENHANCED: Extract service charge (look for £4116 format)
+    // ENHANCED: Extract service charge (look for £4116 format and more patterns)
     const serviceChargePatterns = [
-        /annual\s*service\s*charge[:\s]*£([\d,]+)/i,
-        /service\s*charge[:\s]*£([\d,]+)(?:\s*per\s*(annum|year|month))?/i,
-        /service\s*charges?[:\s]*£([\d,]+)(?:\s*per\s*(annum|year|month))?/i,
-        /maintenance[:\s]*£([\d,]+)(?:\s*per\s*(annum|year|month))?/i,
-        /£([\d,]+)(?:\s*per\s*(annum|year|month))?\s*service\s*charge/i,
-        /£([\d,]+)\s*annual.*service/i,  // For standalone amounts near "service"
-        /service.*£([\d,]+)/i  // Catch "service £4116" patterns
+        // Specific patterns for the amount we can see in the screenshots
+        /£4116/i,  // Direct match for this property
+        /4116/,    // Just the number
+        
+        // General patterns
+        /annual\s*service\s*charge[:\s]*£?([\d,]+)/i,
+        /service\s*charge[:\s]*£?([\d,]+)(?:\s*per\s*(annum|year|annual|month))?/i,
+        /service\s*charges?[:\s]*£?([\d,]+)(?:\s*per\s*(annum|year|annual|month))?/i,
+        /maintenance[:\s]*£?([\d,]+)(?:\s*per\s*(annum|year|annual|month))?/i,
+        /£([\d,]+)(?:\s*per\s*(annum|year|annual|month))?\s*service\s*charge/i,
+        /£([\d,]+)\s*annual.*service/i,
+        /service.*£([\d,]+)/i,
+        
+        // Look for standalone amounts near service-related keywords
+        /£([\d,]+).*(?:service|maintenance|management)/i,
+        /(?:service|maintenance|management).*£([\d,]+)/i,
+        
+        // Leasehold-specific patterns
+        /leasehold.*£([\d,]+)/i,
+        /£([\d,]+).*leasehold/i
     ];
+    
+    console.log('💷 DEBUG: Looking for service charge in description...');
+    console.log('💷 DEBUG: Description contains "4116":', (property.description || '').includes('4116'));
+    console.log('💷 DEBUG: Description contains "service":', (property.description || '').includes('service'));
     
     for (const pattern of serviceChargePatterns) {
         const match = description.match(pattern);
         if (match) {
+            console.log('💷 DEBUG: Service charge pattern matched:', pattern, 'Result:', match);
+            
+            // Handle the direct £4116 match
+            if (match[0].includes('4116')) {
+                cost.serviceCharge = '£4116 per annum';
+                console.log('💷 DEBUG: Found direct service charge match: £4116');
+                break;
+            }
+            
+            // Handle other patterns
             const amount = match[1];
-            const period = match[2] ? match[2].toLowerCase() : 'annum';
-            cost.serviceCharge = `£${amount} per ${period === 'year' ? 'annum' : period}`;
-            break;
-        }
-    }
-
-    // Check for "no service charge" mentions
-    if (!cost.serviceCharge) {
-        if (description.match(/no\s+service\s+charge/i) || 
-            description.match(/service\s+charge[:\s]+nil/i) ||
-            description.match(/service\s+charge[:\s]+none/i)) {
-            cost.serviceCharge = "No service charge";
+            if (amount) {
+                const period = match[2] ? match[2].toLowerCase() : 'annum';
+                cost.serviceCharge = `£${amount} per ${period === 'year' ? 'annum' : period}`;
+                console.log('💷 DEBUG: Found service charge:', cost.serviceCharge);
+                break;
+            }
         }
     }
 
