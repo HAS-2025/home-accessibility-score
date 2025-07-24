@@ -2664,6 +2664,82 @@ async function scrapeRightmoveProperty(url) {
         if (description.toLowerCase().includes('gas central heating')) features.push('gas central heating');
         if (description.toLowerCase().includes('double glazing')) features.push('double glazing');
 
+        // ADD THIS SECTION: Extract tenure information
+        console.log('🏠 Extracting tenure information...');
+        let tenure = null;
+        
+        // Method 1: Look for structured tenure data
+        const tenureSelectors = [
+            '[data-testid="tenure"]',
+            '.tenure-value',
+            '.property-tenure',
+            '[class*="tenure"]'
+        ];
+        
+        for (const selector of tenureSelectors) {
+            const tenureElement = $(selector);
+            if (tenureElement.length && tenureElement.text().trim()) {
+                tenure = tenureElement.text().trim();
+                console.log('Found tenure in structured data:', tenure);
+                break;
+            }
+        }
+        
+        // Method 2: Look for tenure in the property details section
+        if (!tenure) {
+            // Look for dt/dd pairs or similar structured content
+            $('dt, th, .property-detail-key, .key').each((i, el) => {
+                const keyText = $(el).text().toLowerCase().trim();
+                if (keyText.includes('tenure')) {
+                    const valueElement = $(el).next('dd, td, .property-detail-value, .value');
+                    if (valueElement.length) {
+                        tenure = valueElement.text().trim();
+                        console.log('Found tenure in property details:', tenure);
+                        return false; // Break
+                    }
+                }
+            });
+        }
+        
+        // Method 3: Pattern matching in page text
+        if (!tenure) {
+            const tenurePatterns = [
+                /tenure[:\s]+([^.\n]+)/i,
+                /tenure[:\s]*([a-z]+hold)/i,
+                /property\s+type[:\s]+[^.\n]*tenure[:\s]*([a-z]+hold)/i
+            ];
+            
+            for (const pattern of tenurePatterns) {
+                const match = pageText.match(pattern);
+                if (match) {
+                    const tenureText = match[1].trim();
+                    if (tenureText.toLowerCase().includes('freehold') || 
+                        tenureText.toLowerCase().includes('leasehold')) {
+                        tenure = tenureText;
+                        console.log('Found tenure via pattern matching:', tenure);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // Method 4: Look in structured property information sections
+        if (!tenure) {
+            // Check for common rightmove property info sections
+            const propertyInfoSections = $('.property-information, .property-details, .key-information');
+            propertyInfoSections.each((i, section) => {
+                const sectionText = $(section).text();
+                const tenureMatch = sectionText.match(/tenure[:\s]*([a-z]+hold)/i);
+                if (tenureMatch) {
+                    tenure = tenureMatch[1];
+                    console.log('Found tenure in property info section:', tenure);
+                    return false; // Break
+                }
+            });
+        }
+        
+        console.log('Final tenure result:', tenure);
+
         // ✅ RESTORED: Enhanced EPC extraction with comprehensive approach
         console.log('👁️ Starting comprehensive EPC extraction...');
 
@@ -3021,6 +3097,7 @@ if (epcResult && epcResult.rating) {
             epcRating: epcData.rating,
             address: address || 'Address not found',
             coordinates: coordinates,
+            tenure: tenure,
             dimensions: await extractDimensions(description, title, features, floorplan)
         };
 
