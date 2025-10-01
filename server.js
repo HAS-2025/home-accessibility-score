@@ -2141,7 +2141,7 @@ async function analyzePublicTransport(lat, lng) {
         
         return {
             score: transitScore,
-            busStops: busStops.slice(0, 3), // Top 3 nearest
+            busStops: busStops.slice(0, 3), // Top 3 nearest stops
             trainStations: trainStations.slice(0, 3),
             summary: generateTransitSummary(transitScore, busStops, trainStations)
         };
