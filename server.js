@@ -3400,34 +3400,52 @@ function calculateEPCScore(epcRating) {
     
     switch (rating) {
         case 'A':
+            return {
+                score: 5,
+                rating: 'Most efficient',
+                description: `Energy rating A - Most efficient. This property has excellent energy efficiency with very low heating costs, ideal for maintaining comfortable temperatures year-round.`
+            };
+        
         case 'B':
             return {
                 score: 5,
-                rating: 'Excellent',
-                description: `Energy rating ${rating} - This property has excellent energy efficiency and may have lower heating costs.`
+                rating: 'Very efficient',
+                description: `Energy rating B - Very efficient. This property has excellent energy efficiency with low heating costs, helping maintain comfortable temperatures.`
             };
         
         case 'C':
             return {
                 score: 4,
-                rating: 'Good',
-                description: `Energy rating ${rating} - This property has good energy efficiency and may have lower heating costs.`
+                rating: 'Above average',
+                description: `Energy rating C - Above average efficiency. This property has good energy efficiency with reasonable heating costs.`
             };
             
         case 'D':
             return {
                 score: 3,
                 rating: 'Average',
-                description: `Energy rating ${rating} - This property has average energy efficiency and may have moderate heating costs.`
+                description: `Energy rating D - Average efficiency. This property has typical energy efficiency with moderate heating costs.`
             };
             
         case 'E':
-        case 'F':
-        case 'G':
             return {
                 score: 2,
+                rating: 'Below average',
+                description: `Energy rating E - Below average efficiency. This property may have higher heating costs and could be harder to keep warm in winter.`
+            };
+        
+        case 'F':
+            return {
+                score: 1,
                 rating: 'Poor',
-                description: `Energy rating ${rating} - This property has poor energy efficiency and may have higher heating costs.`
+                description: `Energy rating F - Poor efficiency. This property is likely to have high heating costs and may be challenging to maintain comfortable temperatures.`
+            };
+        
+        case 'G':
+            return {
+                score: 0,
+                rating: 'Very poor',
+                description: `Energy rating G - Very poor efficiency. This property is likely to have very high heating costs and may be difficult to keep warm, which could significantly impact comfort and affordability.`
             };
             
         default:
@@ -3688,42 +3706,26 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     }
     
     // 5. Energy efficiency in context of comfort and accessibility
-    let epcRatingText = "poor";
-    if (epcScore >= 4.5) epcRatingText = "excellent";
-    else if (epcScore >= 3.5) epcRatingText = "good";
-    else if (epcScore >= 2.5) epcRatingText = "fair";
-    
-    if (epcScore < 3) {
-        summary += `The energy efficiency is ${epcRatingText}`;
-        if (epcRating) {
-            summary += ` with a ${epcRating} rating`;
-        }
-        summary += ", which may result in higher heating costs that could impact comfort for temperature-sensitive residents. ";
+    let epcRatingText = "very poor";
+    if (epcScore >= 5) epcRatingText = "excellent";
+    else if (epcScore >= 4) epcRatingText = "above average";
+    else if (epcScore >= 3) epcRatingText = "average";
+    else if (epcScore >= 2) epcRatingText = "below average";
+    else if (epcScore >= 1) epcRatingText = "poor";
+
+    // Always mention EPC, regardless of score
+    summary += `The energy efficiency is ${epcRatingText}`;
+    if (epcRating) {
+        summary += ` with a ${epcRating} rating`;
     }
-    
-    // NEW: Additional cost considerations
-    if (cost) {
-        const costConsiderations = [];
-        
-        if (cost.councilTax) {
-            costConsiderations.push(`council tax is ${cost.councilTax}`);
-        }
-        
-        if (cost.serviceCharge && !cost.serviceCharge.includes('Not mentioned') && !cost.serviceCharge.includes('No service charge')) {
-            costConsiderations.push(`service charges of ${cost.serviceCharge}`);
-        }
-        
-        if (cost.groundRent && !cost.groundRent.includes('Peppercorn')) {
-            costConsiderations.push(`ground rent of ${cost.groundRent}`);
-        }
-        
-        if (costConsiderations.length > 0) {
-            summary += `Additional ongoing costs include ${costConsiderations.join(' and ')}. `;
-        }
-        
-        if (cost.leaseholdInfo && !cost.leaseholdInfo.includes('Freehold')) {
-            summary += `The property is leasehold with ${cost.leaseholdInfo}. `;
-        }
+
+    // Add context based on rating
+    if (epcScore >= 4) {
+        summary += ", which should help keep heating costs manageable and maintain comfortable temperatures year-round. ";
+    } else if (epcScore >= 3) {
+        summary += ", with moderate heating costs typical for properties of this type. ";
+    } else {
+        summary += ", which may result in higher heating costs that could impact comfort for temperature-sensitive residents. ";
     }
     
     // 6. Final recommendation integrated into sentence
