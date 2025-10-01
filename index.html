@@ -1231,6 +1231,15 @@
                 <div class="score-description" id="publicTransportDescription"></div>
                 <div class="score-details" id="publicTransportDetails"></div>
             </div>
+                <div class="score-card">
+                <div class="score-header">
+                    <span class="score-icon">🏛️</span>
+                    <span class="score-title">Council Tax</span>
+                </div>
+                <div class="score-value" id="councilTaxScore"></div>
+                <div class="score-description" id="councilTaxDescription"></div>
+                <div class="score-details" id="councilTaxDetails"></div>
+            </div>
                 <div id="dimensionsCard" class="score-card" style="display: none;"></div>
                 <div id="costCard" class="score-card" style="display: none;"></div>
             </div>
@@ -1303,6 +1312,7 @@
             displayEPCRating(analysis.epcRating);
             displayAccessibleFeatures(analysis.accessibleFeatures);
             displayPublicTransport(analysis.publicTransport);
+            displayCouncilTax(analysis.councilTax);
             displayDimensions(analysis.dimensions);
             displayCostAnalysis(analysis.cost);
             document.getElementById('summaryText').textContent = analysis.summary;
@@ -1861,6 +1871,26 @@
             
             document.getElementById('publicTransportDetails').innerHTML = detailsHtml;
         }
+        function displayCouncilTax(councilTax) {
+            if (!councilTax || councilTax.score === null) {
+                document.getElementById('councilTaxScore').textContent = 'Unknown';
+                document.getElementById('councilTaxScore').className = 'score-value fair';
+                document.getElementById('councilTaxDescription').textContent = councilTax?.details || 'Council tax information not available';
+                document.getElementById('councilTaxDetails').innerHTML = '';
+                return;
+            }
+            
+            document.getElementById('councilTaxScore').textContent = councilTax.rating;
+            document.getElementById('councilTaxScore').className = `score-value ${councilTax.rating.toLowerCase().replace(' ', '-')}`;
+            document.getElementById('councilTaxDescription').textContent = councilTax.details;
+            
+            let detailsHtml = '';
+            if (councilTax.band) {
+                detailsHtml += `<div><strong>Band:</strong> ${councilTax.band}</div>`;
+            }
+            document.getElementById('councilTaxDetails').innerHTML = detailsHtml;
+        }
+
         document.getElementById('propertyUrl').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 analyzeProperty();

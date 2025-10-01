@@ -3457,6 +3457,66 @@ function calculateEPCScore(epcRating) {
     }
 }
 
+// Step 2b: Calculate Council Tax Score
+function calculateCouncilTaxScore(councilTaxBand) {
+    if (!councilTaxBand || councilTaxBand.includes('TBC')) {
+        return {
+            score: null, // null means "ignore this in scoring"
+            rating: 'Unknown',
+            description: 'Council tax band not confirmed - ask agent for details'
+        };
+    }
+    
+    const band = councilTaxBand.replace('Band ', '').trim().toUpperCase();
+    
+    switch (band) {
+        case 'A':
+            return {
+                score: 5,
+                rating: 'Cheapest band',
+                description: 'Council tax Band A - the cheapest band, which helps keep ongoing costs low.'
+            };
+        
+        case 'B':
+        case 'C':
+        case 'D':
+            return {
+                score: 4,
+                rating: 'Average band',
+                description: `Council tax Band ${band} - an average band with reasonable ongoing costs.`
+            };
+        
+        case 'E':
+            return {
+                score: 3,
+                rating: 'Above average band',
+                description: 'Council tax Band E - an above average band with moderately higher costs.'
+            };
+        
+        case 'F':
+        case 'G':
+            return {
+                score: 2,
+                rating: 'Expensive band',
+                description: `Council tax Band ${band} - an expensive band which will add significantly to ongoing costs.`
+            };
+        
+        case 'H':
+            return {
+                score: 1,
+                rating: 'Most expensive band',
+                description: 'Council tax Band H - the most expensive band, which will substantially increase ongoing costs.'
+            };
+        
+        default:
+            return {
+                score: null,
+                rating: 'Unknown',
+                description: 'Council tax band not available - ask agent for details'
+            };
+    }
+}
+
 // Get EPC rating from property data
 let epcRating = null;
 if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
@@ -3507,9 +3567,55 @@ const epcDetails = epcAnalysis.description;
     console.log('💷 Analyzing cost information...');
     const cost = analyzeCostInformation(property, dimensions);
     
-    // Updated overall score calculation (4 categories now)
-    const overallScore = (gpProximity.score + epcScore + accessibleFeatures.score + publicTransport.score) / 4;
-    const summary = generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, overallScore, property.title, property.epcRating, property.location);
+    // Step 6b: Calculate Council Tax Score
+console.log('💷 Calculating council tax score...');
+const councilTaxAnalysis = calculateCouncilTaxScore(cost.councilTax);
+
+// Updated overall score calculation (5 categories now)
+// If council tax score is null (unknown), exclude it from the average
+let scoresToAverage = [gpProximity.score, epcScore, accessibleFeatures.score, publicTransport.score];
+let categoryCount = 4;
+
+if (councilTaxAnalysis.score !== null) {
+    scoresToAverage.push(councilTaxAnalysis.score);
+    categoryCount = 5;
+}
+
+const overallScore = scoresToAverage.reduce((sum, score) => sum + score, 0) / categoryCount;
+
+// Debug logging before summary generation
+console.log('📝 About to generate summary with:', {
+    gpProximityScore: gpProximity.score,
+    epcScore: epcScore,
+    councilTaxScore: councilTaxAnalysis.score,
+    councilTaxRating: councilTaxAnalysis.rating,
+    title: property.title,
+    epcRating: property.epcRating,
+    location: property.location
+});
+
+
+// Generate comprehensive summary
+let summary;
+try {
+    summary = generateComprehensiveSummary(
+        gpProximity, 
+        epcScore, 
+        accessibleFeatures, 
+        publicTransport, 
+        cost, 
+        councilTaxAnalysis, 
+        overallScore, 
+        property.title, 
+        property.epcRating, 
+        property.location
+    );
+    console.log('✅ Summary generated successfully');
+} catch (error) {
+    console.error('❌ Summary generation failed:', error.message);
+    console.error('Stack trace:', error.stack);
+    throw error;
+}
     
     return {
         gpProximity: {
@@ -3543,9 +3649,15 @@ const epcDetails = epcAnalysis.description;
         publicTransport: {
             score: publicTransport.score || 0,
             rating: getScoreRating(publicTransport.score || 0),
-            details: '', // EMPTY STRING
+            details: '', 
             busStops: publicTransport.busStops || [],
             trainStations: publicTransport.trainStations || []
+        },
+        councilTax: {
+            score: councilTaxAnalysis.score,
+            rating: councilTaxAnalysis.score !== null ? getScoreRating(councilTaxAnalysis.score) : 'Unknown',
+            details: councilTaxAnalysis.description,
+            band: cost.councilTax
         },
         dimensions: property.dimensions || null,
         cost: cost,
@@ -3555,7 +3667,7 @@ const epcDetails = epcAnalysis.description;
 }
 
 // Add publicTransport parameter to the function
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, overallScore, title, epcRating, location) {
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, councilTaxAnalysis, overallScore, title, epcRating, location) {
     let summary = "";
     
     const accessibleFeaturesScore = accessibleFeatures.score || 0;
@@ -3786,6 +3898,12 @@ app.post('/api/analyze', async (req, res) => {
         };
 
         const result = await Promise.race([analysisPromise(), timeoutPromise]);
+
+        // Add this debug logging
+        console.log('📤 Sending response with keys:', Object.keys(result.analysis));
+        console.log('📤 Summary exists:', !!result.analysis.summary);
+        console.log('📤 CouncilTax exists:', !!result.analysis.councilTax);
+
         res.json(result);
 
     } catch (error) {
