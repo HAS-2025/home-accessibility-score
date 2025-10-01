@@ -1503,11 +1503,11 @@
                     <div class="dimension-transport-section">
                         <div class="dimension-section-header">TOTAL SIZE</div>
                         <div class="dimension-size-display">
-                            ${dimensions.totalSqFt ? `
-                                <span class="dimension-primary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</span>
-                            ` : ''}
                             ${dimensions.totalSqM ? `
-                                <span class="dimension-secondary-size">${dimensions.totalSqM.toLocaleString()} sq m</span>
+                                <span class="dimension-primary-size">${dimensions.totalSqM.toLocaleString()} sq m</span>
+                            ` : ''}
+                            ${dimensions.totalSqFt ? `
+                                <span class="dimension-secondary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</span>
                             ` : ''}
                             ${!dimensions.totalSqFt && !dimensions.totalSqM ? `
                                 <span class="dimension-primary-size">Size not specified</span>
@@ -1737,14 +1737,14 @@
                     </div>
                 </div>
         
-                <!-- Price per Sq Ft Section -->
+                <!-- Price per Sq M Section -->
                 <div class="dimension-transport-wrapper">
                     <div class="dimension-transport-section">
-                        <div class="dimension-section-header">PRICE PER SQ FT</div>
+                        <div class="dimension-section-header">PRICE PER SQ M</div>
                         <div class="dimension-size-display">
-                            <span class="dimension-primary-size">${cost.pricePerSqFt || 'Unable to calculate'}</span>
-                            ${cost.pricePerSqFtNote ? `
-                                <span class="dimension-secondary-size">${cost.pricePerSqFtNote}</span>
+                            <span class="dimension-primary-size">${cost.pricePerSqM || 'Unable to calculate'}</span>
+                            ${cost.pricePerSqMNote ? `
+                                <span class="dimension-secondary-size">${cost.pricePerSqMNote}</span>
                             ` : ''}
                         </div>
                     </div>

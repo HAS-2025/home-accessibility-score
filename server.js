@@ -1335,6 +1335,10 @@ function calculateAreaFromDimensions(dimensionString) {
 }
 
 function analyzeCostInformation(property, dimensions) {
+    console.log('💷 DEBUG: Dimensions received:', dimensions);
+    console.log('💷 DEBUG: totalSqM:', dimensions?.totalSqM);
+    console.log('💷 DEBUG: property.price:', property.price);
+    console.log('💷 DEBUG: property.tenure =', property.tenure);
     console.log('💷 DEBUG: property.tenure =', property.tenure);
     console.log('💷 DEBUG: Description contains "4116":', (property.description || '').includes('4116'));
     console.log('💷 DEBUG: Description contains "service":', (property.description || '').includes('service'));
@@ -1345,8 +1349,8 @@ function analyzeCostInformation(property, dimensions) {
     const cost = {
         price: property.price || null,
         isRental: false,
-        pricePerSqFt: null,
-        pricePerSqFtNote: null,
+        pricePerSqM: null,
+        pricePerSqMNote: null,
         councilTax: null,
         serviceCharge: null,
         groundRent: null,
@@ -1360,22 +1364,23 @@ function analyzeCostInformation(property, dimensions) {
                        property.price.toLowerCase().includes('monthly');
     }
 
-    // Calculate price per sq ft
-    if (property.price && dimensions && dimensions.totalSqFt) {
+    // Calculate price per sq m
+    if (property.price && dimensions && dimensions.totalSqM) {
         const priceNumber = extractPriceNumber(property.price);
+        console.log('💷 DEBUG: Extracted price number:', priceNumber);
         if (priceNumber) {
-            const pricePerSqFt = Math.round(priceNumber / dimensions.totalSqFt);
-            cost.pricePerSqFt = `£${pricePerSqFt.toLocaleString()} per sq ft`;
+            const pricePerSqM = Math.round(priceNumber / dimensions.totalSqM);
+            cost.pricePerSqM = `£${pricePerSqM.toLocaleString()} per sq m`;
             
             if (cost.isRental) {
-                cost.pricePerSqFtNote = "Based on monthly rent";
+                cost.pricePerSqMNote = "Based on monthly rent";
             }
         }
     } else if (property.price) {
-        if (!dimensions || !dimensions.totalSqFt) {
-            cost.pricePerSqFt = "Unable to calculate - property size not available";
+        if (!dimensions || !dimensions.totalSqM) {
+            cost.pricePerSqM = "Unable to calculate - property size not available";
         } else {
-            cost.pricePerSqFt = "Unable to calculate - price format not recognized";
+            cost.pricePerSqM = "Unable to calculate - price format not recognized";
         }
     }
 
