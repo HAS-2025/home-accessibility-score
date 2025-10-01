@@ -2012,13 +2012,17 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
                 }
             });
             
-            const durationMinutes = Math.ceil(leg.duration.value / 60);
-            
+            // Apply 1.4x adjustment factor for older adult walking speed (5.0 km/h → 3.4 km/h)
+            const durationMinutes = Math.ceil((leg.duration.value / 60) * 1.4);
+
+            // Debug: Show original vs adjusted time
+            console.log(`⏱️ Google says: ${Math.ceil(leg.duration.value / 60)} mins → Adjusted: ${durationMinutes} mins`);
+
             const result = {
                 distance: leg.distance.text,
                 duration: leg.duration.text,
                 durationMinutes: durationMinutes,
-                durationSeconds: leg.duration.value,
+                durationSeconds: Math.round(leg.duration.value * 1.4), // Adjusted for slower walking speed
                 distanceMeters: leg.distance.value,
                 routeWarnings: [...new Set(routeWarnings)],
                 routeFeatures: routeFeatures,
@@ -2029,10 +2033,10 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
             };
             
             console.log(`Walking route analysis complete:`, {
-                time: result.duration,
-                distance: result.distance,
-                accessibility: result.accessibilityScore
-            });
+            time: `${result.durationMinutes} mins (adjusted)`,  // ✅ Shows adjusted time
+            distance: result.distance,
+            accessibility: result.accessibilityScore
+});
             
             return result;
         }
@@ -2062,14 +2066,19 @@ function calculateRouteAccessibilityScore(features, durationMinutes) {
 function generateAccessibilityNotes(durationMinutes, features, warnings) {
     const notes = [];
     
+    // Updated descriptions to match new scoring bands
     if (durationMinutes <= 5) {
         notes.push("Excellent proximity - very manageable walk");
     } else if (durationMinutes <= 10) {
         notes.push("Good walking distance for most people");
+    } else if (durationMinutes <= 15) {
+        notes.push("Moderate walk - manageable for regular trips");
     } else if (durationMinutes <= 20) {
-        notes.push("Moderate walk - may require rest stops");
+        notes.push("Longer walk - may require rest stops");
+    } else if (durationMinutes <= 25) {
+        notes.push("Challenging walk - consider transport alternatives");
     } else {
-        notes.push("Long walk - consider transport alternatives");
+        notes.push("Very long walk - transport strongly recommended");
     }
     
     if (features.hasStairs) {
@@ -2097,11 +2106,13 @@ function generateAccessibilityNotes(durationMinutes, features, warnings) {
 function calculateGPProximityScore(durationMinutes, routeAccessibilityScore = null) {
     let baseScore;
     
+    // Updated scoring bands for adjusted walking times
     if (durationMinutes <= 5) baseScore = 5;
     else if (durationMinutes <= 10) baseScore = 4;
-    else if (durationMinutes <= 20) baseScore = 3;
-    else if (durationMinutes <= 30) baseScore = 2;
-    else baseScore = 1;
+    else if (durationMinutes <= 15) baseScore = 3;
+    else if (durationMinutes <= 20) baseScore = 2;
+    else if (durationMinutes <= 25) baseScore = 1;
+    else baseScore = 0;
     
     if (routeAccessibilityScore !== null) {
         const adjustedScore = (baseScore + routeAccessibilityScore) / 2;
@@ -2184,7 +2195,7 @@ async function findNearbyTransit(lat, lng, transitType) {
                     lng: place.location?.longitude
                 },
                 distance: calculateStraightLineDistance(lat, lng, place.location?.latitude, place.location?.longitude),
-                walkingTime: Math.round((calculateStraightLineDistance(lat, lng, place.location?.latitude, place.location?.longitude) * 1000) / 80), // 80m/min walking speed
+                walkingTime: Math.round((calculateStraightLineDistance(lat, lng, place.location?.latitude, place.location?.longitude) * 1000) / 57), // 57m/min walking speed
                 placeId: place.id
             })).sort((a, b) => a.distance - b.distance);
         }
@@ -3330,11 +3341,11 @@ async function analyzePropertyAccessibility(property) {
                 
                 if (route) {
                     gpProximity = {
-                        nearestGP: nearbyGPs[0].name,
-                        address: nearbyGPs[0].address,
-                        walkingTime: route.duration,
-                        distance: route.distance,
-                        score: calculateGPProximityScore(route.durationMinutes, route.accessibilityScore),
+                    nearestGP: nearbyGPs[0].name,
+                    address: nearbyGPs[0].address,
+                    walkingTime: `${route.durationMinutes} mins`,  // ✅ Now shows adjusted time
+                    distance: route.distance,
+                    score: calculateGPProximityScore(route.durationMinutes, route.accessibilityScore),
                         routeAccessibilityScore: route.accessibilityScore,
                         accessibilityNotes: route.accessibilityNotes,
                         warnings: route.routeWarnings,
@@ -3344,11 +3355,11 @@ async function analyzePropertyAccessibility(property) {
                         }))
                     };
                     
-                    console.log('GP proximity analysis complete:', {
-                        gp: gpProximity.nearestGP,
-                        time: gpProximity.walkingTime,
-                        score: gpProximity.score
-                    });
+                    console.log('GP proximity analysis complete:', { 
+                    gp: nearbyGPs[0].name,
+                    time: `${route.durationMinutes} mins (adjusted)`,
+                    score: gpProximity.score
+                });
                 } else {
                     gpProximity = {
                         nearestGP: nearbyGPs[0].name,
