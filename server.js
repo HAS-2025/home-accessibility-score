@@ -3522,6 +3522,63 @@ function calculateCouncilTaxScore(councilTaxBand) {
     }
 }
 
+// Calculate Price per Sq M Score based on percentile thresholds
+function calculatePricePerSqMScore(pricePerSqM) {
+    if (!pricePerSqM || typeof pricePerSqM !== 'number') {
+        return {
+            score: null,
+            rating: 'Unknown',
+            description: 'Price per square meter not available',
+            percentile: null
+        };
+    }
+    
+    let score, percentile, description;
+    
+    if (pricePerSqM <= 1963) {
+        score = 5;
+        percentile = '10th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 90% of properties on the market - excellent value.`;
+    } else if (pricePerSqM <= 2184) {
+        score = 4;
+        percentile = '25th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 75% of properties on the market - good value.`;
+    } else if (pricePerSqM <= 2507) {
+        score = 3;
+        percentile = '50th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 50% of properties on the market - average market value.`;
+    } else if (pricePerSqM <= 3622) {
+        score = 2;
+        percentile = '75th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is only cheaper than 25% of properties on the market - above average cost.`;
+    } else if (pricePerSqM <= 6015) {
+        score = 1;
+        percentile = '90th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is only cheaper than 10% of properties on the market - premium pricing.`;
+    } else {
+        score = 0;
+        percentile = '>90th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property costs more than 90% of properties on the market - very expensive.`;
+    }
+    
+    return {
+        score: score,
+        rating: getValueRating(score),
+        description: description,
+        percentile: percentile
+    };
+}
+
+// Helper function for value-based ratings
+function getValueRating(score) {
+    if (score >= 5) return 'Excellent value';
+    if (score >= 4) return 'Good value';
+    if (score >= 3) return 'Average value';
+    if (score >= 2) return 'Above average cost';
+    if (score >= 1) return 'Premium pricing';
+    return 'Very expensive';
+}
+
 // Get EPC rating from property data
 let epcRating = null;
 if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
@@ -3576,17 +3633,53 @@ const epcDetails = epcAnalysis.description;
 console.log('💷 Calculating council tax score...');
 const councilTaxAnalysis = calculateCouncilTaxScore(cost.councilTax);
 
-// Updated overall score calculation (5 categories now)
-// If council tax score is null (unknown), exclude it from the average
-let scoresToAverage = [gpProximity.score, epcScore, accessibleFeatures.score, publicTransport.score];
-let categoryCount = 4;
 
-if (councilTaxAnalysis.score !== null) {
-    scoresToAverage.push(councilTaxAnalysis.score);
-    categoryCount = 5;
+// Step 6c: Calculate Price Per Sq M Score
+console.log('💷 Calculating price per sq m score...');
+let pricePerSqMAnalysis = { score: null, rating: 'Unknown', description: 'Not available' };
+
+if (cost.pricePerSqM && !cost.pricePerSqM.includes('Unable')) {
+    // Extract numeric value from "£4,412 per sq m"
+    const priceMatch = cost.pricePerSqM.match(/£([\d,]+)/);
+    if (priceMatch) {
+        const priceNumber = parseInt(priceMatch[1].replace(/,/g, ''));
+        pricePerSqMAnalysis = calculatePricePerSqMScore(priceNumber);
+    }
 }
 
-const overallScore = scoresToAverage.reduce((sum, score) => sum + score, 0) / categoryCount;
+// Step 6d: Calculate combined Property Cost Score
+let propertyCostScore = null;
+let propertyCostRating = 'Unknown';
+
+if (councilTaxAnalysis.score !== null && pricePerSqMAnalysis.score !== null) {
+    // Both available - average them
+    propertyCostScore = (councilTaxAnalysis.score + pricePerSqMAnalysis.score) / 2;
+    propertyCostRating = getScoreRating(propertyCostScore);
+    console.log('💷 Property Cost: Both scores available, averaged');
+} else if (councilTaxAnalysis.score !== null) {
+    // Only council tax available - use it
+    propertyCostScore = councilTaxAnalysis.score;
+    propertyCostRating = getScoreRating(propertyCostScore);
+    console.log('💷 Property Cost: Using Council Tax score only');
+} else if (pricePerSqMAnalysis.score !== null) {
+    // Only price per sq m available - use it
+    propertyCostScore = pricePerSqMAnalysis.score;
+    propertyCostRating = getScoreRating(pricePerSqMAnalysis.score);
+    console.log('💷 Property Cost: Using Price/sq m score only');
+}
+
+
+// Updated overall score calculation (5 categories with Property Cost)
+let scoresToAverage = [gpProximity.score, epcScore, accessibleFeatures.score, publicTransport.score];
+
+if (propertyCostScore !== null) {
+    scoresToAverage.push(propertyCostScore);
+}
+
+const overallScore = scoresToAverage.reduce((sum, score) => sum + score, 0) / scoresToAverage.length;
+
+console.log('💷 Property Cost Score:', propertyCostScore);
+
 
 // Debug logging before summary generation
 console.log('📝 About to generate summary with:', {
@@ -3608,8 +3701,9 @@ try {
         epcScore, 
         accessibleFeatures, 
         publicTransport, 
-        cost, 
-        councilTaxAnalysis, 
+        cost,
+        councilTaxAnalysis,
+        pricePerSqMAnalysis,
         overallScore, 
         property.title, 
         property.epcRating, 
@@ -3664,6 +3758,20 @@ try {
             details: councilTaxAnalysis.description,
             band: cost.councilTax
         },
+        pricePerSqM: {
+            score: pricePerSqMAnalysis.score,
+            rating: pricePerSqMAnalysis.rating,
+            details: pricePerSqMAnalysis.description,
+            percentile: pricePerSqMAnalysis.percentile,
+            value: cost.pricePerSqM
+        },
+        propertyCost: {
+            score: propertyCostScore,
+            rating: propertyCostRating,
+            details: propertyCostScore !== null ? `Combined score from council tax and price per sq m` : 'Property cost information not available',
+            councilTaxRating: councilTaxAnalysis.rating,
+            pricePerSqMPercentile: pricePerSqMAnalysis.percentile
+        },
         dimensions: property.dimensions || null,
         cost: cost,
         overall: Math.round((overallScore || 0) * 10) / 10,
@@ -3672,7 +3780,7 @@ try {
 }
 
 // Add publicTransport parameter to the function
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, councilTaxAnalysis, overallScore, title, epcRating, location) {
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, councilTaxAnalysis, pricePerSqMAnalysis, overallScore, title, epcRating, location) {
     let summary = "";
     
     const accessibleFeaturesScore = accessibleFeatures.score || 0;
@@ -3819,6 +3927,40 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         const criticalMissing = missingFeatures.filter(f => f.critical);
         if (criticalMissing.length > 0) {
             summary += `Important accessibility considerations include the lack of ${criticalMissing.map(f => f.name).join(' and ')}, which may limit suitability for wheelchair users or those with significant mobility challenges. `;
+        }
+    }
+
+    // Additional cost considerations with enhanced context
+    if (cost) {
+        const costConsiderations = [];
+        
+        // Add council tax with descriptor - restructured for better flow
+        if (cost.councilTax && councilTaxAnalysis && councilTaxAnalysis.rating) {
+            const bandInfo = cost.councilTax.includes('Band') ? cost.councilTax : `Band ${cost.councilTax}`;
+            costConsiderations.push(`${councilTaxAnalysis.rating.toLowerCase()} council tax (${bandInfo})`);
+        }
+        
+        // Only add service charge if it exists and has actual info
+        if (cost.serviceCharge && !cost.serviceCharge.includes('Not mentioned') && !cost.serviceCharge.includes('No service charge')) {
+            costConsiderations.push(`service charges of ${cost.serviceCharge}`);
+        }
+        
+        // Only add ground rent if it exists and isn't "Ask agent"
+        if (cost.groundRent && !cost.groundRent.includes('Ask agent') && !cost.groundRent.includes('Peppercorn')) {
+            costConsiderations.push(`ground rent of ${cost.groundRent}`);
+        }
+        
+        if (costConsiderations.length > 0) {
+            summary += `Additional ongoing costs include ${costConsiderations.join(' and ')}. `;
+        }
+        
+        // Add price per sq m context as separate sentence
+        if (cost.pricePerSqM && pricePerSqMAnalysis && pricePerSqMAnalysis.description && !cost.pricePerSqM.includes('Unable')) {
+            summary += `${pricePerSqMAnalysis.description} `;
+        }
+        
+        if (cost.leaseholdInfo && !cost.leaseholdInfo.includes('Freehold')) {
+            summary += `The property is leasehold with ${cost.leaseholdInfo}. `;
         }
     }
     

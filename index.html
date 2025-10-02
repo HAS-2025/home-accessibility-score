@@ -1231,15 +1231,6 @@
                 <div class="score-description" id="publicTransportDescription"></div>
                 <div class="score-details" id="publicTransportDetails"></div>
             </div>
-                <div class="score-card">
-                <div class="score-header">
-                    <span class="score-icon">🏛️</span>
-                    <span class="score-title">Council Tax</span>
-                </div>
-                <div class="score-value" id="councilTaxScore"></div>
-                <div class="score-description" id="councilTaxDescription"></div>
-                <div class="score-details" id="councilTaxDetails"></div>
-            </div>
                 <div id="dimensionsCard" class="score-card" style="display: none;"></div>
                 <div id="costCard" class="score-card" style="display: none;"></div>
             </div>
@@ -1312,9 +1303,8 @@
             displayEPCRating(analysis.epcRating);
             displayAccessibleFeatures(analysis.accessibleFeatures);
             displayPublicTransport(analysis.publicTransport);
-            displayCouncilTax(analysis.councilTax);
             displayDimensions(analysis.dimensions);
-            displayCostAnalysis(analysis.cost);
+            displayCostAnalysis(analysis.cost, analysis.propertyCost);
             document.getElementById('summaryText').textContent = analysis.summary;
         }
 
@@ -1699,99 +1689,118 @@
             return '🏠'; // Default icon
         }
 
-        function displayCostAnalysis(cost) {
-            const costContainer = document.getElementById('costCard');
-            
-            if (!costContainer) {
-                console.error('Cost container #costCard not found in HTML');
-                return;
-            }
-            
-            // Show the card
-            costContainer.style.display = 'block';
-            
-            if (!cost) {
-                costContainer.innerHTML = `
-                    <div class="score-header">
-                        <span class="score-icon">💷</span>
-                        <span class="score-title">Property Costs</span>
-                    </div>
-                    <div class="score-description">Cost information not available</div>
-                `;
-                return;
-            }
+        function displayCostAnalysis(cost, propertyCost) {
+    const costContainer = document.getElementById('costCard');
+    
+    // Show the card
+    costContainer.style.display = 'block';
+    
+    if (!cost) {
+        costContainer.innerHTML = `
+            <div class="score-header">
+                <span class="score-icon">💷</span>
+                <span class="score-title">Property Costs</span>
+            </div>
+            <div class="score-description">Cost information not available</div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="score-header">
+            <span class="score-icon">💷</span>
+            <span class="score-title">Property Costs</span>
+            <span class="info-icon" onclick="alert('Property Cost score combines council tax band (scored 0-5) and price per square meter percentile (scored 0-5). Both factors help assess the ongoing affordability of the property.')">i</span>
+        </div>
+    
+        ${propertyCost && propertyCost.score !== null ? `
+            <div class="score-value ${propertyCost.rating.toLowerCase().replace(/ /g, '-')}">${propertyCost.rating}</div>
+        ` : ''}
         
-            let html = `
-                <div class="score-header">
-                    <span class="score-icon">💷</span>
-                    <span class="score-title">Property Costs</span>
+        <!-- Council Tax Section -->
+        <div class="dimension-transport-wrapper">
+            <div class="dimension-transport-section">
+                <div class="dimension-section-header">COUNCIL TAX</div>
+                <div class="dimension-size-display">
+                    <span class="dimension-primary-size">${cost.councilTax || 'Not specified'}</span>
+                    ${propertyCost && propertyCost.councilTaxRating ? `
+                        <span class="dimension-secondary-size" style="background-color: ${
+                            propertyCost.councilTaxRating.includes('Cheapest') || propertyCost.councilTaxRating.includes('Average band') ? '#d4edda' : 
+                            propertyCost.councilTaxRating.includes('Above average') ? '#fff3cd' : 
+                            '#f8d7da'
+                        }; color: ${
+                            propertyCost.councilTaxRating.includes('Cheapest') || propertyCost.councilTaxRating.includes('Average band') ? '#155724' : 
+                            propertyCost.councilTaxRating.includes('Above average') ? '#856404' : 
+                            '#721c24'
+                        }; padding: 0.25rem 0.5rem; border-radius: 4px;">
+                            ${propertyCost.councilTaxRating}
+                        </span>
+                    ` : ''}
                 </div>
-                
-                <!-- Property Price Section -->
-                <div class="dimension-transport-wrapper">
-                    <div class="dimension-transport-section">
-                        <div class="dimension-section-header">${cost.isRental ? 'MONTHLY RENTAL' : 'PROPERTY PRICE'}</div>
-                        <div class="dimension-size-display">
-                            <span class="dimension-primary-size">${cost.price || 'Price on application'}</span>
+            </div>
+        </div>
+        
+        
+        <!-- Price per Sq M Section -->
+        <div class="dimension-transport-wrapper">
+            <div class="dimension-transport-section">
+                <div class="dimension-section-header">PRICE PER SQ M</div>
+                <div class="dimension-size-display">
+                    <span class="dimension-primary-size">${cost.pricePerSqM || 'Unable to calculate'}</span>
+                    ${propertyCost && propertyCost.pricePerSqMPercentile ? `
+                        <span class="dimension-secondary-size" style="background-color: ${
+                            propertyCost.pricePerSqMPercentile === '10th' || propertyCost.pricePerSqMPercentile === '25th' ? '#d4edda' : 
+                            propertyCost.pricePerSqMPercentile === '50th' ? '#fff3cd' : 
+                            '#f8d7da'
+                        }; color: ${
+                            propertyCost.pricePerSqMPercentile === '10th' || propertyCost.pricePerSqMPercentile === '25th' ? '#155724' : 
+                            propertyCost.pricePerSqMPercentile === '50th' ? '#856404' : 
+                            '#721c24'
+                        }; padding: 0.25rem 0.5rem; border-radius: 4px;">
+                            Cheaper than ${propertyCost.pricePerSqMPercentile === '10th' ? '90%' : propertyCost.pricePerSqMPercentile === '25th' ? '75%' : propertyCost.pricePerSqMPercentile === '50th' ? '50%' : propertyCost.pricePerSqMPercentile === '75th' ? '25%' : propertyCost.pricePerSqMPercentile === '90th' ? '10%' : '0%'} of properties
+                        </span>
+                    ` : cost.pricePerSqMNote ? `
+                        <span class="dimension-secondary-size">${cost.pricePerSqMNote}</span>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="dimension-transport-wrapper">
+            <div class="dimension-transport-section">
+                <div class="dimension-section-header">ONGOING COSTS</div>
+                <div class="dimension-room-content">
+                    <div class="dimension-room-line">
+                        <span class="dimension-room-icon">🏢</span>
+                        <div class="cost-item">
+                            <span class="cost-label">Service Charge</span>
+                            <span class="cost-value">${cost.serviceCharge || 'Not mentioned'}</span>
+                        </div>
+                    </div>
+                    ${cost.groundRent ? `
+                        <div class="dimension-room-line">
+                            <span class="dimension-room-icon">🏡</span>
+                            <div class="cost-item">
+                                <span class="cost-label">Ground Rent</span>
+                                <span class="cost-value">${cost.groundRent}</span>
+                            </div>
+                        </div>
+                    ` : ''}
+                    <div class="dimension-room-line">
+                        <span class="dimension-room-icon">📋</span>
+                        <div class="cost-item">
+                            <span class="cost-label">Leasehold</span>
+                            <span class="cost-value">${cost.leaseholdInfo || 'Leasehold'}</span>
                         </div>
                     </div>
                 </div>
-        
-                <!-- Price per Sq M Section -->
-                <div class="dimension-transport-wrapper">
-                    <div class="dimension-transport-section">
-                        <div class="dimension-section-header">PRICE PER SQ M</div>
-                        <div class="dimension-size-display">
-                            <span class="dimension-primary-size">${cost.pricePerSqM || 'Unable to calculate'}</span>
-                            ${cost.pricePerSqMNote ? `
-                                <span class="dimension-secondary-size">${cost.pricePerSqMNote}</span>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
-        
-                <!-- Additional Costs Section -->
-                <div class="dimension-transport-wrapper">
-                    <div class="dimension-transport-section">
-                        <div class="dimension-section-header">ADDITIONAL COSTS</div>
-                        <div class="dimension-room-content">
-                            <div class="dimension-room-line">
-                                <span class="dimension-room-icon">🏛️</span>
-                                <div class="cost-item">
-                                    <span class="cost-label">Council Tax</span>
-                                    <span class="cost-value">${cost.councilTax || 'Not specified'}</span>
-                                </div>
-                            </div>
-                            <div class="dimension-room-line">
-                                <span class="dimension-room-icon">🏢</span>
-                                <div class="cost-item">
-                                    <span class="cost-label">Service Charge</span>
-                                    <span class="cost-value">${cost.serviceCharge || 'Not mentioned'}</span>
-                                </div>
-                            </div>
-                            ${cost.groundRent ? `
-                                <div class="dimension-room-line">
-                                    <span class="dimension-room-icon">🏡</span>
-                                    <div class="cost-item">
-                                        <span class="cost-label">Ground Rent</span>
-                                        <span class="cost-value">${cost.groundRent}</span>
-                                    </div>
-                                </div>
-                            ` : ''}
-                            <div class="dimension-room-line">
-                                <span class="dimension-room-icon">📋</span>
-                                <div class="cost-item">
-                                    <span class="cost-label">Leasehold</span>
-                                    <span class="cost-value">${cost.leaseholdInfo || 'Leasehold'}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                `;
-                
-                costContainer.innerHTML = html;
-        }
+            </div>
+        </div>
+    `;
+    
+    costContainer.innerHTML = html;
+}
         
         function displayPublicTransport(transport) {
             console.log('Displaying public transport data:', transport);
