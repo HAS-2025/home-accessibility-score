@@ -2872,6 +2872,80 @@ function calculatePricePerSqMScore(pricePerSqM) {
     };
 }
 
+/**
+ * Calculate UK Stamp Duty based on property price
+ */
+function calculateStampDuty(propertyPrice) {
+    if (!propertyPrice || propertyPrice <= 0) return null;
+    
+    let stampDuty = 0;
+    
+    if (propertyPrice <= 250000) {
+        stampDuty = 0;
+    } else if (propertyPrice <= 925000) {
+        stampDuty = (propertyPrice - 250000) * 0.05;
+    } else if (propertyPrice <= 1500000) {
+        stampDuty = (925000 - 250000) * 0.05 + (propertyPrice - 925000) * 0.10;
+    } else {
+        stampDuty = (925000 - 250000) * 0.05 + (1500000 - 925000) * 0.10 + (propertyPrice - 1500000) * 0.12;
+    }
+    
+    return Math.round(stampDuty);
+}
+
+/**
+ * Calculate Stamp Duty Score
+ */
+function calculateStampDutyScore(propertyPrice) {
+    const stampDuty = calculateStampDuty(propertyPrice);
+    
+    if (stampDuty === null) {
+        return {
+            score: null,
+            rating: 'Unknown',
+            description: 'Stamp duty information not available',
+            amount: null,
+            percentage: null
+        };
+    }
+    
+    let score, rating, description;
+    
+    if (stampDuty === 0) {
+        score = 5;
+        rating = 'Excellent';
+        description = 'No stamp duty payable';
+    } else if (stampDuty <= 10000) {
+        score = 4;
+        rating = 'Good';
+        description = 'Low stamp duty cost';
+    } else if (stampDuty <= 15000) {
+        score = 3;
+        rating = 'Fair';
+        description = 'Moderate stamp duty cost';
+    } else if (stampDuty <= 20000) {
+        score = 2;
+        rating = 'Poor';
+        description = 'High stamp duty cost';
+    } else if (stampDuty <= 25000) {
+        score = 1;
+        rating = 'Very Poor';
+        description = 'Very high stamp duty cost';
+    } else {
+        score = 0;
+        rating = 'Extremely Poor';
+        description = 'Extremely high stamp duty cost';
+    }
+    
+    return {
+        score,
+        rating,
+        description,
+        amount: stampDuty,
+        percentage: ((stampDuty / propertyPrice) * 100).toFixed(2)
+    };
+}
+
 // Helper function for value-based ratings
 function getValueRating(score) {
     if (score >= 5) return 'Excellent value';
@@ -2958,25 +3032,39 @@ if (cost.pricePerSqM && !cost.pricePerSqM.includes('Unable')) {
     }
 }
 
-// Step 6d: Calculate combined Property Cost Score
+// Step 6d: Calculate Stamp Duty Score
+console.log('💷 Calculating stamp duty score...');
+let stampDutyAnalysis = { score: null, rating: 'Unknown', description: 'Not available', amount: null, percentage: null };
+
+// Parse property price
+let propertyPriceNumber = null;
+if (property.price) {
+    const priceMatch = String(property.price).match(/[\d,]+/);
+    if (priceMatch) {
+        propertyPriceNumber = parseInt(priceMatch[0].replace(/,/g, ''));
+        stampDutyAnalysis = calculateStampDutyScore(propertyPriceNumber);
+    }
+}
+
+// Step 6e: Calculate combined Property Cost Score
 let propertyCostScore = null;
 let propertyCostRating = 'Unknown';
+const availableScores = [];
 
-if (councilTaxAnalysis.score !== null && pricePerSqMAnalysis.score !== null) {
-    // Both available - average them
-    propertyCostScore = (councilTaxAnalysis.score + pricePerSqMAnalysis.score) / 2;
+if (councilTaxAnalysis.score !== null) {
+    availableScores.push(councilTaxAnalysis.score);
+}
+if (pricePerSqMAnalysis.score !== null) {
+    availableScores.push(pricePerSqMAnalysis.score);
+}
+if (stampDutyAnalysis.score !== null) {
+    availableScores.push(stampDutyAnalysis.score);
+}
+
+if (availableScores.length > 0) {
+    propertyCostScore = availableScores.reduce((a, b) => a + b, 0) / availableScores.length;
     propertyCostRating = getScoreRating(propertyCostScore);
-    console.log('💷 Property Cost: Both scores available, averaged');
-} else if (councilTaxAnalysis.score !== null) {
-    // Only council tax available - use it
-    propertyCostScore = councilTaxAnalysis.score;
-    propertyCostRating = getScoreRating(propertyCostScore);
-    console.log('💷 Property Cost: Using Council Tax score only');
-} else if (pricePerSqMAnalysis.score !== null) {
-    // Only price per sq m available - use it
-    propertyCostScore = pricePerSqMAnalysis.score;
-    propertyCostRating = getScoreRating(pricePerSqMAnalysis.score);
-    console.log('💷 Property Cost: Using Price/sq m score only');
+    console.log(`💷 Property Cost: ${availableScores.length} score(s) available, averaged to ${propertyCostScore.toFixed(1)}`);
 }
 
 // Calculate room-based score
@@ -3145,12 +3233,21 @@ try {
             percentile: pricePerSqMAnalysis.percentile,
             value: cost.pricePerSqM
         },
+        stampDuty: {
+            score: stampDutyAnalysis.score,
+            rating: stampDutyAnalysis.score !== null ? getScoreRating(stampDutyAnalysis.score) : 'Unknown',
+            details: stampDutyAnalysis.description,
+            amount: stampDutyAnalysis.amount,
+            percentage: stampDutyAnalysis.percentage
+        },
         propertyCost: {
             score: propertyCostScore,
             rating: propertyCostRating,
-            details: propertyCostScore !== null ? `Combined score from council tax and price per sq m` : 'Property cost information not available',
+            details: propertyCostScore !== null ? `Combined score from council tax, price per sq m, and stamp duty` : 'Property cost information not available',
             councilTaxRating: councilTaxAnalysis.rating,
-            pricePerSqMPercentile: pricePerSqMAnalysis.percentile
+            pricePerSqMPercentile: pricePerSqMAnalysis.percentile,
+            stampDutyAmount: stampDutyAnalysis.amount,
+            stampDutyPercentage: stampDutyAnalysis.percentage
         },
         dimensions: property.dimensions || null,
         cost: cost,

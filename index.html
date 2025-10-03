@@ -1710,7 +1710,7 @@ function displayDimensions(dimensions, roomAccommodation) {
         <div class="score-header">
             <span class="score-icon">💷</span>
             <span class="score-title">Property Costs</span>
-            <span class="info-icon" onclick="alert('Property Cost score combines council tax band (scored 0-5) and price per square meter percentile (scored 0-5). Both factors help assess the ongoing affordability of the property.')">i</span>
+            <span class="info-icon" onclick="alert('Property Cost score combines council tax band (scored 0-5), price per square meter percentile (scored 0-5), and stamp duty (scored 0-5). All factors help assess the overall affordability of the property.')">i</span>
         </div>
     
         ${propertyCost && propertyCost.score !== null ? `
@@ -1765,6 +1765,31 @@ function displayDimensions(dimensions, roomAccommodation) {
                 </div>
             </div>
         </div>
+
+        <!-- Stamp Duty Section -->
+        ${propertyCost && propertyCost.stampDutyAmount !== null ? `
+            <div class="dimension-transport-wrapper">
+                <div class="dimension-transport-section">
+                    <div class="dimension-section-header">STAMP DUTY</div>
+                    <div class="dimension-size-display">
+                        <span class="dimension-primary-size">£${propertyCost.stampDutyAmount.toLocaleString()}</span>
+                        <span class="dimension-secondary-size" style="background-color: ${
+                            propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? '#d4edda' : 
+                            propertyCost.stampDutyAmount <= 20000 ? '#fff3cd' : 
+                            '#f8d7da'
+                        }; color: ${
+                            propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? '#155724' : 
+                            propertyCost.stampDutyAmount <= 20000 ? '#856404' : 
+                            '#721c24'
+                        }; padding: 0.25rem 0.5rem; border-radius: 4px;">
+                            ${propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? 'Low cost' : 
+                            propertyCost.stampDutyAmount <= 20000 ? 'Medium cost' : 
+                            'High cost'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        ` : ''}
 
         
         <div class="dimension-transport-wrapper">
