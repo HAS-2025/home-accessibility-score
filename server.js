@@ -576,255 +576,17 @@ Be conservative - only say BALCONY_FOUND if you're confident.`;
     }
 }
 
-// Add this validation function for floor plan analysis (similar to EPC validation)
-function validateFloorPlanResponse(visionText) {
-    console.log('🔍 Validating floor plan response:', visionText);
-    
-    const rooms = [];
-    
-    // Try to extract room information from the structured response
-    const roomMatches = [...visionText.matchAll(/Room\s+\d+:\s*(.+?)(?:\n|Dimensions)/gi)];
-    const dimensionMatches = [...visionText.matchAll(/Dimensions\s+\d+:\s*(.+?)(?:\n|Room|$)/gi)];
-    
-    console.log(`🔍 Found ${roomMatches.length} room labels, ${dimensionMatches.length} dimension sets`);
-    
-    for (let i = 0; i < roomMatches.length; i++) {
-        const roomLabel = roomMatches[i][1].trim();
-        const dimensionText = dimensionMatches[i] ? dimensionMatches[i][1].trim() : null;
-        
-        if (roomLabel && roomLabel !== 'null' && roomLabel !== 'undefined') {
-            // Determine room type from label
-            let roomType = 'room'; // default
-            const labelLower = roomLabel.toLowerCase();
-            
-            if (labelLower.includes('bedroom')) roomType = 'bedroom';
-            else if (labelLower.includes('kitchen') || labelLower.includes('reception') || labelLower.includes('dining')) roomType = 'reception';
-            else if (labelLower.includes('bathroom') || labelLower.includes('shower')) roomType = 'bathroom';
-            else if (labelLower.includes('terrace') || labelLower.includes('balcony')) roomType = 'terrace';
-            else if (labelLower.includes('storage') || labelLower.includes('utility')) roomType = 'storage';
-            
-            // Parse dimensions if available
-            let dimensions = null;
-            if (dimensionText && dimensionText !== 'No dimensions visible' && !dimensionText.includes('not visible')) {
-                // Extract imperial and metric dimensions
-                const imperialMatch = dimensionText.match(/(\d+['\"]\d*[\"']?\s*x\s*\d+['\"]\d*[\"']?)/i);
-                const metricMatch = dimensionText.match(/(\d+\.\d+\s*x\s*\d+\.\d+m?)/i);
-                
-                if (imperialMatch || metricMatch) {
-                    dimensions = {
-                        imperial: imperialMatch ? imperialMatch[1] : null,
-                        metric: metricMatch ? metricMatch[1] : null,
-                        area_sqft: null,
-                        area_sqm: null
-                    };
-                }
-            }
-            
-            rooms.push({
-                type: roomType,
-                display: roomLabel,
-                count: 1,
-                dimensions: dimensions
-            });
-            
-            console.log(`✅ Parsed room: ${roomLabel} (${roomType}) - Dimensions: ${dimensionText || 'none'}`);
-        }
-    }
-    
-    return { rooms };
-}
 
-// Update the floor plan analysis function to use validation
-async function analyzeFloorplanForRoomsWithValidation(floorplanUrl) {
-    console.log('🏠 Analyzing floor plan for room layout:', floorplanUrl);
-    
-    if (!process.env.CLAUDE_API_KEY) {
-        console.log('⚠️ No Claude API key available for floor plan room analysis');
-        return null;
-    }
-    
-    try {
-        // ... (use the updated prompt from the artifact above)
-        
-        const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 1000,
-            messages: [{
-                role: 'user',
-                content: [{
-                    type: 'text',
-                    text: prompt // from artifact above
-                }, {
-                    type: 'image',
-                    source: {
-                        type: 'base64',
-                        media_type: 'image/jpeg',
-                        data: await convertImageToBase64(floorplanUrl)
-                    }
-                }]
-            }]
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.CLAUDE_API_KEY,
-                'anthropic-version': '2023-06-01'
-            },
-            timeout: 20000
-        });
 
-        const analysisText = response.data.content[0].text.trim();
-        console.log('🏠 Floor plan room analysis result:', analysisText);
-        
-        // Try standard JSON parsing first
-        let roomData = null;
-        try {
-            const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                roomData = JSON.parse(jsonMatch[0]);
-                console.log('🏠 Standard JSON parsing successful');
-            }
-        } catch (parseError) {
-            console.log('🏠 Standard JSON parsing failed, trying validation approach...');
-        }
-        
-        // If standard parsing fails, use validation function
-        if (!roomData || !roomData.rooms || roomData.rooms.length === 0) {
-            console.log('🏠 Using validation function to parse response...');
-            roomData = validateFloorPlanResponse(analysisText);
-        }
-        
-        if (roomData && roomData.rooms && roomData.rooms.length > 0) {
-            console.log('🏠 Parsed room data:', roomData);
-            return roomData;
-        } else {
-            console.log('🏠 No valid room data found in response');
-            return null;
-        }
-        
-    } catch (error) {
-        console.log('🏠 Floor plan room analysis failed:', error.message);
-        return null;
-    }
-}
-
-// Add this function near your existing analyzeFloorplanForBalcony function
-
-async function analyzeFloorplanForRooms(floorplanUrl) {
-    console.log('🏠 Analyzing floor plan for room layout:', floorplanUrl);
-    
-    if (!process.env.CLAUDE_API_KEY) {
-        console.log('⚠️ No Claude API key available for floor plan room analysis');
-        return null;
-    }
-    
-    try {
-        const prompt = `Analyze this UK property floor plan and read ALL labeled text exactly as shown.
-
-CRITICAL: Read the EXACT labels and dimensions from the image:
-- Look for room labels like "Kitchen/Reception/Dining", "Bedroom 1", "Bedroom 2"
-- Look for outdoor spaces like "Roof Terrace", "Balcony", "Garden"  
-- Look for storage areas labeled "Storage"
-- Read dimensions EXACTLY as written (like "30'8 (9.35)max x 24'4 (7.42)max")
-
-SPACES TO IDENTIFY:
-1. Kitchen/Reception/Dining areas (large main living space)
-2. All Bedrooms (Bedroom 1, Bedroom 2, etc.)
-3. Bathrooms (main bathroom, not tiny WCs)
-4. Storage rooms (if labeled)
-5. Outdoor spaces (Roof Terrace, Balcony)
-
-RESPOND EXACTLY IN THIS FORMAT:
-Room 1: [EXACT LABEL FROM FLOOR PLAN]
-Dimensions 1: [EXACT DIMENSIONS AS WRITTEN] 
-Room 2: [EXACT LABEL FROM FLOOR PLAN]
-Dimensions 2: [EXACT DIMENSIONS AS WRITTEN]
-Room 3: [EXACT LABEL FROM FLOOR PLAN]
-Dimensions 3: [EXACT DIMENSIONS AS WRITTEN]
-(continue for all rooms found)
-
-Then provide JSON:
-{
-  "rooms": [
-    {
-      "type": "reception",
-      "display": "Kitchen/Reception/Dining Room",
-      "count": 1,
-      "dimensions": {
-        "imperial": "30'8 x 24'4",
-        "metric": "9.35m x 7.42m",
-        "area_sqft": null,
-        "area_sqm": null
-      }
-    }
-  ]
-}
-
-Read EVERYTHING visible on the floor plan, including outdoor spaces.`;
-
-        const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 1000,
-            messages: [{
-                role: 'user',
-                content: [{
-                    type: 'text',
-                    text: prompt
-                }, {
-                    type: 'image',
-                    source: {
-                        type: 'base64',
-                        media_type: 'image/jpeg',
-                        data: await convertImageToBase64(floorplanUrl)
-                    }
-                }]
-            }]
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.CLAUDE_API_KEY,
-                'anthropic-version': '2023-06-01'
-            },
-            timeout: 20000
-        });
-
-        const analysisText = response.data.content[0].text.trim();
-        console.log('🏠 Floor plan room analysis result:', analysisText);
-        
-        // Parse the JSON response
-        try {
-            const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                const roomData = JSON.parse(jsonMatch[0]);
-                console.log('🏠 Parsed room data:', roomData);
-                return roomData;
-            } else {
-                console.log('🏠 No JSON found in floor plan response');
-                return null;
-            }
-        } catch (parseError) {
-            console.log('🏠 Failed to parse floor plan room JSON:', parseError.message);
-            return null;
-        }
-        
-    } catch (error) {
-        console.log('🏠 Floor plan room analysis failed:', error.message);
-        return null;
-    }
-}
-
-// ✅ DIMENSIONS EXTRACTION
-async function extractDimensions(propertyDescription, title, features, floorplan) {
+async function extractDimensions(propertyDescription, title, features) {
     console.log('📐 Extracting property dimensions...');
     
     let dimensions = {
         totalSqFt: null,
-        totalSqM: null,
-        rooms: [],
-        roomTypes: []
+        totalSqM: null
     };
     
     const fullText = `${title} ${propertyDescription} ${features.join(' ')}`.toLowerCase();
-    console.log('📐 Full text for room analysis (first 1000 chars):', fullText.substring(0, 1000));
     
     // Extract total square footage
     const sqftPatterns = [
@@ -865,474 +627,15 @@ async function extractDimensions(propertyDescription, title, features, floorplan
         dimensions.totalSqFt = Math.round(dimensions.totalSqM * 10.764);
     }
     
-    // Extract individual room dimensions
-    const roomDimensionPatterns = [
-        /(\w+(?:\s+\w+)*)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)\s*(?:ft|m)/gi,
-        /(\w+(?:\s+\w+)*)\s*[:\-]?\s*(\d+(?:\.\d+)?)\s*[x×]\s*(\d+(?:\.\d+)?)/gi
-    ];
-    
-    for (const pattern of roomDimensionPatterns) {
-        const matches = [...fullText.matchAll(pattern)];
-        
-        for (const match of matches) {
-            const roomName = match[1].trim();
-            const length = parseFloat(match[2]);
-            const width = parseFloat(match[3]);
-            
-            // Skip if dimensions seem unrealistic
-            if (length > 0 && width > 0 && length < 50 && width < 50) {
-                const sqft = Math.round(length * width);
-                
-                dimensions.rooms.push({
-                    name: roomName,
-                    length,
-                    width,
-                    sqft,
-                    dimensions: `${length} × ${width}`
-                });
-                
-                console.log(`📐 Found room: ${roomName} - ${length} × ${width} (${sqft} sq ft)`);
-            }
-        }
-    }
-    
-    // Extract room types and counts - ENHANCED VERSION
-    const roomTypePatterns = {
-        bedrooms: /(\d+)\s*bed(?:room)?s?/i,
-        bathrooms: /(\d+)\s*bath(?:room)?s?/i,
-        receptions: /(\d+)\s*reception\s*rooms?/i,
-        livingRooms: /(\d+)?\s*(?:living\s*room|lounge|sitting\s*room)s?/i,
-        kitchens: /(\d+)?\s*kitchen(?:ette)?s?/i,
-        diningRooms: /(\d+)?\s*dining\s*rooms?/i,
-        studies: /(\d+)?\s*(?:study|studies|office)s?/i,
-        conservatories: /(\d+)?\s*conservator(?:y|ies)/i,
-        utilities: /(\d+)?\s*utility\s*rooms?/i,
-        cloakrooms: /(\d+)?\s*(?:cloakroom|downstairs\s*wc|powder\s*room)s?/i
-    };
-    
-    for (const [type, pattern] of Object.entries(roomTypePatterns)) {
-        const match = fullText.match(pattern);
-        if (match) {
-            // For rooms that might not have a number (like "kitchen"), default to 1
-            let count = match[1] ? parseInt(match[1]) : 1;
-            
-            // Skip if count is 0 or invalid
-            if (count > 0 && count <= 10) { // Reasonable limit
-                let displayName;
-                switch(type) {
-                    case 'bedrooms':
-                        displayName = count === 1 ? 'bedroom' : 'bedrooms';
-                        break;
-                    case 'bathrooms':
-                        displayName = count === 1 ? 'bathroom' : 'bathrooms';
-                        break;
-                    case 'receptions':
-                        displayName = count === 1 ? 'reception room' : 'reception rooms';
-                        break;
-                    case 'livingRooms':
-                        displayName = count === 1 ? 'living room' : 'living rooms';
-                        break;
-                    case 'kitchens':
-                        displayName = count === 1 ? 'kitchen' : 'kitchens';
-                        break;
-                    case 'diningRooms':
-                        displayName = count === 1 ? 'dining room' : 'dining rooms';
-                        break;
-                    case 'studies':
-                        displayName = count === 1 ? 'study' : 'studies';
-                        break;
-                    case 'conservatories':
-                        displayName = count === 1 ? 'conservatory' : 'conservatories';
-                        break;
-                    case 'utilities':
-                        displayName = count === 1 ? 'utility room' : 'utility rooms';
-                        break;
-                    case 'cloakrooms':
-                        displayName = count === 1 ? 'cloakroom' : 'cloakrooms';
-                        break;
-                    default:
-                        displayName = type;
-                }
-                
-                dimensions.roomTypes.push({
-                    type: type.replace(/s$/, ''), // Remove trailing 's'
-                    count: count,
-                    display: displayName
-                });
-                
-                console.log(`📐 Found room type: ${count} ${displayName}`);
-            }
-        }
-    }        
-            
-    // Extract all property spaces (outdoor, utility, and storage spaces)
-    const propertySpacePatterns = {
-        balcony: /balcony|balconies/i,
-        terrace: /terrace/i,
-        patio: /patio/i,
-        garden: /private\s*garden|own\s*garden|rear\s*garden|front\s*garden|enclosed\s*garden|garden\s*flat|garden\s*apartment/i,
-        courtyard: /courtyard/i,
-        roof_terrace: /roof\s*terrace/i,
-        garage: /garage/i,
-        parking: /parking\s*space|car\s*park|allocated\s*parking|designated\s*parking/i,
-        storage: /storage\s*room|storage\s*space|storage\s*cupboard/i,
-        basement: /basement|cellar/i,
-        attic: /attic|loft\s*space/i,
-        shed: /shed|outbuilding/i,
-        gym: /private\s*gym|home\s*gym|personal\s*gym/i,
-        wine_cellar: /wine\s*cellar/i,
-        laundry: /laundry\s*room/i,
-        utility: /utility\s*room|utility\s*cupboard/i
-    };
-    
-    Object.entries(propertySpacePatterns).forEach(([spaceType, pattern]) => {
-        if (fullText.match(pattern)) {
-            const alreadyExists = dimensions.roomTypes.some(room => room.type === spaceType);
-            
-            if (!alreadyExists) {
-                // Filter out communal facilities
-                const communalTerms = /communal|shared|onsite|residents|development|complex|building|site/i;
-                const patternMatch = fullText.search(pattern);
-                const context = fullText.substring(Math.max(0, patternMatch - 100), patternMatch + 100);
-                
-                // Skip if it's clearly communal (especially for garden and gym)
-                if ((spaceType === 'garden' || spaceType === 'gym') && context.match(communalTerms)) {
-                    console.log(`📐 Skipping communal ${spaceType} (context: "${context.substring(0, 50)}...")`);
-                    return;
-                }
-                
-                let displayName = spaceType.replace('_', ' ');
-                dimensions.roomTypes.push({
-                    type: spaceType,
-                    count: 1,
-                    display: displayName
-                });
-                console.log(`📐 Found property space: ${displayName}`);
-            }
-        }
-    });
-
-    // FLOOR PLAN FALLBACK FOR MISSING ROOM INFORMATION
-    console.log('📐 Checking if floor plan analysis needed...');
-    console.log('📐 Current room types found:', dimensions.roomTypes.length);
-    
-    // Always analyze floor plan for room dimensions if available
-    if (floorplan && !dimensions.floorplanAnalyzed) {
-        console.log('📐 Limited room info detected, analyzing floor plan for rooms...');
-        dimensions.floorplanAnalyzed = true; // Set flag to prevent re-analysis
-        
-        try {
-            console.log('📐 Analyzing all available floor plans with confidence scoring...');
-            
-            const floorplanAttempts = [];
-            
-            // Try first floor plan
-            console.log('📐 Analyzing first floor plan...');
-            const firstAttempt = await analyzeFloorplanForRooms(floorplan);
-            if (firstAttempt) {
-                const confidence = calculateFloorPlanConfidence(firstAttempt);
-                floorplanAttempts.push({
-                    source: 'FLP_00 (first)',
-                    data: firstAttempt,
-                    confidence: confidence,
-                    roomCount: firstAttempt.rooms?.length || 0
-                });
-            }
-            
-            // Try second floor plan
-            console.log('📐 Analyzing second floor plan...');
-            const secondFloorplan = floorplan.replace('FLP_00', 'FLP_01');
-            const secondAttempt = await analyzeFloorplanForRooms(secondFloorplan);
-            if (secondAttempt) {
-                const confidence = calculateFloorPlanConfidence(secondAttempt);
-                floorplanAttempts.push({
-                    source: 'FLP_01 (second)', 
-                    data: secondAttempt,
-                    confidence: confidence,
-                    roomCount: secondAttempt.rooms?.length || 0
-                });
-            }
-            
-            // Log all attempts
-            floorplanAttempts.forEach((attempt, index) => {
-                console.log(`📐 Floor plan ${index + 1} (${attempt.source}):`);
-                console.log(`   Rooms found: ${attempt.roomCount}`);
-                console.log(`   Confidence: ${attempt.confidence}/100`);
-            });
-            
-            // Select best floor plan based on confidence + room count
-            let selectedAttempt = null;
-            if (floorplanAttempts.length > 0) {
-                // Sort by confidence first, then by room count
-                floorplanAttempts.sort((a, b) => {
-                    const confidenceDiff = b.confidence - a.confidence;
-                    if (Math.abs(confidenceDiff) < 15) { // If confidence is close (within 15 points)
-                        return b.roomCount - a.roomCount; // Prefer more rooms
-                    }
-                    return confidenceDiff; // Otherwise prefer higher confidence
-                });
-                
-                selectedAttempt = floorplanAttempts[0];
-                console.log(`✅ Selected floor plan: ${selectedAttempt.source}`);
-                console.log(`   Final confidence: ${selectedAttempt.confidence}/100`);
-                console.log(`   Final room count: ${selectedAttempt.roomCount}`);
-                
-                // Only use if confidence is acceptable
-                if (selectedAttempt.confidence >= 50) {
-                    dimensions = processFloorPlanResults(selectedAttempt.data, dimensions);
-                } else {
-                    console.log(`⚠️ Floor plan confidence too low (${selectedAttempt.confidence}/100), skipping floor plan analysis`);
-                }
-            } else {
-                console.log('❌ No valid floor plan analysis results');
-            }
-            
-        } catch (error) {
-            console.log('📐 Floor plan analysis failed:', error.message);
-        }
-    } // ← ADD THIS: closes the if (floorplan && !dimensions.floorplanAnalyzed)
-
-    // Remove individual rooms if open plan space detected
-    const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
-    if (hasOpenPlan) {
-        console.log('📐 Open plan space detected, removing duplicate individual rooms...');
-        // Remove individual kitchen, living, dining if open plan exists
-        dimensions.roomTypes = dimensions.roomTypes.filter(room => 
-            !['kitchen', 'livingRoom', 'diningRoom'].includes(room.type) || room.type === 'openPlan'
-        );
-        console.log('📐 Removed individual rooms in favor of open plan space');
-    }
-    
-    // Conservative consolidation - only combine when there's clear textual evidence
-    const detectedRooms = dimensions.roomTypes.filter(room => 
-        ['kitchen', 'livingRoom', 'diningRoom'].includes(room.type)
-    );
-    
-    // Only consolidate if we have 2 or more of these room types AND clear evidence of combination
-    if (detectedRooms.length >= 2 && !dimensions.roomTypes.some(room => room.type === 'openPlan')) {
-        // Check if the text suggests these are truly combined
-        const combinedSpaceIndicators = [
-            /open[- ]plan/i,
-            /kitchen[\/\-\s]*living/i,
-            /living[\/\-\s]*kitchen/i,
-            /kitchen[\/\-\s]*dining/i,
-            /dining[\/\-\s]*kitchen/i,
-            /kitchen[\/\-\s]*diner/i,
-            /living[\/\-\s]*dining/i,
-            /dining[\/\-\s]*living/i,
-            /kitchen[\/\-\s]*living[\/\-\s]*dining/i,
-            /living[\/\-\s]*kitchen[\/\-\s]*dining/i,
-            /reception[\/\-\s]*kitchen/i,
-            /kitchen[\/\-\s]*reception/i
-        ];
-        
-        const hasCombinedIndicator = combinedSpaceIndicators.some(pattern => 
-            fullText.match(pattern)
-        );
-        
-        // Only consolidate if we have clear textual evidence of combination
-        if (hasCombinedIndicator) {
-            const roomsToConsolidate = detectedRooms.map(room => room.type);
-            console.log(`📐 Found evidence of combined space, consolidating: ${roomsToConsolidate.join('/')}`);
-            
-            // Remove the individual rooms that are being consolidated
-            dimensions.roomTypes = dimensions.roomTypes.filter(room => 
-                !roomsToConsolidate.includes(room.type)
-            );
-            
-            // Create display name based on detected rooms
-            const displayParts = [];
-            if (roomsToConsolidate.includes('kitchen')) displayParts.push('kitchen');
-            if (roomsToConsolidate.includes('livingRoom')) displayParts.push('living');
-            if (roomsToConsolidate.includes('diningRoom')) displayParts.push('dining');
-            
-            // Add consolidated open plan room
-            dimensions.roomTypes.push({
-                type: 'openPlan',
-                count: 1,
-                display: `open plan ${displayParts.join('/')}`
-            });
-            
-            console.log(`📐 Consolidated into: open plan ${displayParts.join('/')}`);
-        } else {
-            console.log('📐 Multiple main rooms found but no evidence of combination - keeping separate');
-        }
-    }
-    
-    // Check for combined spaces when no individual rooms were detected
-    const combinedPatterns = [
-        /open[- ]plan/i,
-        /kitchen[\/\-\s]*(?:living|diner|dining)/i,
-        /living[\/\-\s]*(?:kitchen|dining)/i,
-        /kitchen[\/\-\s]*diner/i
-    ];
-    
-    for (const pattern of combinedPatterns) {
-        if (fullText.match(pattern)) {
-            // Add open plan living space if no rooms detected yet
-            const hasLiving = dimensions.roomTypes.some(room => room.type === 'livingRoom');
-            const hasKitchen = dimensions.roomTypes.some(room => room.type === 'kitchen');
-            const hasOpenPlan = dimensions.roomTypes.some(room => room.type === 'openPlan');
-            
-            if (!hasLiving && !hasKitchen && !hasOpenPlan) {
-                dimensions.roomTypes.push({
-                    type: 'openPlan',
-                    count: 1,
-                    display: 'open plan living/kitchen'
-                });
-                console.log('📐 Found combined space: open plan living/kitchen');
-            }
-            break;
-        }
-    }
-    
     console.log('📐 Dimension extraction complete:', {
         totalSqFt: dimensions.totalSqFt,
-        totalSqM: dimensions.totalSqM,
-        roomCount: dimensions.rooms.length,
-        roomTypes: dimensions.roomTypes.length
+        totalSqM: dimensions.totalSqM
     });
     
     return dimensions;
-} // ← This was already there - closes the main extractDimensions function
-
-// Calculate confidence score based on multiple factors
-function calculateFloorPlanConfidence(roomData) {
-    if (!roomData) return 0;
-    
-    let confidence = 70; // Start with baseline confidence
-    
-    // Adjust based on data quality indicators
-    const rooms = roomData.rooms || [];
-    
-    // Penalty for too few rooms (likely missed some)
-    if (rooms.length < 4) {
-        confidence -= 20;
-        console.log('   📉 Confidence reduced: Too few rooms detected');
-    }
-    
-    // Bonus for reasonable room count
-    if (rooms.length >= 5 && rooms.length <= 7) {
-        confidence += 10;
-        console.log('   📈 Confidence boost: Good room count');
-    }
-    
-    // Bonus for having dimensions
-    const roomsWithDimensions = rooms.filter(room => 
-        room.dimensions && (room.dimensions.imperial || room.dimensions.metric)
-    );
-    
-    if (roomsWithDimensions.length === rooms.length) {
-        confidence += 15;
-        console.log('   📈 Confidence boost: All rooms have dimensions');
-    } else if (roomsWithDimensions.length === 0) {
-        confidence -= 25;
-        console.log('   📉 Confidence reduced: No room dimensions found');
-    }
-    
-    // Bonus for finding outdoor spaces (roof terrace, balcony)
-    const hasOutdoorSpace = rooms.some(room => 
-        room.type === 'outdoor' || 
-        room.display.toLowerCase().includes('terrace') ||
-        room.display.toLowerCase().includes('balcony')
-    );
-    
-    if (hasOutdoorSpace) {
-        confidence += 10;
-        console.log('   📈 Confidence boost: Outdoor space detected');
-    }
-    
-    return Math.max(0, Math.min(100, confidence));
 }
 
-// Updated function to process floor plan results with dimensions
-// Updated function to process floor plan results with dimensions
-function processFloorPlanResults(floorplanRoomAnalysis, dimensions) {
-    if (floorplanRoomAnalysis && floorplanRoomAnalysis.rooms) {
-        console.log('📐 Floor plan analysis successful, replacing room data with detailed floor plan results...');
-        
-        // Clear existing room types since we have detailed floor plan data
-        dimensions.roomTypes = [];
-        
-        // Process each room from floor plan
-        floorplanRoomAnalysis.rooms.forEach(room => {
-            // Add room type with exact display name from floor plan
-            dimensions.roomTypes.push({
-                type: room.type,
-                count: room.count || 1,
-                display: room.display, // Use exact label from floor plan
-                source: 'floorplan'
-            });
-            console.log(`📐 Added from floor plan: ${room.display}`);
-        });
-        
-        // Process dimensions if available
-        const roomsWithDimensions = floorplanRoomAnalysis.rooms.filter(room => 
-            room.dimensions && room.dimensions !== null
-        );
-        
-        if (roomsWithDimensions.length > 0) {
-            console.log('📐 Found rooms with dimensions from floor plan...');
-            
-            // Add to dimensions.rooms array for detailed display
-            roomsWithDimensions.forEach(room => {
-                if (room.dimensions) {
-                    const roomDimension = {
-                        name: room.display, // Use exact label from floor plan
-                        type: room.type,
-                        imperial: room.dimensions.imperial || null,
-                        metric: room.dimensions.metric || null,
-                        area_sqft: room.dimensions.area_sqft || null,
-                        area_sqm: room.dimensions.area_sqm || null
-                    };
-                    
-                    // Create dimensions string for display
-                    if (room.dimensions.imperial) {
-                        roomDimension.dimensions = room.dimensions.imperial;
-                        
-                        // Calculate area if dimensions available
-                        const area = calculateAreaFromDimensions(room.dimensions.imperial);
-                        if (area) {
-                            roomDimension.sqft = area;
-                        }
-                    } else if (room.dimensions.metric) {
-                        roomDimension.dimensions = room.dimensions.metric;
-                    }
-                    
-                    dimensions.rooms.push(roomDimension);
-                    console.log(`📐 Added dimensions for ${room.display}: ${roomDimension.dimensions}`);
-                }
-            });
-        }
-        
-        console.log('📐 Using detailed floor plan data instead of text-based room detection');
-    }
-    
-    return dimensions;
-}
 
-// Helper function to calculate area from dimension string
-function calculateAreaFromDimensions(dimensionString) {
-    // Parse dimensions like "13'1" x 7'6"" or "14'0" x 11'1""
-    const match = dimensionString.match(/(\d+)'(\d+)"\s*x\s*(\d+)'(\d+)"/);
-    if (match) {
-        const feet1 = parseInt(match[1]);
-        const inches1 = parseInt(match[2]);
-        const feet2 = parseInt(match[3]);
-        const inches2 = parseInt(match[4]);
-        
-        const totalInches1 = (feet1 * 12) + inches1;
-        const totalInches2 = (feet2 * 12) + inches2;
-        
-        // Convert to feet and calculate area
-        const length = totalInches1 / 12;
-        const width = totalInches2 / 12;
-        
-        return Math.round(length * width);
-    }
-    
-    return null;
-}
 
 function analyzeCostInformation(property, dimensions) {
     console.log('💷 DEBUG: Dimensions received:', dimensions);
@@ -3304,7 +2607,7 @@ if (epcResult && epcResult.rating) {
             coordinates: coordinates,
             tenure: tenure,
             leaseholdDetails: leaseholdDetails,
-            dimensions: await extractDimensions(description, title, features, floorplan)
+            dimensions: await extractDimensions(description, title, features)
         };
 
     } catch (error) {
@@ -3624,6 +2927,14 @@ const epcDetails = epcAnalysis.description;
     console.log('📐 Analyzing property dimensions...');
     const dimensions = property.dimensions || null;
 
+    // Step 5b: Calculate Room Score
+    console.log('🏠 Calculating room accommodation score...');
+    const roomScore = calculateRoomScore(property);
+    console.log(`🏠 Room Score: ${roomScore.rawScore}/${roomScore.maxPossible} → ${roomScore.score}/5`);
+    console.log('✅ Rooms found:', roomScore.roomsFound);
+
+    
+
     // ADD THIS NEW STEP 6:
     // Step 6: NEW - Analyze Cost Information
     console.log('💷 Analyzing cost information...');
@@ -3668,9 +2979,72 @@ if (councilTaxAnalysis.score !== null && pricePerSqMAnalysis.score !== null) {
     console.log('💷 Property Cost: Using Price/sq m score only');
 }
 
+// Calculate room-based score
+    function calculateRoomScore(property) {
+        let score = 0;
+        let foundRooms = [];
+        
+        const description = (property.description || '').toLowerCase();
+        const title = (property.title || '').toLowerCase();
+        const combinedText = `${title} ${description}`;
+        
+        // Kitchen or kitchen diner (1 point)
+        if (combinedText.includes('kitchen')) {
+            score += 1;
+            foundRooms.push('Kitchen or kitchen diner');
+        }
+        
+        // Living room - must be separate from kitchen (1 point)
+        if ((combinedText.includes('living room') || combinedText.includes('lounge') || combinedText.includes('reception')) 
+            && !combinedText.includes('open plan')) {
+            score += 1;
+            foundRooms.push('Living room (separate from kitchen)');
+        }
+        
+        // Bathroom/toilet 1 (1 point)
+        if (combinedText.includes('bathroom') || combinedText.includes('toilet') || combinedText.includes('wc')) {
+            score += 1;
+            foundRooms.push('Bathroom/toilet 1');
+        }
+        
+        // En suite including toilet (1 point)
+        if (combinedText.includes('en suite') || combinedText.includes('ensuite')) {
+            score += 1;
+            foundRooms.push('Bathroom/en suite including toilet 2');
+        }
+        
+        // Bedrooms from title
+        const bedroomMatch = title.match(/(\d+)\s*bedroom/);
+        if (bedroomMatch) {
+            const bedroomCount = parseInt(bedroomMatch[1]);
+            if (bedroomCount >= 1) {
+                score += 1;
+                foundRooms.push('Bedroom 1');
+            }
+            if (bedroomCount >= 2) {
+                score += 1;
+                foundRooms.push('Bedroom 2');
+            }
+            if (bedroomCount >= 3) {
+                foundRooms.push('Bedroom 3+ (no additional points)');
+            }
+        }
+        
+        
+        // Maximum score is 6, convert to 0-5 scale (each room worth 5/6 = 0.833...)
+        const finalScore = Math.round((score * (5 / 6)) * 10) / 10; // Round to 1 decimal
+        
+        return {
+            score: finalScore,
+            roomsFound: foundRooms,
+            rawScore: score,
+            maxPossible: 6
+        };
+    }
 
-// Updated overall score calculation (5 categories with Property Cost)
-let scoresToAverage = [gpProximity.score, epcScore, accessibleFeatures.score, publicTransport.score];
+
+// Updated overall score calculation (6 categories)
+let scoresToAverage = [gpProximity.score, epcScore, accessibleFeatures.score, publicTransport.score, roomScore.score];
 
 if (propertyCostScore !== null) {
     scoresToAverage.push(propertyCostScore);
@@ -3743,6 +3117,12 @@ try {
             details: `${accessibleFeatures.percentage}% - ${accessibleFeatures.score} out of 5 accessible features found`,
             features: accessibleFeatures.features || [],
             percentage: accessibleFeatures.percentage || 0
+        },
+        roomAccommodation: {
+            score: roomScore.score,
+            rating: getScoreRating(roomScore.score),
+            details: `${roomScore.rawScore}/${roomScore.maxPossible} essential rooms found`,
+            roomsFound: roomScore.roomsFound
         },
         // NEW: Public Transport
         publicTransport: {

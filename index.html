@@ -1303,7 +1303,7 @@
             displayEPCRating(analysis.epcRating);
             displayAccessibleFeatures(analysis.accessibleFeatures);
             displayPublicTransport(analysis.publicTransport);
-            displayDimensions(analysis.dimensions);
+            displayDimensions(analysis.dimensions, analysis.roomAccommodation);
             displayCostAnalysis(analysis.cost, analysis.propertyCost);
             document.getElementById('summaryText').textContent = analysis.summary;
         }
@@ -1444,81 +1444,81 @@
             document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
         }
         
-        // ✅ IMPROVED DIMENSIONS DISPLAY FUNCTION - VERTICAL LAYOUT
-        // Updated displayDimensions function using your existing CSS classes
-        function displayDimensions(dimensions) {
-            const dimensionsContainer = document.getElementById('dimensionsCard');
-            
-            if (!dimensionsContainer) {
-                console.error('Dimensions container #dimensionsCard not found in HTML');
-                return;
-            }
-            
-            // Show the card
-            dimensionsContainer.style.display = 'block';
-            
-            if (!dimensions) {
-                dimensionsContainer.innerHTML = `
-                    <div class="score-header">
-                        <span class="score-icon">📐</span>
-                        <span class="score-title">Property Dimensions</span>
-                        <span class="tooltip">
-                            <span class="info-icon">i</span>
-                            <span class="tooltiptext">
-                                <strong>AI-Generated Analysis</strong><br>
-                                Room dimensions are analyzed via AI and may vary from actual measurements. Please verify exact dimensions with the estate agent and refer to the official floor plan for precise measurements.
-                            </span>
-                        </span>
-                    </div>
-                    <div class="score-description">Dimension information not available</div>
-                `;
-                return;
-            }
+function displayDimensions(dimensions, roomAccommodation) {
+    const dimensionsContainer = document.getElementById('dimensionsCard');
+    
+    if (!dimensions || (!dimensions.totalSqM && !roomAccommodation)) {
+        dimensionsContainer.style.display = 'none';
+        return;
+    }
+    
+    dimensionsContainer.style.display = 'block';
+    
+    // Parse found rooms to determine actual room types
+    const foundRoomsList = roomAccommodation?.roomsFound || [];
+    
+    // Determine actual room configuration
+    const hasKitchen = foundRoomsList.some(r => r.toLowerCase().includes('kitchen'));
+    const hasLivingRoom = foundRoomsList.some(r => r.toLowerCase().includes('living room'));
+    const hasBathroom1 = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 1'));
+    const hasBathroom2 = foundRoomsList.some(r => r.toLowerCase().includes('en suite'));
+    const hasBedroom1 = foundRoomsList.some(r => r === 'Bedroom 1');
+    const hasBedroom2 = foundRoomsList.some(r => r === 'Bedroom 2');
+    
+    // Determine kitchen type based on living room presence
+    const kitchenName = hasLivingRoom ? 'Kitchen' : 'Kitchen/diner';
+    const livingRoomName = 'Separate living room';
+    
+    const roomStatus = [
+        { name: kitchenName, found: hasKitchen },
+        { name: livingRoomName, found: hasLivingRoom },
+        { name: 'Bathroom 1', found: hasBathroom1 },
+        { name: 'Bathroom 2', found: hasBathroom2 },
+        { name: 'Bedroom 1', found: hasBedroom1 },
+        { name: 'Bedroom 2', found: hasBedroom2 }
+    ];
+    
+    let html = `
+        <div class="score-header">
+            <span class="score-icon">📐</span>
+            <span class="score-title">Room Breakdown</span>
+            <span class="info-icon" onclick="alert('Room accommodation is scored based on having essential rooms for independent living: kitchen, living room, bedrooms, and bathrooms. Maximum score is achieved with 6 key rooms.')">i</span>
+        </div>
         
-            let html = `
-                <div class="score-header">
-                    <span class="score-icon">📐</span>
-                    <span class="score-title">Property Dimensions</span>
-                    <span class="tooltip">
-                        <span class="info-icon">i</span>
-                        <span class="tooltiptext">
-                            <strong>AI-Generated Analysis</strong><br>
-                            Room dimensions are analyzed via AI and may vary from actual measurements. Please verify exact dimensions with the estate agent and refer to the official floor plan for precise measurements.
-                        </span>
-                    </span>
-                </div>
-                
-                <!-- Total Size Section - Using transport-stop styling -->
-                <div class="dimension-transport-wrapper">
-                    <div class="dimension-transport-section">
-                        <div class="dimension-section-header">TOTAL SIZE</div>
-                        <div class="dimension-size-display">
-                            ${dimensions.totalSqM ? `
-                                <span class="dimension-primary-size">${dimensions.totalSqM.toLocaleString()} sq m</span>
-                            ` : ''}
-                            ${dimensions.totalSqFt ? `
-                                <span class="dimension-secondary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</span>
-                            ` : ''}
-                            ${!dimensions.totalSqFt && !dimensions.totalSqM ? `
-                                <span class="dimension-primary-size">Size not specified</span>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
+        ${roomAccommodation && roomAccommodation.score !== null ? `
+            <div class="score-value ${roomAccommodation.rating.toLowerCase().replace(/ /g, '-')}">${roomAccommodation.rating}</div>
+        ` : ''}
         
-                <!-- Room Breakdown Section - Using transport-stop styling -->
-                <div class="dimension-transport-wrapper">
-                    <div class="dimension-transport-section">
-                        <div class="dimension-section-header">ROOM BREAKDOWN</div>
-                        <div class="dimension-room-content">
-                            ${generateRoomBreakdown(dimensions)}
-                        </div>
+        <!-- Total Size Section -->
+        ${dimensions.totalSqM ? `
+            <div class="dimension-transport-wrapper">
+                <div class="dimension-transport-section">
+                    <div class="dimension-section-header">TOTAL SIZE</div>
+                    <div class="dimension-size-display">
+                        <span class="dimension-primary-size">${dimensions.totalSqM} sq m</span>
+                        ${dimensions.totalSqFt ? `
+                            <span class="dimension-secondary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</span>
+                        ` : ''}
                     </div>
                 </div>
-            `;
-            
-            dimensionsContainer.innerHTML = html;
-        }
+            </div>
+        ` : ''}
+        
+        <!-- Room List Section -->
+        <div class="dimension-transport-wrapper">
+            <div class="dimension-transport-section">
+                <div class="accessible-features-list">
+                    ${roomStatus.map(room => {
+                        const icon = room.found ? '✅' : '❌';
+                        return `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${room.name}</div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    dimensionsContainer.innerHTML = html;
+}
         
         function generateRoomBreakdown(dimensions) {
             if (!dimensions.roomTypes || dimensions.roomTypes.length === 0) {
