@@ -1375,7 +1375,7 @@
             document.getElementById('epcDetails').innerHTML = detailsHtml;
         }
 
-        function displayAccessibleFeatures(accessibleFeatures) {
+       function displayAccessibleFeatures(accessibleFeatures) {
             if (!accessibleFeatures) {
                 document.getElementById('accessibleFeaturesScore').textContent = '0/5';
                 document.getElementById('accessibleFeaturesScore').className = 'score-value poor';
@@ -1391,7 +1391,6 @@
             else if (displayScore >= 3) ratingText = 'Good';
             else if (displayScore >= 2) ratingText = 'Fair';
             
-            // Show just the rating text, no score numbers
             document.getElementById('accessibleFeaturesScore').textContent = ratingText;
             
             let scoreClass = 'poor';
@@ -1403,41 +1402,48 @@
             document.getElementById('accessibleFeaturesDescription').textContent = '';
             
             let detailsHtml = '<div class="accessible-features-list">';
-        
-            const allFeatures = [
-                'Lateral living/single floor (ground level only)',
-                'Downstairs bedroom',
-                'Downstairs bathroom/WC',
-                'Level/ramp access to property',
-                'Off-street or private parking',
-                'Garden access (shared/communal)', // NEW
-                'Balcony/terrace' // NEW
-            ];
             
             const foundFeatures = accessibleFeatures.features || [];
             
-            allFeatures.forEach(feature => {
-                let isFound = false;
+            // Define the 8 criteria in display order
+            const criteriaMapping = [
+                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: null },
+                { key: 'downstairsBedroom', labels: ['Downstairs bedroom'], displayAs: 'Downstairs bedroom' },
+                { key: 'downstairsBathroom', labels: ['Downstairs bathroom/WC'], displayAs: 'Downstairs bathroom/WC' },
+                { key: 'groundFloorEntry', labels: ['Ground floor entry'], displayAs: 'Ground floor entry' },
+                { key: 'privateParking', labels: ['Off-street/private parking'], displayAs: 'Off-street/private parking' },
+                { key: 'garden', labels: ['Garden access'], displayAs: 'Garden access' },
+                { key: 'balcony', labels: ['Balcony/terrace'], displayAs: 'Balcony/terrace' },
+                { key: 'externalLevelAccess', labels: ['External level/ramp access'], displayAs: 'External level/ramp access' }
+            ];
+            
+            // Show all criteria with proper matching
+            criteriaMapping.forEach(criterion => {
+                // Check if any of the criterion's labels match any found feature
+                const matchedFeature = foundFeatures.find(feature => 
+                    criterion.labels.some(label => 
+                        feature.toLowerCase().includes(label.toLowerCase()) || 
+                        label.toLowerCase().includes(feature.toLowerCase())
+                    )
+                );
                 
-                if (feature.includes('Lateral living')) {
-                    isFound = foundFeatures.some(found => found.toLowerCase().includes('lateral') || found.toLowerCase().includes('single floor'));
-                } else if (feature.includes('Downstairs bedroom')) {
-                    isFound = foundFeatures.some(found => found.toLowerCase().includes('downstairs bedroom'));
-                } else if (feature.includes('Downstairs bathroom')) {
-                    isFound = foundFeatures.some(found => found.toLowerCase().includes('downstairs bathroom'));
-                } else if (feature.includes('Level/ramp access')) {
-                    isFound = foundFeatures.some(found => found.toLowerCase().includes('level/ramp access'));
-                } else if (feature.includes('Off-street')) {
-                    isFound = foundFeatures.some(found => found.toLowerCase().includes('off-street') || found.toLowerCase().includes('private parking'));
-                } else if (feature.includes('Garden access')) {
-                    isFound = foundFeatures.some(found => found.toLowerCase().includes('garden'));
-                } else if (feature.includes('Balcony')) {
-                    isFound = foundFeatures.some(found => found.toLowerCase().includes('balcony') || found.toLowerCase().includes('terrace'));
+                const isFound = !!matchedFeature;
+                const icon = isFound ? '✅' : '❌';
+                
+                // For step-free/lift criterion, show what was actually found
+                let displayLabel;
+                if (criterion.key === 'stepFreeOrLift' && matchedFeature) {
+                    displayLabel = matchedFeature; // Show "Lift", "Stairlift", or "Step-free internal access"
+                } else {
+                    displayLabel = criterion.displayAs; // Show standard label
                 }
                 
-                const icon = isFound ? '✅' : '❌';
-                detailsHtml += `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${feature}</div>`;
+                detailsHtml += `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${displayLabel}</div>`;
             });
+            
+            if (foundFeatures.length === 0) {
+                detailsHtml += '<div class="no-features-found">No accessible features detected</div>';
+            }
             
             detailsHtml += '</div>';
             

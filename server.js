@@ -141,24 +141,19 @@ const getEPCExtractor = () => {
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// FIXED: Enhanced Accessible Features Detection Logic
+// REVISED: Accessible Features Detection with 8 Criteria
 async function calculateAccessibleFeaturesScore(property) {
     let score = 0;
     const features = [];
     
-    // Extract relevant text for analysis - FIXED variable references
     const description = (property.description || '').toLowerCase();
     const title = (property.title || '').toLowerCase();
     const propertyFeatures = (property.features || []).join(' ').toLowerCase();
     const fullText = `${title} ${description} ${propertyFeatures}`.toLowerCase();
     
     console.log('🏠 Analyzing accessible features for property...');
-    console.log('📝 Full text being analyzed (first 500 chars):', fullText.substring(0, 500));
     
-    // FIXED: Enhanced single floor detection in calculateAccessibleFeaturesScore()
-// Replace the lateral living section (around lines 115-135) with this:
-
-// 1. LATERAL LIVING / SINGLE FLOOR PROPERTIES (Ground level only)
+// STEP 1: Determine property type
 const lateralLivingKeywords = [
     'lateral living', 'single floor', 'all on one level', 'one level living',
     'ground floor flat', 'ground floor apartment', 'ground floor maisonette',
@@ -167,15 +162,13 @@ const lateralLivingKeywords = [
     'all on one floor', 'single level', 'one storey', 'one story'
 ];
 
-// Exclusions for properties above ground level
-const upperFloorExclusions = [
+const upperFloorIndicators = [
     'first floor', 'second floor', 'third floor', 'fourth floor', 'fifth floor',
     'upper floor', 'top floor', 'penthouse', 'mezzanine',
     'apartment on floor', 'flat on floor', 'level 1', 'level 2', 'level 3',
     'floor 1', 'floor 2', 'floor 3'
 ];
 
-// NEW: Multi-level indicators (properties that have multiple internal levels)
 const multiLevelIndicators = [
     'upstairs', 'upstairs bedroom', 'upstairs bathroom', 'upstairs room',
     'first floor bedroom', 'first floor bathroom', 'bedroom upstairs',
@@ -183,124 +176,202 @@ const multiLevelIndicators = [
     'upper level', 'upper floor', 'loft room', 'loft bedroom',
     'attic room', 'converted loft', 'stairs leading to',
     'two storey', 'two story', 'duplex', 'split level',
-    'mezzanine level', 'gallery level', 'raised area'
+    'mezzanine level', 'gallery level', 'raised area',
+    'townhouse', 'town house', 'terraced house',
+    'lift serving', 'lift to all floors', 'serving all floors'
 ];
 
-const hasLateralLiving = lateralLivingKeywords.some(keyword => fullText.includes(keyword));
-const isUpperFloor = upperFloorExclusions.some(exclusion => fullText.includes(exclusion));
+// Check for lift/stairlift (do this BEFORE the existing STEP 2)
+const liftKeywords = ['lift', 'elevator', 'passenger lift', 'serviced by lift', 'lift access', 'lift available'];
+const stairliftKeywords = ['stairlift', 'stair lift', 'platform lift'];
+
+const hasLift = liftKeywords.some(keyword => fullText.includes(keyword));
+const hasStairlift = stairliftKeywords.some(keyword => fullText.includes(keyword));
+const hasAnyLift = hasLift || hasStairlift;
+
+const hasSingleLevelKeywords = lateralLivingKeywords.some(keyword => fullText.includes(keyword));
+const isUpperFloor = upperFloorIndicators.some(indicator => fullText.includes(indicator));
 const hasMultipleLevels = multiLevelIndicators.some(indicator => fullText.includes(indicator));
 
-let isSingleFloorProperty = false;
-if (hasLateralLiving && !isUpperFloor && !hasMultipleLevels) {
-    score += 1;
-    features.push('Lateral living/single floor (ground level)');
-    isSingleFloorProperty = true;
-    console.log('✓ Found lateral living/single floor property (ground level)');
-} else if (hasLateralLiving && hasMultipleLevels) {
-    console.log('✗ Property has lateral living keywords but also has multiple levels - NOT awarding lateral living point');
-    console.log('  Multi-level indicators found:', multiLevelIndicators.filter(indicator => fullText.includes(indicator)));
-} else if (hasLateralLiving && isUpperFloor) {
-    console.log('✗ Property has lateral living keywords but is on upper floor - NOT awarding lateral living point');
-}
+// If property has a lift but no single-level keywords, assume it's multi-level
+const isMultiLevel = hasMultipleLevels || (hasAnyLift && !hasSingleLevelKeywords);
+
+const isSingleLevel = hasSingleLevelKeywords || (!isMultiLevel && !isUpperFloor);
+const isGroundFloor = hasSingleLevelKeywords && !isUpperFloor;
+
+console.log('🏠 Property type: Single level =', isSingleLevel, '| Ground floor =', isGroundFloor, '| Multi-level =', isMultiLevel);
+console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlift);
+
+    // CRITERIA 1: Step-free internal access OR lift (mutually exclusive)
+    let hasStepFreeInternal = false;
     
-    // ENHANCED: Downstairs bedroom and bathroom detection
-// Replace the existing downstairs bedroom and bathroom sections with this:
-
-// 2. DOWNSTAIRS BEDROOM - Enhanced Logic for Multi-level Properties
-const downstairsBedroomKeywords = [
-    'downstairs bedroom', 'ground floor bedroom', 'bedroom downstairs',
-    'bedroom on ground floor', 'ground floor bed', 'downstairs bed',
-    'bedroom ground level', 'ground floor comprises', 'ground floor has',
-    'ground floor features', 'ground floor includes'
-];
-
-// Enhanced patterns for multi-level properties
-const groundFloorBedroomPatterns = [
-    /ground floor.*?bedroom/gi,
-    /ground floor.*?bed/gi,
-    /bedroom.*?ground floor/gi,
-    /comprises.*?bedroom/gi,
-    /includes.*?bedroom/gi,
-    /features.*?bedroom/gi,
-    /ground floor.*?double bedroom/gi,
-    /ground floor.*?single bedroom/gi,
-    /ground floor.*?master bedroom/gi
-];
-
-let hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
-
-// If no explicit keyword found, check patterns for ground floor bedroom mentions
-if (!hasDownstairsBedroom) {
-    hasDownstairsBedroom = groundFloorBedroomPatterns.some(pattern => pattern.test(fullText));
-    if (hasDownstairsBedroom) {
-        console.log('✓ Found downstairs bedroom via pattern matching');
+    if (isSingleLevel && !hasMultipleLevels) {
+        hasStepFreeInternal = true;
+        score += 1;
+        features.push('Step-free internal access');
+        console.log('✓ Step-free internal access (single level property)');
+    } else if (hasMultipleLevels && hasAnyLift) {
+        score += 1;
+        if (hasStairlift) {
+            features.push('Stairlift');
+            console.log('✓ Stairlift (compensates for internal stairs)');
+        } else {
+            features.push('Lift');
+            console.log('✓ Lift (compensates for internal stairs)');
+        }
+    } else {
+        console.log('✗ No step-free internal access or lift');
     }
-}
 
-// If it's a single floor property with bedrooms, automatically count as downstairs bedroom
-if (!hasDownstairsBedroom && isSingleFloorProperty) {
-    const hasBedroomMention = fullText.includes('bedroom') || fullText.includes('bed');
-    if (hasBedroomMention) {
+    // CRITERIA 2: Downstairs bedroom
+    const downstairsBedroomKeywords = [
+        'downstairs bedroom', 'ground floor bedroom', 'bedroom downstairs',
+        'bedroom on ground floor', 'ground floor bed', 'downstairs bed',
+        'bedroom ground level'
+    ];
+
+    const groundFloorBedroomPatterns = [
+        /ground floor.*?bedroom/gi,
+        /ground floor.*?bed/gi,
+        /bedroom.*?ground floor/gi
+    ];
+
+    let hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
+    
+    if (!hasDownstairsBedroom) {
+        hasDownstairsBedroom = groundFloorBedroomPatterns.some(pattern => pattern.test(fullText));
+    }
+    
+    // Single level properties with bedrooms automatically have "downstairs" bedrooms
+    if (!hasDownstairsBedroom && isSingleLevel && (fullText.includes('bedroom') || fullText.includes('bed'))) {
         hasDownstairsBedroom = true;
-        console.log('✓ Inferred downstairs bedroom from single floor property with bedrooms');
+        console.log('✓ Inferred downstairs bedroom from single level property');
     }
-}
 
-if (hasDownstairsBedroom) {
-    score += 1;
-    features.push('Downstairs bedroom');
-    console.log('✓ Found downstairs bedroom');
-}
-
-// 3. DOWNSTAIRS BATHROOM - Enhanced Logic for Multi-level Properties
-const downstairsBathroomKeywords = [
-    'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
-    'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
-    'downstairs toilet', 'ground floor toilet', 'downstairs shower room',
-    'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom'
-];
-
-// Enhanced patterns for multi-level properties
-const groundFloorBathroomPatterns = [
-    /ground floor.*?bathroom/gi,
-    /ground floor.*?wc/gi,
-    /ground floor.*?toilet/gi,
-    /ground floor.*?shower/gi,
-    /ground floor.*?cloakroom/gi,
-    /bathroom.*?ground floor/gi,
-    /comprises.*?bathroom/gi,
-    /includes.*?bathroom/gi,
-    /features.*?bathroom/gi
-];
-
-let hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
-
-// If no explicit keyword found, check patterns for ground floor bathroom mentions
-if (!hasDownstairsBathroom) {
-    hasDownstairsBathroom = groundFloorBathroomPatterns.some(pattern => pattern.test(fullText));
-    if (hasDownstairsBathroom) {
-        console.log('✓ Found downstairs bathroom via pattern matching');
+    if (hasDownstairsBedroom) {
+        score += 1;
+        features.push('Downstairs bedroom');
+        console.log('✓ Downstairs bedroom');
     }
-}
 
-// If it's a single floor property with bathroom facilities, automatically count
-if (!hasDownstairsBathroom && isSingleFloorProperty) {
-    const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
-                              fullText.includes('toilet') || fullText.includes('wc') || 
-                              fullText.includes('en suite') || fullText.includes('ensuite');
-    if (hasBathroomMention) {
-        hasDownstairsBathroom = true;
-        console.log('✓ Inferred downstairs bathroom from single floor property with bathroom facilities');
-    }
-}
+    // CRITERIA 3: Downstairs bathroom/WC
+    const downstairsBathroomKeywords = [
+        'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
+        'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
+        'downstairs toilet', 'ground floor toilet', 'downstairs shower room',
+        'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom'
+    ];
 
-if (hasDownstairsBathroom) {
-    score += 1;
-    features.push('Downstairs bathroom/WC');
-    console.log('✓ Found downstairs bathroom/WC');
-}
+    const groundFloorBathroomPatterns = [
+        /ground floor.*?bathroom/gi,
+        /ground floor.*?wc/gi,
+        /ground floor.*?toilet/gi,
+        /ground floor.*?shower/gi,
+        /ground floor.*?cloakroom/gi
+    ];
+
+    let hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
     
-    // 4. LEVEL AND/OR RAMP ACCESS - Enhanced Keywords (Fixed)
+    if (!hasDownstairsBathroom) {
+        hasDownstairsBathroom = groundFloorBathroomPatterns.some(pattern => pattern.test(fullText));
+    }
+    
+    // Single level properties with bathrooms automatically have "downstairs" bathrooms
+    if (!hasDownstairsBathroom && isSingleLevel) {
+        const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
+                                  fullText.includes('toilet') || fullText.includes('wc') || 
+                                  fullText.includes('en suite') || fullText.includes('ensuite');
+        if (hasBathroomMention) {
+            hasDownstairsBathroom = true;
+            console.log('✓ Inferred downstairs bathroom from single level property');
+        }
+    }
+
+    if (hasDownstairsBathroom) {
+        score += 1;
+        features.push('Downstairs bathroom/WC');
+        console.log('✓ Downstairs bathroom/WC');
+    }
+
+    // CRITERIA 4: Ground floor entry
+    const groundFloorEntryKeywords = [
+        'ground floor flat', 'ground floor apartment', 'ground floor maisonette',
+        'bungalow', 'ground level', 'ground floor property', 'ground floor access'
+    ];
+    
+    const hasGroundFloorEntry = isGroundFloor || groundFloorEntryKeywords.some(keyword => fullText.includes(keyword));
+    
+    if (hasGroundFloorEntry) {
+        score += 1;
+        features.push('Ground floor entry');
+        console.log('✓ Ground floor entry');
+    }
+
+    // CRITERIA 5: Off-street or private parking
+    const parkingKeywords = [
+        'private parking', 'off-street parking', 'off street parking',
+        'designated parking', 'allocated parking', 'residents parking',
+        'driveway', 'garage', 'car port', 'carport', 'parking space',
+        'parking bay', 'secure parking', 'covered parking', 'underground parking',
+        'gated parking', 'private garage', 'double garage', 'single garage',
+        'own parking', 'dedicated parking', 'assigned parking'
+    ];
+    
+    const parkingExclusions = [
+        'on-street parking', 'on street parking', 'street parking',
+        'roadside parking', 'permit parking'
+    ];
+    
+    const hasPrivateParking = parkingKeywords.some(keyword => fullText.includes(keyword));
+    const hasOnStreetOnly = parkingExclusions.some(exclusion => fullText.includes(exclusion)) && !hasPrivateParking;
+    
+    if (hasPrivateParking && !hasOnStreetOnly) {
+        score += 1;
+        features.push('Off-street/private parking');
+        console.log('✓ Off-street/private parking');
+    }
+
+    // CRITERIA 6: Garden access
+    const gardenKeywords = [
+        'communal garden', 'shared garden', 'communal grounds', 'shared outdoor space',
+        'communal courtyard', 'landscaped grounds', 'garden access', 'shared terrace',
+        'communal areas', 'residents garden', 'well maintained garden', 'landscaped garden',
+        'private garden', 'own garden', 'rear garden', 'front garden', 'enclosed garden',
+        'garden flat', 'garden apartment', 'low-maintenance garden', 'low maintenance garden'
+    ];
+    
+    const hasGarden = gardenKeywords.some(keyword => fullText.includes(keyword));
+    
+    if (hasGarden) {
+        score += 1;
+        features.push('Garden access');
+        console.log('✓ Garden access');
+    }
+
+    // CRITERIA 7: Balcony/terrace
+    const balconyKeywords = [
+        'balcony', 'private terrace', 'patio', 'roof terrace', 'private balcony',
+        'juliet balcony', 'outdoor terrace', 'decking', 'sun terrace',
+        'private patio', 'covered balcony'
+    ];
+    
+    let hasBalcony = balconyKeywords.some(keyword => fullText.includes(keyword));
+    
+    if (!hasBalcony && property.floorplan) {
+        const floorplanBalcony = await analyzeFloorPlanForBalcony(property.floorplan);
+        if (floorplanBalcony === true) {
+            hasBalcony = true;
+            console.log('✓ Balcony detected via floor plan');
+        }
+    }
+    
+    if (hasBalcony) {
+        score += 1;
+        features.push('Balcony/terrace');
+        console.log('✓ Balcony/terrace');
+    }
+
+    // CRITERIA 8: External level/ramp access
     const levelAccessKeywords = [
         'level access', 'step-free access', 'step free access', 'no steps',
         'wheelchair accessible', 'ramp access', 'ramped access', 'access ramp',
@@ -312,122 +383,48 @@ if (hasDownstairsBathroom) {
     const hasLevelAccess = levelAccessKeywords.some(keyword => fullText.includes(keyword));
     
     if (hasLevelAccess) {
-        // Add this logging to see which keyword matched
-        const matchedKeyword = levelAccessKeywords.find(keyword => fullText.includes(keyword));
-        console.log('✓ Found level/ramp access via keyword:', matchedKeyword);
         score += 1;
-        features.push('Level/ramp access');
-        console.log('✓ Found level/ramp access');
-    }
-    
-    // 5. OFF-STREET OR PRIVATE PARKING - Enhanced Detection
-    const parkingKeywords = [
-        'private parking', 'off-street parking', 'off street parking',
-        'designated parking', 'allocated parking', 'residents parking',
-        'driveway', 'garage', 'car port', 'carport', 'parking space',
-        'parking bay', 'secure parking', 'covered parking', 'underground parking',
-        'gated parking', 'private garage', 'double garage', 'single garage',
-        'own parking', 'dedicated parking', 'assigned parking', 'ev charger',
-        'electric vehicle charger', 'charging point'
-    ];
-    
-    // Exclusions for on-street parking
-    const parkingExclusions = [
-        'on-street parking', 'on street parking', 'street parking',
-        'roadside parking', 'permit parking', 'resident permit only'
-    ];
-    
-    const hasPrivateParking = parkingKeywords.some(keyword => fullText.includes(keyword));
-    const hasOnStreetOnly = parkingExclusions.some(exclusion => fullText.includes(exclusion)) && !hasPrivateParking;
-    
-    if (hasPrivateParking && !hasOnStreetOnly) {
-        score += 1;
-        features.push('Off-street/private parking');
-        console.log('✓ Found off-street/private parking');
+        features.push('External level/ramp access');
+        console.log('✓ External level/ramp access');
     }
 
-    // 6. GARDEN ACCESS (SHARED/COMMUNAL) - New Feature
-    const gardenKeywords = [
-    'communal garden', 'shared garden', 'communal grounds', 'shared outdoor space',
-    'communal courtyard', 'landscaped grounds', 'garden access', 'shared terrace',
-    'communal areas', 'residents garden', 'well maintained garden', 'landscaped garden',
-    // ADD THESE for private gardens:
-    'private garden', 'own garden', 'rear garden', 'front garden', 'enclosed garden',
-    'garden flat', 'garden apartment', 'low-maintenance garden', 'low maintenance garden'
-    ];
-    
-    const hasGarden = gardenKeywords.some(keyword => fullText.includes(keyword));
-    
-    if (hasGarden) {
-        score += 1;
-        features.push('Garden access (shared/communal)');
-        console.log('✓ Found garden access');
-    }
-     
-    // 7. BALCONY/TERRACE - Enhanced with Floor Plan Analysis
-    const balconyKeywords = [
-        'balcony', 'private terrace', 'patio', 'roof terrace', 'private balcony',
-        'juliet balcony', 'outdoor terrace', 'decking', 'sun terrace',
-        'private patio', 'covered balcony'
-    ];
-    
-    let hasBalcony = balconyKeywords.some(keyword => fullText.includes(keyword));
-    
-    console.log('🔍 Balcony text detection result:', hasBalcony); // ADD THIS
-    console.log('🔍 Floor plan available:', !!property.floorplan); // ADD THIS
-    console.log('🔍 Floor plan URL:', property.floorplan); // ADD THIS
-    
-    // If not found in text, try floor plan analysis
-    if (!hasBalcony && property.floorplan) {
-        console.log('🔍 No balcony found in text, checking floor plan...');
-        const floorplanBalcony = await analyzeFloorPlanForBalcony(property.floorplan);
-
-        console.log('🔍 Floor plan analysis returned:', floorplanBalcony); // ADD THIS
-        console.log('🔍 Type of floorplanBalcony:', typeof floorplanBalcony); // ADD THIS
-        
-        if (floorplanBalcony === true) {
-            hasBalcony = true;
-            console.log('✅ Balcony detected via floor plan analysis');
-        } else {
-            console.log('❌ Floor plan balcony check failed:', floorplanBalcony); // ADD THIS
-        }
-    } else {
-        console.log('🔍 Skipping floor plan analysis - hasBalcony:', hasBalcony, 'floorplan available:', !!property.floorplan); // ADD THIS
-    }
-
-    console.log('🔍 hasBalcony after floor plan check:', hasBalcony); // ADD THIS
-    
-    // ADD THIS BLOCK AFTER THE FLOOR PLAN DETECTION:
-    if (hasBalcony) {
-        score += 1;
-        features.push('Balcony/terrace');
-        console.log('✓ Found balcony/terrace');
-    }
-    
-    // UPDATE: Add precise scoring calculation first
-    const maxScore = 7; // Now 7 features total
+    // Calculate final score (max 8 out of 8, converted to 0-5 scale)
+    const maxScore = 8;
     const preciseScore = Math.min(5, (score / maxScore) * 5);
     const displayScore = Math.round(preciseScore);
     
     console.log(`🏠 Accessible Features Score: ${displayScore}/5 (${score}/${maxScore} features found)`);
-    console.log('✅ Features found:', features);
-    console.log('🔍 Single floor property detected:', isSingleFloorProperty);
+    console.log('✓ Features found:', features);
     
     return {
-        score: preciseScore, // ADD: Precise score for overall calculation  
-        displayScore: displayScore, // ADD: Rounded score for display
+        score: preciseScore,
+        displayScore: displayScore,
         maxScore: 5,
         features: features,
-        percentage: Math.round((score / maxScore) * 100), // UPDATE: Change to /7
+        percentage: Math.round((score / maxScore) * 100),
+        applicableCriteria: {
+            stepFreeOrLift: true,  // Always applicable
+            downstairsBedroom: true,  // Always applicable
+            downstairsBathroom: true,  // Always applicable
+            groundFloorEntry: true,  // Always applicable
+            privateParking: true,  // Always applicable
+            garden: true,  // Always applicable
+            balcony: true,  // Always applicable
+            externalLevelAccess: true  // Always applicable
+        },
         details: {
-            lateralLiving: hasLateralLiving && !isUpperFloor,
+            stepFreeInternal: hasStepFreeInternal,
+            lift: hasAnyLift && !hasStepFreeInternal,
+            liftType: hasStairlift ? 'stairlift' : hasLift ? 'lift' : null,
             downstairsBedroom: hasDownstairsBedroom,
             downstairsBathroom: hasDownstairsBathroom,
-            levelAccess: hasLevelAccess,
+            groundFloorEntry: hasGroundFloorEntry,
             privateParking: hasPrivateParking && !hasOnStreetOnly,
-            garden: hasGarden, // ADD
-            balcony: hasBalcony, // ADD
-            isSingleFloorProperty: isSingleFloorProperty
+            garden: hasGarden,
+            balcony: hasBalcony,
+            externalLevelAccess: hasLevelAccess,
+            isSingleLevel: isSingleLevel,
+            isGroundFloor: isGroundFloor
         }
     };
 }
