@@ -257,10 +257,12 @@
             margin-bottom: 0.5rem;
         }
 
-        .score-value.excellent { color: #10b981; }
-        .score-value.good { color: #3b82f6; }
-        .score-value.fair { color: #f59e0b; }
-        .score-value.poor { color: #ef4444; }
+        .score-value.excellent { color: #3b82f6; } /* Blue */
+        .score-value.very-good { color: #047857; } /* Darker green */
+        .score-value.good { color: #86efac; } /* Light green */
+        .score-value.fair { color: #f59e0b; } /* Yellow */
+        .score-value.poor { color: #f97316; } /* Orange */
+        .score-value.very-poor { color: #ef4444; } /* Red */
 
         .score-description {
             color: #666;
@@ -1378,25 +1380,31 @@
        function displayAccessibleFeatures(accessibleFeatures) {
             if (!accessibleFeatures) {
                 document.getElementById('accessibleFeaturesScore').textContent = '0/5';
-                document.getElementById('accessibleFeaturesScore').className = 'score-value poor';
+                document.getElementById('accessibleFeaturesScore').className = 'score-value very-poor';
                 document.getElementById('accessibleFeaturesDescription').textContent = 'Accessible features data not available';
                 document.getElementById('accessibleFeaturesDetails').innerHTML = '<div class="no-features-found">Unable to analyze accessible features</div>';
                 return;
             }
             
-            let ratingText = 'Poor';
+            // Use rating from backend if available, otherwise calculate it
+            let ratingText = accessibleFeatures.rating || 'Poor';
             const displayScore = accessibleFeatures.displayScore || Math.round(accessibleFeatures.score || 0);
             
-            if (displayScore >= 4) ratingText = 'Excellent';
-            else if (displayScore >= 3) ratingText = 'Good';
-            else if (displayScore >= 2) ratingText = 'Fair';
+            // Fallback: if backend doesn't send rating, calculate it based on rounded score
+            if (!accessibleFeatures.rating) {
+                const roundedScore = Math.round(displayScore);
+                if (roundedScore === 5) ratingText = 'Excellent';
+                else if (roundedScore === 4) ratingText = 'Very Good';
+                else if (roundedScore === 3) ratingText = 'Good';
+                else if (roundedScore === 2) ratingText = 'Fair';
+                else if (roundedScore === 1) ratingText = 'Poor';
+                else ratingText = 'Very Poor';
+            }
             
             document.getElementById('accessibleFeaturesScore').textContent = ratingText;
             
-            let scoreClass = 'poor';
-            if (displayScore >= 4) scoreClass = 'excellent';
-            else if (displayScore >= 3) scoreClass = 'good';
-            else if (displayScore >= 2) scoreClass = 'fair';
+            // Convert rating text to CSS class (handles "Very Good" -> "very-good")
+            const scoreClass = ratingText.toLowerCase().replace(/ /g, '-');
             
             document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
             document.getElementById('accessibleFeaturesDescription').textContent = '';
@@ -1404,6 +1412,8 @@
             let detailsHtml = '<div class="accessible-features-list">';
             
             const foundFeatures = accessibleFeatures.features || [];
+            
+            
             
             // Define the 8 criteria in display order
             const criteriaMapping = [
@@ -1838,24 +1848,30 @@ function displayDimensions(dimensions, roomAccommodation) {
             
             if (!transport) {
                 document.getElementById('publicTransportScore').textContent = 'N/A';
-                document.getElementById('publicTransportScore').className = 'score-value poor';
+                document.getElementById('publicTransportScore').className = 'score-value very-poor';
                 document.getElementById('publicTransportDetails').innerHTML = '<div class="no-transport-found">Unable to analyze public transport</div>';
                 return;
             }
             
-            // Display rating and score
-            let ratingText = 'Poor';
+            // Use rating from backend if available, otherwise calculate it
+            let ratingText = transport.rating || 'Poor';
             const score = transport.score || 0;
-            if (score >= 4) ratingText = 'Excellent';
-            else if (score >= 3) ratingText = 'Good';
-            else if (score >= 2) ratingText = 'Fair';
+            
+            // Fallback: if backend doesn't send rating, calculate it based on rounded score
+            if (!transport.rating) {
+                const roundedScore = Math.round(score);
+                if (roundedScore === 5) ratingText = 'Excellent';
+                else if (roundedScore === 4) ratingText = 'Very Good';
+                else if (roundedScore === 3) ratingText = 'Good';
+                else if (roundedScore === 2) ratingText = 'Fair';
+                else if (roundedScore === 1) ratingText = 'Poor';
+                else ratingText = 'Very Poor';
+            }
             
             document.getElementById('publicTransportScore').textContent = ratingText;
             
-            let scoreClass = 'poor';
-            if (score >= 4) scoreClass = 'excellent';
-            else if (score >= 3) scoreClass = 'good';
-            else if (score >= 2) scoreClass = 'fair';
+            // Convert rating text to CSS class (handles "Very Good" -> "very-good")
+            const scoreClass = ratingText.toLowerCase().replace(/ /g, '-');
             
             document.getElementById('publicTransportScore').className = `score-value ${scoreClass}`;
             document.getElementById('publicTransportDescription').textContent = '';

@@ -1165,10 +1165,14 @@ function getPostcodeFromCoordinates(coordinates) {
 }
 // Helper function to get score rating text
 function getScoreRating(score) {
-    if (score >= 4.5) return 'Excellent';
-    if (score >= 3.5) return 'Good';
-    if (score >= 2.5) return 'Fair';
-    return 'Poor';
+    const roundedScore = Math.round(score);
+    
+    if (roundedScore === 5) return 'Excellent';
+    if (roundedScore === 4) return 'Very Good';
+    if (roundedScore === 3) return 'Good';
+    if (roundedScore === 2) return 'Fair';
+    if (roundedScore === 1) return 'Poor';
+    return 'Very Poor'; // roundedScore === 0
 }
 
 // Broader search using multiple place types
