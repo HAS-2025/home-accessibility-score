@@ -684,7 +684,12 @@ function analyzeCostInformation(property, dimensions) {
         }
     }
 
-    
+    // Use scraped council tax band first, then fallback to text extraction
+    if (property.councilTaxBand) {
+        cost.councilTax = property.councilTaxBand;
+        console.log('💷 Using scraped council tax band:', cost.councilTax);
+    } else {
+
     // ENHANCED: Extract council tax (prioritize actual bands over TBC)
     const description = property.description || '';
     const councilTaxPatterns = [
@@ -693,11 +698,17 @@ function analyzeCostInformation(property, dimensions) {
         /council\s*tax[:\s]*([a-h])/i,
         /band[:\s]*([a-h])/i
     ];
-    
+
     // First, look for actual council tax bands (A-H)
     for (const pattern of councilTaxPatterns) {
         const match = description.match(pattern);
         if (match && match[1] && match[1].toLowerCase() !== 'tbc') {
+            console.log('💷 DEBUG: Pattern matched:', pattern);
+            console.log('💷 DEBUG: Full match text:', match[0]);
+            console.log('💷 DEBUG: Extracted band letter:', match[1]);
+            console.log('💷 DEBUG: Match index in description:', match.index);
+            console.log('💷 DEBUG: Context (50 chars before/after):', 
+                description.substring(Math.max(0, match.index - 50), match.index + match[0].length + 50));
             cost.councilTax = `Band ${match[1].toUpperCase()}`;
             break;
         }
@@ -718,7 +729,7 @@ function analyzeCostInformation(property, dimensions) {
             }
         }
     }
-
+ }
     // ENHANCED: Extract service charge (look for £4116 format and more patterns)
     // ENHANCED: Extract service charge (more precise patterns with validation)
     const serviceChargePatterns = [
@@ -735,6 +746,8 @@ function analyzeCostInformation(property, dimensions) {
     ];
     
     console.log('💷 DEBUG: Looking for service charge in description...');
+
+    const description = property.description || '';
     
     for (const pattern of serviceChargePatterns) {
         const match = description.match(pattern);
@@ -2100,6 +2113,52 @@ async function scrapeRightmoveProperty(url) {
         
         console.log('Final tenure result:', tenure);
 
+        // Extract Council Tax Band from structured section
+        console.log('🏠 Extracting council tax band...');
+        let councilTaxBand = null;
+
+        // Method 1: Look for structured council tax data
+        const councilTaxSelectors = [
+            '[data-testid="council-tax"]',
+            '.council-tax-band',
+            '[class*="council"]'
+        ];
+
+        for (const selector of councilTaxSelectors) {
+            const element = $(selector);
+            if (element.length) {
+                const text = element.text();
+                const bandMatch = text.match(/band[:\s]*([a-h])\b/i);
+                if (bandMatch) {
+                    councilTaxBand = `Band ${bandMatch[1].toUpperCase()}`;
+                    console.log('Found council tax in structured element:', councilTaxBand);
+                    break;
+                }
+            }
+        }
+
+        // Method 2: Look for dt/dd or label/value pairs
+        if (!councilTaxBand) {
+            $('dt, th, .property-detail-key, .key, label').each((i, el) => {
+                const keyText = $(el).text().toLowerCase().trim();
+                if (keyText.includes('council') && keyText.includes('tax')) {
+                    const valueElement = $(el).next('dd, td, .property-detail-value, .value, span, div');
+                    if (valueElement.length) {
+                        const valueText = valueElement.text().trim();
+                        const bandMatch = valueText.match(/band[:\s]*([a-h])\b/i);
+                        if (bandMatch) {
+                            councilTaxBand = `Band ${bandMatch[1].toUpperCase()}`;
+                            console.log('Found council tax in key-value pair:', councilTaxBand);
+                            return false; // Break
+                        }
+                    }
+                }
+            });
+        }
+
+        console.log('Final council tax band from scraping:', councilTaxBand);
+
+
         // ADD THIS AFTER TENURE EXTRACTION: Extract detailed leasehold information
         console.log('🏠 Extracting detailed leasehold information...');
         let leaseholdDetails = {
@@ -2604,6 +2663,7 @@ if (epcResult && epcResult.rating) {
             coordinates: coordinates,
             tenure: tenure,
             leaseholdDetails: leaseholdDetails,
+            councilTaxBand: councilTaxBand,
             dimensions: await extractDimensions(description, title, features)
         };
 
@@ -2762,9 +2822,12 @@ function calculateEPCScore(epcRating) {
     }
 }
 
-// Step 2b: Calculate Council Tax Score
 function calculateCouncilTaxScore(councilTaxBand) {
+    console.log('💷 DEBUG: councilTaxBand received:', councilTaxBand);
+    console.log('💷 DEBUG: councilTaxBand type:', typeof councilTaxBand);
+    
     if (!councilTaxBand || councilTaxBand.includes('TBC')) {
+        // ... rest of function
         return {
             score: null, // null means "ignore this in scoring"
             rating: 'Unknown',
@@ -3013,6 +3076,7 @@ const epcDetails = epcAnalysis.description;
     
     // Step 6b: Calculate Council Tax Score
 console.log('💷 Calculating council tax score...');
+console.log('💷 DEBUG: cost.councilTax value:', cost.councilTax);
 const councilTaxAnalysis = calculateCouncilTaxScore(cost.councilTax);
 
 
@@ -3073,17 +3137,26 @@ if (availableScores.length > 0) {
         const title = (property.title || '').toLowerCase();
         const combinedText = `${title} ${description}`;
         
-        // Kitchen or kitchen diner (1 point)
-        if (combinedText.includes('kitchen')) {
-            score += 1;
-            foundRooms.push('Kitchen or kitchen diner');
-        }
-        
         // Living room - must be separate from kitchen (1 point)
+        let hasSeparateLivingRoom = false;
         if ((combinedText.includes('living room') || combinedText.includes('lounge') || combinedText.includes('reception')) 
             && !combinedText.includes('open plan')) {
             score += 1;
             foundRooms.push('Living room (separate from kitchen)');
+            hasSeparateLivingRoom = true;
+        }
+
+        // Kitchen or kitchen diner (1 point)
+        let hasKitchen = combinedText.includes('kitchen');
+
+        // If no explicit kitchen mention but we found a separate living room, assume separate kitchen exists
+        if (!hasKitchen && hasSeparateLivingRoom) {
+            hasKitchen = true;
+        }
+
+        if (hasKitchen) {
+            score += 1;
+            foundRooms.push('Kitchen or kitchen diner');
         }
         
         // Bathroom/toilet 1 (1 point)
