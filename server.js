@@ -1305,6 +1305,51 @@ function calculateStraightLineDistance(lat1, lng1, lat2, lng2) {
     return R * c;
 }
 
+function generateStaticMapURL(property, gpProximity, publicTransport) {
+    if (!process.env.MAPBOX_ACCESS_TOKEN) {
+        console.warn('⚠️ No Mapbox token found');
+        return null;
+    }
+    
+    const markers = [];
+    
+    // Property marker (red H)
+    if (property.coordinates) {
+        console.log('Adding property marker at:', property.coordinates);
+        markers.push(`pin-s-h+ef4444(${property.coordinates.lng},${property.coordinates.lat})`);
+    } else {
+        console.warn('No property coordinates available!');
+    }
+    
+    // GP marker (blue)
+    if (gpProximity?.nearestGPs?.[0]?.location) {
+        const gp = gpProximity.nearestGPs[0];
+        console.log('Adding GP marker at:', gp.location);
+        markers.push(`pin-s+3b82f6(${gp.location.lng},${gp.location.lat})`);
+    }
+    
+    // Bus stop marker (green)
+    if (publicTransport?.busStops?.[0]?.location) {
+        const bus = publicTransport.busStops[0];
+        markers.push(`pin-s+10b981(${bus.location.lng},${bus.location.lat})`);
+    }
+    
+    // Train station marker (orange)
+    if (publicTransport?.trainStations?.[0]?.location) {
+        const train = publicTransport.trainStations[0];
+        markers.push(`pin-s+f97316(${train.location.lng},${train.location.lat})`);
+    }
+    
+    const overlays = markers.join(',');
+    
+    // Added attribution=false and logo=false to remove branding, scale will show by default
+    const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/${overlays}/auto/400x400@2x?attribution=false&logo=false&access_token=${process.env.MAPBOX_ACCESS_TOKEN}`;
+    
+    console.log('🗺️ Generated Mapbox URL with', markers.length, 'markers');
+    
+    return mapUrl;
+}
+
 function getPostcodeFromCoordinates(coordinates) {
     return null;
 }
@@ -4063,6 +4108,7 @@ app.post('/api/analyze', async (req, res) => {
                     title: property.title,
                     price: property.price,
                     location: property.location,
+                    coordinates: property.coordinates,
                     url: url
                 },
                 analysis: analysis,
@@ -4072,10 +4118,27 @@ app.post('/api/analyze', async (req, res) => {
 
         const result = await Promise.race([analysisPromise(), timeoutPromise]);
 
-        // Add this debug logging
-        console.log('📤 Sending response with keys:', Object.keys(result.analysis));
-        console.log('📤 Summary exists:', !!result.analysis.summary);
-        console.log('📤 CouncilTax exists:', !!result.analysis.councilTax);
+        // Debug property coordinates
+        console.log('Property coordinates:', result.property.coordinates);
+
+        // Debug GP data
+        console.log('GP data exists:', !!result.analysis.gpProximity);
+        console.log('GP has nearestGPs array:', !!result.analysis.gpProximity?.nearestGPs);
+        console.log('First GP location:', result.analysis.gpProximity?.nearestGPs?.[0]?.location);
+
+        // Debug transport data
+        console.log('Bus stops:', result.analysis.publicTransport?.busStops?.length);
+        console.log('Train stations:', result.analysis.publicTransport?.trainStations?.length);
+
+        // Generate map URL
+        console.log('Calling generateStaticMapURL...');
+        result.mapUrl = generateStaticMapURL(
+            result.property,
+            result.analysis.gpProximity,
+            result.analysis.publicTransport
+        );
+
+        console.log('Generated mapUrl:', result.mapUrl);
 
         res.json(result);
 

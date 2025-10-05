@@ -134,9 +134,47 @@
             background: white;
             border-radius: 20px;
             padding: 2rem;
-            margin-bottom: 2rem;
             box-shadow: 0 10px 40px rgba(0,0,0,0.1);
             text-align: center;
+            margin-bottom: 0;
+            display: flex;                    /* ADD */
+            flex-direction: column;           /* ADD */
+            justify-content: center;          /* ADD */
+        }
+
+        /* Property header - two column layout */
+        .property-header-container {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Adjust existing .property-info to work in grid */
+        .property-info {
+            margin-bottom: 0; /* Remove bottom margin since it's in grid now */
+        }
+
+        /* Keep existing .map-card styles but ensure proper sizing */
+        .map-card {
+            height: fit-content;
+        }
+
+        .map-image {
+            width: 100%;
+            height: auto;
+            max-width: 400px;
+        }
+
+        /* Responsive: stack on mobile */
+        @media (max-width: 1024px) {
+            .property-header-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .map-image {
+                max-width: 100%;
+            }
         }
         
         .property-location {
@@ -1022,6 +1060,62 @@
                 align-self: flex-end;
             }
         }
+
+        
+        .map-card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .map-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .map-image {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .map-legend {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+
+        .marker-property { background: #ef4444; }
+        .marker-gp { background: #3b82f6; }
+        .marker-bus { background: #10b981; }
+        .marker-train { background: #f97316; }
+
+           
         
         .accessible-features-list {
             margin-top: 0.5rem;
@@ -1181,19 +1275,50 @@
         </div>
 
         <div class="results" id="results">
-                        <!-- NEW: Property info at top -->
-            <div class="property-info">
-                <div class="property-location" id="propertyLocation"></div>
-                <div class="property-title" id="propertyTitle"></div>
-                <div class="property-price" id="propertyPrice"></div>
+            <!-- NEW: Property info + Map side by side -->
+            <div class="property-header-container">
+                <div class="property-info">
+                    <div class="property-location" id="propertyLocation"></div>
+                    <div class="property-title" id="propertyTitle"></div>
+                    <div class="property-price" id="propertyPrice"></div>
+                </div>
+                
+                <div class="map-card">
+                    <div class="map-title">
+                        <span>📍</span>
+                        <span>Location & Amenities</span>
+                    </div>
+                    <img id="mapImage" class="map-image" alt="Property location map" style="display: none;">
+                    <div class="map-legend">
+                        <div class="legend-item">
+                            <div class="legend-marker marker-property">H</div>
+                            <span>Property</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker marker-gp">GP</div>
+                            <span>Nearest GP</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker marker-bus">B</div>
+                            <span>Bus Stop</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-marker marker-train">T</div>
+                            <span>Train Station</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
+            <!-- Score overview (keep as is) -->
             <div class="score-overview">
                 <div class="overall-score" id="overallScore"></div>
                 <div class="score-label">Overall Accessibility Score</div>
                 <div class="star-rating" id="starRating"></div>
             </div>
 
+
+
+            <!-- Score cards (scrollable) -->
             <div class="detailed-scores">
                 <div class="score-card">
                     <div class="score-header">
@@ -1224,26 +1349,26 @@
                     <div class="score-description" id="accessibleFeaturesDescription"></div>
                     <div class="score-details" id="accessibleFeaturesDetails"></div>
                 </div>
+
                 <div class="score-card">
-                <div class="score-header">
-                    <span class="score-icon">🚌</span>
-                    <span class="score-title">Public Transport</span>
+                    <div class="score-header">
+                        <span class="score-icon">🚌</span>
+                        <span class="score-title">Public Transport</span>
+                    </div>
+                    <div class="score-value" id="publicTransportScore"></div>
+                    <div class="score-description" id="publicTransportDescription"></div>
+                    <div class="score-details" id="publicTransportDetails"></div>
                 </div>
-                <div class="score-value" id="publicTransportScore"></div>
-                <div class="score-description" id="publicTransportDescription"></div>
-                <div class="score-details" id="publicTransportDetails"></div>
-            </div>
+
                 <div id="dimensionsCard" class="score-card" style="display: none;"></div>
                 <div id="costCard" class="score-card" style="display: none;"></div>
             </div>
             
             <div class="summary-section">
-                                
                 <div class="summary-title">📋 Summary & Recommendations</div>
                 <div class="summary-text" id="summaryText"></div>
             </div>
         </div>
-    </div>
 
     <script>
         async function analyzeProperty() {
@@ -1288,17 +1413,32 @@
         }
 
         function displayResults(data) {
-            const { property, analysis } = data;
+            console.log('Frontend received mapUrl:', data.mapUrl);
+            
+            const { property, analysis, mapUrl } = data;
             
             document.getElementById('loading').classList.remove('show');
             document.getElementById('results').classList.add('show');
 
-            // Property info now in summary section
+            // Property info
             console.log('Property data:', property);
             document.getElementById('propertyLocation').textContent = property.location || '';
             document.getElementById('propertyTitle').textContent = property.title;
             document.getElementById('propertyPrice').textContent = property.price;
             document.getElementById('overallScore').textContent = analysis.overall;
+            
+            // Display map
+            if (mapUrl) {
+                console.log('Setting map image src to:', mapUrl);
+                const mapImage = document.getElementById('mapImage');
+                mapImage.src = mapUrl;
+                mapImage.style.display = 'block';
+                
+                // Update legend with distances
+                updateMapLegend(analysis);
+            } else {
+                console.error('No mapUrl received!');
+            }
             
             displayStarRating(analysis.overall);
             displayGPProximity(analysis.gpProximity);
@@ -1308,6 +1448,86 @@
             displayDimensions(analysis.dimensions, analysis.roomAccommodation);
             displayCostAnalysis(analysis.cost, analysis.propertyCost);
             document.getElementById('summaryText').textContent = analysis.summary;
+        }
+
+        // Add this new function
+        function updateMapLegend(analysis) {
+            const legend = document.querySelector('.map-legend');
+            
+            // Build legend HTML with distances
+            let legendHTML = `
+                <div class="legend-item">
+                    <div class="legend-marker marker-property">H</div>
+                    <span>Property</span>
+                </div>
+            `;
+            
+            // GP distance
+            if (analysis.gpProximity?.nearestGPs?.[0]) {
+                const gp = analysis.gpProximity.nearestGPs[0];
+                // Extract just the distance part, remove any extra text
+                let distance = '';
+                if (gp.distance) {
+                    // Remove "(too far to walk)" and any trailing text
+                    distance = gp.distance.replace(/\(too far to walk\)/i, '').trim();
+                } else if (gp.straightLineDistance) {
+                    distance = `${gp.straightLineDistance.toFixed(2)} km`;
+                }
+                
+                legendHTML += `
+                    <div class="legend-item">
+                        <div class="legend-marker marker-gp">GP</div>
+                        <span>Nearest GP ${distance ? `(${distance})` : ''}</span>
+                    </div>
+                `;
+            } else {
+                legendHTML += `
+                    <div class="legend-item">
+                        <div class="legend-marker marker-gp">GP</div>
+                        <span>Nearest GP</span>
+                    </div>
+                `;
+            }
+            
+            // Bus stop distance
+            if (analysis.publicTransport?.busStops?.[0]) {
+                const bus = analysis.publicTransport.busStops[0];
+                const distance = (bus.distance * 1000).toFixed(0); // Convert km to meters
+                legendHTML += `
+                    <div class="legend-item">
+                        <div class="legend-marker marker-bus">B</div>
+                        <span>Bus Stop (${distance}m)</span>
+                    </div>
+                `;
+            } else {
+                legendHTML += `
+                    <div class="legend-item">
+                        <div class="legend-marker marker-bus">B</div>
+                        <span>Bus Stop</span>
+                    </div>
+                `;
+            }
+            
+            // Train station distance
+            if (analysis.publicTransport?.trainStations?.[0]) {
+                const train = analysis.publicTransport.trainStations[0];
+                const distance = (train.distance * 1000).toFixed(0); // Convert km to meters
+                legendHTML += `
+                    <div class="legend-item">
+                        <div class="legend-marker marker-train">T</div>
+                        <span>Train Station (${distance}m)</span>
+                    </div>
+                `;
+            } else {
+                legendHTML += `
+                    <div class="legend-item">
+                        <div class="legend-marker marker-train">T</div>
+                        <span>Train Station</span>
+                    </div>
+                `;
+            }
+            
+            legend.innerHTML = legendHTML;
         }
 
        function displayStarRating(score) {
