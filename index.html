@@ -1338,36 +1338,49 @@
     starContainer.innerHTML = starsHtml;
 }
 
-        function displayGPProximity(gp) {
-    document.getElementById('gpScore').textContent = gp.rating;
-    document.getElementById('gpScore').className = `score-value ${gp.rating.toLowerCase()}`;
-    document.getElementById('gpDescription').textContent = gp.details;
-    
-    let detailsHtml = '';
-    if (gp.nearestGP) {
-        detailsHtml += `
-            <div class="gp-info">
-                <div class="gp-name">🏥 ${gp.nearestGP}</div>
-                <div class="gp-address">📍 ${gp.address || 'Address not available'}</div>
-                ${gp.walkingTime ? `<div class="gp-time">🚶 ${gp.walkingTime} walk (${gp.distance})</div>` : ''}
-            </div>
-        `;
-        
-        if (gp.warnings && gp.warnings.length > 0) {
-            detailsHtml += '<div class="route-warnings">';
-            gp.warnings.forEach(warning => {
-                detailsHtml += `<div class="warning">⚠️ ${warning}</div>`;
-            });
-            detailsHtml += '</div>';
+       function displayGPProximity(gp) {
+            console.log('DEBUG: GP data received:', gp);
+            console.log('DEBUG: nearestGPs array:', gp.nearestGPs);
+            
+            document.getElementById('gpScore').textContent = gp.rating;
+            document.getElementById('gpScore').className = `score-value ${gp.rating.toLowerCase().replace(' ', '-')}`;
+            document.getElementById('gpDescription').textContent = gp.details;
+            
+            let detailsHtml = '';
+            
+            // Backend sends nearestGPs as an array
+            if (gp.nearestGPs && gp.nearestGPs.length > 0) {
+                const gpInfo = gp.nearestGPs[0]; // Get first GP only
+                
+                detailsHtml += `
+                    <div class="gp-info">
+                        <div class="gp-name">🏥 ${gpInfo.name}</div>
+                        <div class="gp-address">📍 ${gpInfo.address}</div>
+                        ${gpInfo.distance ? `<div class="gp-time">📏 ${gpInfo.distance}</div>` : ''}
+                        ${gpInfo.adjustedTime && !gpInfo.tooFar ? `<div class="gp-time">🚶 ${gpInfo.adjustedTime} walk</div>` : ''}
+                        ${gpInfo.rating ? `<div class="gp-rating">⭐ ${gpInfo.rating}/5</div>` : ''}
+                    </div>
+                `;
+                
+                if (gpInfo.routeWarnings && gpInfo.routeWarnings.length > 0) {
+                    detailsHtml += '<div class="route-warnings">';
+                    gpInfo.routeWarnings.forEach(warning => {
+                        detailsHtml += `<div class="warning">⚠️ ${warning}</div>`;
+                    });
+                    detailsHtml += '</div>';
+                }
+            }
+            
+            document.getElementById('gpDetails').innerHTML = detailsHtml;
         }
-    }
-    
-    document.getElementById('gpDetails').innerHTML = detailsHtml;
-}
 
-        function displayEPCRating(epc) {
+       function displayEPCRating(epc) {
             document.getElementById('epcScore').textContent = epc.rating;
-            document.getElementById('epcScore').className = `score-value ${epc.rating.toLowerCase()}`;
+            
+            // Convert rating to CSS class (handle spaces)
+            const ratingClass = epc.rating.toLowerCase().replace(/ /g, '-');
+            document.getElementById('epcScore').className = `score-value ${ratingClass}`;
+            
             document.getElementById('epcDescription').textContent = epc.details;
             
             let detailsHtml = '';
@@ -1376,7 +1389,6 @@
             }
             document.getElementById('epcDetails').innerHTML = detailsHtml;
         }
-
        function displayAccessibleFeatures(accessibleFeatures) {
             if (!accessibleFeatures) {
                 document.getElementById('accessibleFeaturesScore').textContent = '0/5';
@@ -1417,7 +1429,7 @@
             
             // Define the 8 criteria in display order
             const criteriaMapping = [
-                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: null },
+                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: 'Step-free internal access' },
                 { key: 'downstairsBedroom', labels: ['Downstairs bedroom'], displayAs: 'Downstairs bedroom' },
                 { key: 'downstairsBathroom', labels: ['Downstairs bathroom/WC'], displayAs: 'Downstairs bathroom/WC' },
                 { key: 'groundFloorEntry', labels: ['Ground floor entry'], displayAs: 'Ground floor entry' },
@@ -1426,10 +1438,9 @@
                 { key: 'balcony', labels: ['Balcony/terrace'], displayAs: 'Balcony/terrace' },
                 { key: 'externalLevelAccess', labels: ['External level/ramp access'], displayAs: 'External level/ramp access' }
             ];
-            
+
             // Show all criteria with proper matching
             criteriaMapping.forEach(criterion => {
-                // Check if any of the criterion's labels match any found feature
                 const matchedFeature = foundFeatures.find(feature => 
                     criterion.labels.some(label => 
                         feature.toLowerCase().includes(label.toLowerCase()) || 
@@ -1438,14 +1449,18 @@
                 );
                 
                 const isFound = !!matchedFeature;
-                const icon = isFound ? '✅' : '❌';
                 
-                // For step-free/lift criterion, show what was actually found
+                // Special handling for external access - show warning if unable to verify
+                let icon = isFound ? '✅' : '❌';
+                if (criterion.key === 'externalLevelAccess' && !isFound && accessibleFeatures.externalAccessWarning) {
+                    icon = '⚠️';
+                }
+                
                 let displayLabel;
                 if (criterion.key === 'stepFreeOrLift' && matchedFeature) {
-                    displayLabel = matchedFeature; // Show "Lift", "Stairlift", or "Step-free internal access"
+                    displayLabel = matchedFeature;
                 } else {
-                    displayLabel = criterion.displayAs; // Show standard label
+                    displayLabel = criterion.displayAs;
                 }
                 
                 detailsHtml += `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${displayLabel}</div>`;

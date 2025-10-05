@@ -141,6 +141,107 @@ const getEPCExtractor = () => {
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
+// Analyze entrance photos for steps using Vision API
+async function analyzeEntranceForSteps(images) {
+    if (!images || images.length === 0) {
+        return { entrancePhotosFound: false, hasSteps: null };
+    }
+    
+    // Take first 5 images
+    const imagesToAnalyze = images.slice(0, 5);
+    
+    console.log(`🚪 Analyzing ${imagesToAnalyze.length} photos for entrance accessibility...`);
+    
+    const content = [
+        {
+            type: "text",
+            text: `You are analyzing property entrance photos to COUNT STEPS from ground level to the front door.
+
+VISUAL CUES TO DETECT STEPS:
+1. Shadow lines across the path (each shadow = potential step edge)
+2. Color/material changes in paving (brick to concrete = elevation change)
+3. Horizontal lines perpendicular to the path
+4. Depth perspective changes - items appearing "higher" than the path
+5. Risers (vertical faces between horizontal surfaces)
+
+HEIGHT ESTIMATION METHOD:
+- Average UK door height = 6.5 feet (78 inches / 198cm)
+- Use the door in the photo as a reference scale
+- Compare step height to door height to estimate step size
+- Example: If step appears 1/12th of door height = ~6.5 inches (significant step)
+- Example: If step appears 1/40th of door height = ~2 inches (threshold only)
+
+STEP COUNTING RULES:
+- 0 steps: Completely flat path to door, no visible elevation change, or tiny threshold only (<2 inches)
+- 1 step: Single elevation change of 3+ inches 
+- 2 steps: Two distinct elevation changes
+- 3+ steps: Multiple stairs/stepped approach
+
+ANALYSIS PROCESS:
+1. Locate the front door in the images
+2. Trace the path from ground to door
+3. Look for shadow lines, color changes, horizontal edges
+4. Estimate step height using door as reference
+5. Count total number of steps
+
+If entrance is not clearly visible or too distant to see details, mark entranceVisible=false.
+
+Respond with ONLY this JSON:
+{
+  "entranceVisible": true/false,
+  "stepCount": 0/1/2/3+/null,
+  "estimatedStepHeight": "description of height if visible",
+  "visualCues": "shadows/color changes/edges you observed",
+  "confidence": 0-100,
+  "reasoning": "Your analysis process"
+}`
+        }
+    ];
+    
+    // Add images
+    imagesToAnalyze.forEach(imageUrl => {
+        content.push({
+            type: "image",
+            source: {
+                type: "url",
+                url: imageUrl
+            }
+        });
+    });
+    
+    try {
+        const response = await axios.post('https://api.anthropic.com/v1/messages', {
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 500,
+            messages: [{
+                role: 'user',
+                content: content
+            }]
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': process.env.CLAUDE_API_KEY,
+                'anthropic-version': '2023-06-01'
+            }
+        });
+        
+        const analysisText = response.data.content[0].text;
+        console.log('Vision API entrance analysis:', analysisText);
+        
+        // Parse JSON response
+        const cleanText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        const result = JSON.parse(cleanText);
+        
+        console.log(`🚪 Entrance analysis result: Photos found=${result.entrancePhotosFound}, Has steps=${result.hasSteps}, Confidence=${result.confidence}%`);
+        
+        return result;
+        
+    } catch (error) {
+        console.error('Vision API error analyzing entrance:', error.response?.data || error.message);
+        return { entrancePhotosFound: false, hasSteps: null, error: true };
+    }
+}
+
 // REVISED: Accessible Features Detection with 8 Criteria
 async function calculateAccessibleFeaturesScore(property) {
     let score = 0;
@@ -149,7 +250,10 @@ async function calculateAccessibleFeaturesScore(property) {
     const description = (property.description || '').toLowerCase();
     const title = (property.title || '').toLowerCase();
     const propertyFeatures = (property.features || []).join(' ').toLowerCase();
-    const fullText = `${title} ${description} ${propertyFeatures}`.toLowerCase();
+    const fullText = `${title} ${description} ${propertyFeatures}`.toLowerCase();    console.log('🏠 DEBUG: fullText length:', fullText.length);
+    console.log('🏠 DEBUG: fullText includes "front garden:"?', fullText.includes('front garden:'));
+    console.log('🏠 DEBUG: fullText includes "rear garden:"?', fullText.includes('rear garden:'));
+    console.log('🏠 DEBUG: Sample fullText (chars 5000-5500):', fullText.substring(5000, 5500));    
     
     console.log('🏠 Analyzing accessible features for property...');
     
@@ -231,18 +335,17 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
     ];
 
     const groundFloorBedroomPatterns = [
-        /ground floor.*?bedroom/gi,
-        /ground floor.*?bed/gi,
-        /bedroom.*?ground floor/gi
+        /ground floor[:\s\S]{0,500}?\bbedroom\b/gi,  // Match "bedroom" as whole word within 500 chars
+        /\bbedroom\b[:\s\S]{0,200}?ground floor/gi   // Or bedroom mentioned near ground floor
     ];
 
     let hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
-    
+
     if (!hasDownstairsBedroom) {
         hasDownstairsBedroom = groundFloorBedroomPatterns.some(pattern => pattern.test(fullText));
     }
-    
-    // Single level properties with bedrooms automatically have "downstairs" bedrooms
+
+    // Remove this inference logic entirely for multi-level properties
     if (!hasDownstairsBedroom && isSingleLevel && (fullText.includes('bedroom') || fullText.includes('bed'))) {
         hasDownstairsBedroom = true;
         console.log('✓ Inferred downstairs bedroom from single level property');
@@ -259,28 +362,26 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
         'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
         'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
         'downstairs toilet', 'ground floor toilet', 'downstairs shower room',
-        'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom'
+        'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom',
+        'shower room'  // NEW - add this since the description format uses "SHOWER ROOM:"
     ];
 
     const groundFloorBathroomPatterns = [
-        /ground floor.*?bathroom/gi,
-        /ground floor.*?wc/gi,
-        /ground floor.*?toilet/gi,
-        /ground floor.*?shower/gi,
-        /ground floor.*?cloakroom/gi
+        /ground floor[:\s\S]{0,500}?\b(bathroom|shower room|wc|toilet|cloakroom)\b/gi,  // Match within 500 chars of "ground floor"
+        /\b(bathroom|shower room|wc|toilet)\b[:\s\S]{0,200}?ground floor/gi
     ];
 
     let hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
-    
+
     if (!hasDownstairsBathroom) {
         hasDownstairsBathroom = groundFloorBathroomPatterns.some(pattern => pattern.test(fullText));
     }
-    
+
     // Single level properties with bathrooms automatically have "downstairs" bathrooms
     if (!hasDownstairsBathroom && isSingleLevel) {
         const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
-                                  fullText.includes('toilet') || fullText.includes('wc') || 
-                                  fullText.includes('en suite') || fullText.includes('ensuite');
+                                fullText.includes('toilet') || fullText.includes('wc') || 
+                                fullText.includes('en suite') || fullText.includes('ensuite');
         if (hasBathroomMention) {
             hasDownstairsBathroom = true;
             console.log('✓ Inferred downstairs bathroom from single level property');
@@ -296,7 +397,12 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
     // CRITERIA 4: Ground floor entry
     const groundFloorEntryKeywords = [
         'ground floor flat', 'ground floor apartment', 'ground floor maisonette',
-        'bungalow', 'ground level', 'ground floor property', 'ground floor access'
+        'bungalow', 'detached bungalow', 'semi-detached bungalow', 'dormer bungalow', 
+        'chalet bungalow', 'terraced bungalow',
+        'house', 'detached house', 'semi-detached house', 'terraced house', 
+        'end terrace', 'mid terrace', 'townhouse', 'town house', 'cottage', 'detached cottage',
+        'ground level', 'ground floor property', 'ground floor access',
+        'single storey', 'single story', 'ranch style'
     ];
     
     const hasGroundFloorEntry = isGroundFloor || groundFloorEntryKeywords.some(keyword => fullText.includes(keyword));
@@ -307,22 +413,33 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
         console.log('✓ Ground floor entry');
     }
 
+
     // CRITERIA 5: Off-street or private parking
+    // Check structured parking section first
+    const structuredParking = property.parkingInfo || '';
+    const hasStructuredParking = structuredParking.length > 0 && 
+        !structuredParking.toLowerCase().includes('none') &&
+        !structuredParking.toLowerCase().includes('no parking');
+
     const parkingKeywords = [
         'private parking', 'off-street parking', 'off street parking',
+        'off-road parking', 'off road parking',  // NEW - catches "off road parking"
+        'block paved parking',  // NEW - catches "block paved off road parking"
         'designated parking', 'allocated parking', 'residents parking',
         'driveway', 'garage', 'car port', 'carport', 'parking space',
         'parking bay', 'secure parking', 'covered parking', 'underground parking',
         'gated parking', 'private garage', 'double garage', 'single garage',
-        'own parking', 'dedicated parking', 'assigned parking'
+        'own parking', 'dedicated parking', 'assigned parking',
+        'parking for'  // NEW - catches "parking for 3 cars"
     ];
     
+
     const parkingExclusions = [
         'on-street parking', 'on street parking', 'street parking',
         'roadside parking', 'permit parking'
     ];
     
-    const hasPrivateParking = parkingKeywords.some(keyword => fullText.includes(keyword));
+    const hasPrivateParking = hasStructuredParking || parkingKeywords.some(keyword => fullText.includes(keyword));
     const hasOnStreetOnly = parkingExclusions.some(exclusion => fullText.includes(exclusion)) && !hasPrivateParking;
     
     if (hasPrivateParking && !hasOnStreetOnly) {
@@ -332,22 +449,30 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
     }
 
     // CRITERIA 6: Garden access
+    // Check structured garden section first
+    const structuredGarden = property.gardenInfo || '';
+    const hasStructuredGarden = structuredGarden.length > 0 &&
+        !structuredGarden.toLowerCase().includes('none') &&
+        !structuredGarden.toLowerCase().includes('no garden');
+
     const gardenKeywords = [
         'communal garden', 'shared garden', 'communal grounds', 'shared outdoor space',
         'communal courtyard', 'landscaped grounds', 'garden access', 'shared terrace',
         'communal areas', 'residents garden', 'well maintained garden', 'landscaped garden',
         'private garden', 'own garden', 'rear garden', 'front garden', 'enclosed garden',
-        'garden flat', 'garden apartment', 'low-maintenance garden', 'low maintenance garden'
+        'garden flat', 'garden apartment', 'low-maintenance garden', 'low maintenance garden',
+        'rear garden:', 'front garden:'  // NEW - catches "FRONT GARDEN:" and "REAR GARDEN:" headings
     ];
     
-    const hasGarden = gardenKeywords.some(keyword => fullText.includes(keyword));
+    const hasGarden = hasStructuredGarden || gardenKeywords.some(keyword => fullText.includes(keyword));
+
     
     if (hasGarden) {
         score += 1;
         features.push('Garden access');
         console.log('✓ Garden access');
     }
-
+    
     // CRITERIA 7: Balcony/terrace
     const balconyKeywords = [
         'balcony', 'private terrace', 'patio', 'roof terrace', 'private balcony',
@@ -379,13 +504,42 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
         'flat access', 'level entry', 'step-free entry', 'barrier-free access',
         'accessible entrance', 'level entrance', 'no step access'
     ];
-    
-    const hasLevelAccess = levelAccessKeywords.some(keyword => fullText.includes(keyword));
-    
+
+    let hasLevelAccess = levelAccessKeywords.some(keyword => fullText.includes(keyword));
+    let externalAccessVerified = hasLevelAccess; // true if found via text
+    let externalAccessWarning = false;
+
+    // If not found via text AND property has ground floor entry, use Vision API
+    if (!hasLevelAccess && hasGroundFloorEntry) {
+        console.log('🚪 No text mention of level access - analyzing entrance photos with Vision API...');
+        
+        const visionResult = await analyzeEntranceForSteps(property.images);
+        
+        if (visionResult.entrancePhotosFound && visionResult.confidence >= 70) {
+            // Entrance visible and confident assessment
+            hasLevelAccess = !visionResult.hasSteps;
+            externalAccessVerified = true;
+            console.log(`🚪 Vision API: ${hasLevelAccess ? 'No steps detected' : 'Steps detected'} (${visionResult.confidence}% confidence)`);
+            console.log(`   Reasoning: ${visionResult.reasoning}`);
+        } else if (visionResult.error) {
+            // API error - treat as unknown
+            externalAccessWarning = true;
+            console.log('⚠️ Vision API error - unable to verify entrance accessibility');
+        } else {
+            // No entrance photos found
+            externalAccessWarning = true;
+            console.log('⚠️ No clear entrance photos found in first 5 images');
+        }
+    }
+
     if (hasLevelAccess) {
         score += 1;
         features.push('External level/ramp access');
         console.log('✓ External level/ramp access');
+    } else if (externalAccessWarning) {
+        console.log('⚠️ External level/ramp access - unable to verify');
+    } else {
+        console.log('✗ External level/ramp access - steps detected');
     }
 
     // Calculate final score (max 8 out of 8, converted to 0-5 scale)
@@ -402,15 +556,16 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
         maxScore: 5,
         features: features,
         percentage: Math.round((score / maxScore) * 100),
+        externalAccessWarning: externalAccessWarning, // NEW - for showing ⚠️ icon
         applicableCriteria: {
-            stepFreeOrLift: true,  // Always applicable
-            downstairsBedroom: true,  // Always applicable
-            downstairsBathroom: true,  // Always applicable
-            groundFloorEntry: true,  // Always applicable
-            privateParking: true,  // Always applicable
-            garden: true,  // Always applicable
-            balcony: true,  // Always applicable
-            externalLevelAccess: true  // Always applicable
+            stepFreeOrLift: true,
+            downstairsBedroom: true,
+            downstairsBathroom: true,
+            groundFloorEntry: true,
+            privateParking: true,
+            garden: true,
+            balcony: true,
+            externalLevelAccess: true
         },
         details: {
             stepFreeInternal: hasStepFreeInternal,
@@ -423,11 +578,12 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
             garden: hasGarden,
             balcony: hasBalcony,
             externalLevelAccess: hasLevelAccess,
+            externalAccessVerified: externalAccessVerified, // NEW - whether it was verified (text or vision)
             isSingleLevel: isSingleLevel,
             isGroundFloor: isGroundFloor
         }
     };
-}
+}    
 
 // Try to access dedicated floorplan page
 async function tryFloorplanURL(propertyId) {
@@ -997,7 +1153,7 @@ function smartFallbackDetection(name, address) {
 }
 
 // ✅ ENHANCED GP SEARCH with detailed coordinate logging
-async function findNearestGPs(lat, lng) {
+async function findNearestGPs(lat, lng, maxRadius = 2000) {
     try {
         console.log(`Finding GP surgeries near ${lat}, ${lng} using Places API (New)`);
         console.log(`🗺️ Property location: https://www.google.com/maps?q=${lat},${lng}`);
@@ -1008,7 +1164,7 @@ async function findNearestGPs(lat, lng) {
             locationRestriction: {
                 circle: {
                     center: { latitude: lat, longitude: lng },
-                    radius: 2000.0
+                    radius: maxRadius
                 }
             },
             rankPreference: "DISTANCE",
@@ -1033,7 +1189,6 @@ async function findNearestGPs(lat, lng) {
         console.log('Total places found:', response.data.places?.length || 0);
 
         if (response.data.places && response.data.places.length > 0) {
-            // ✅ KEEP FULL ENHANCED FILTERING but add coordinate logging
             const gps = [];
 
             // Try batch AI detection first
@@ -1042,7 +1197,6 @@ async function findNearestGPs(lat, lng) {
             if (validGPIndices && validGPIndices.length > 0) {
                 console.log(`🤖 AI found ${validGPIndices.length} valid GPs, processing them...`);
                 
-                // Process only the AI-confirmed GPs
                 for (const index of validGPIndices) {
                     const place = response.data.places[index];
                     if (!place) continue;
@@ -1055,7 +1209,6 @@ async function findNearestGPs(lat, lng) {
                         continue;
                     }
                     
-                    // Process the valid GP
                     const gpLat = place.location?.latitude;
                     const gpLng = place.location?.longitude;
                     
@@ -1085,7 +1238,6 @@ async function findNearestGPs(lat, lng) {
             } else {
                 console.log(`⚠️ AI detection failed, using smart fallback for all places...`);
                 
-                // Fallback to smart detection
                 for (const place of response.data.places) {
                     const name = place.displayName?.text || '';
                     const address = place.formattedAddress || '';
@@ -1097,7 +1249,6 @@ async function findNearestGPs(lat, lng) {
                     }
                     
                     if (smartFallbackDetection(name, address)) {
-                        // Process the GP (same logic as above)
                         const gpLat = place.location?.latitude;
                         const gpLng = place.location?.longitude;
                         
@@ -1128,27 +1279,23 @@ async function findNearestGPs(lat, lng) {
             }
             
             console.log(`Found ${gps.length} valid GP surgeries using batch AI detection`);
-
             
             if (gps.length > 0) {
                 return gps;
             }
         }
 
-        // Fallback searches...
-        console.log('No GPs found with strict search, trying broader criteria...');
-        return await findGPsBroadSearch(lat, lng);
+        return [];  // Returns empty array when no GPs found
         
     } catch (error) {
         console.error('Places API (New) error:', error.response?.data || error.message);
-        console.log('Falling back to legacy Places API...');
-        return await findGPsLegacyAPI(lat, lng);
+        return [];
     }
 }
 
 // Helper function to calculate straight-line distance
 function calculateStraightLineDistance(lat1, lng1, lat2, lng2) {
-    const R = 6371; // Earth's radius in kilometers
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
     const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -1157,13 +1304,11 @@ function calculateStraightLineDistance(lat1, lng1, lat2, lng2) {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
 }
-// Helper function to get postcode from coordinates
+
 function getPostcodeFromCoordinates(coordinates) {
-    // This would require a reverse geocoding API call
-    // For now, return null - we can implement this separately
     return null;
 }
-// Helper function to get score rating text
+
 function getScoreRating(score) {
     const roundedScore = Math.round(score);
     
@@ -1172,17 +1317,16 @@ function getScoreRating(score) {
     if (roundedScore === 3) return 'Good';
     if (roundedScore === 2) return 'Fair';
     if (roundedScore === 1) return 'Poor';
-    return 'Very Poor'; // roundedScore === 0
+    return 'Very Poor';
 }
 
-// Broader search using multiple place types
 async function findGPsBroadSearch(lat, lng) {
     try {
         const requestBody = {
-            includedTypes: ["doctor", "health", "hospital"],
-            maxResultCount: 30,
+            includedTypes: ["doctor"],
+            maxResultCount: 20,
             locationRestriction: {
-                circle: { center: { latitude: lat, longitude: lng }, radius: 3000.0 }
+                circle: { center: { latitude: lat, longitude: lng }, radius: 5000.0 }
             },
             rankPreference: "DISTANCE",
             languageCode: "en-GB",
@@ -1196,7 +1340,7 @@ async function findGPsBroadSearch(lat, lng) {
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
-                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id'
+                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.id,places.businessStatus'
                 },
                 timeout: 8000
             }
@@ -1206,9 +1350,16 @@ async function findGPsBroadSearch(lat, lng) {
             const gps = response.data.places
                 .filter(place => {
                     const name = place.displayName?.text?.toLowerCase() || '';
+                    const businessStatus = place.businessStatus;
+                    
+                    if (businessStatus === 'CLOSED_PERMANENTLY') {
+                        return false;
+                    }
+                    
                     return (
                         (name.includes('surgery') || name.includes('medical') || 
-                         name.includes('gp') || name.includes('doctors')) &&
+                         name.includes('gp') || name.includes('doctors') ||
+                         name.includes('practice') || name.includes('health centre')) &&
                         !name.includes('hospital') &&
                         !name.includes('pharmacy')
                     );
@@ -1218,12 +1369,13 @@ async function findGPsBroadSearch(lat, lng) {
                     address: place.formattedAddress || 'Address not available',
                     location: {
                         lat: place.location?.latitude,
-                        lng: place.location?.lng
+                        lng: place.location?.longitude
                     },
                     rating: place.rating || null,
-                    placeId: place.id
+                    placeId: place.id,
+                    straightLineDistance: calculateStraightLineDistance(lat, lng, place.location?.latitude, place.location?.longitude)
                 }))
-                .slice(0, 3);
+                .slice(0, 5);
             
             console.log(`Broad search found ${gps.length} medical facilities`);
             return gps;
@@ -1231,12 +1383,11 @@ async function findGPsBroadSearch(lat, lng) {
         
         return [];
     } catch (error) {
-        console.error('Broad Places search failed:', error.message);
+        console.error('Broad Places search failed:', error.response?.data || error.message);
         return [];
     }
 }
 
-// Legacy API fallback
 async function findGPsLegacyAPI(lat, lng) {
     try {
         console.log('Using legacy Places API as final fallback...');
@@ -1278,7 +1429,6 @@ async function findGPsLegacyAPI(lat, lng) {
     }
 }
 
-// ✅ FULL WALKING ROUTE ANALYSIS - Keep detailed analysis
 async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
     try {
         console.log(`Calculating precise walking route to ${gpName} using Directions API`);
@@ -1293,7 +1443,7 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
             `key=${process.env.GOOGLE_MAPS_API_KEY}`;
         
         const response = await axios.get(directionsUrl, {
-            timeout: 12000 // Slightly reduced
+            timeout: 12000
         });
         
         if (response.data.routes && response.data.routes.length > 0) {
@@ -1334,17 +1484,15 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
                 }
             });
             
-            // Apply 1.4x adjustment factor for older adult walking speed (5.0 km/h → 3.4 km/h)
             const durationMinutes = Math.ceil((leg.duration.value / 60) * 1.4);
 
-            // Debug: Show original vs adjusted time
             console.log(`⏱️ Google says: ${Math.ceil(leg.duration.value / 60)} mins → Adjusted: ${durationMinutes} mins`);
 
             const result = {
                 distance: leg.distance.text,
                 duration: leg.duration.text,
                 durationMinutes: durationMinutes,
-                durationSeconds: Math.round(leg.duration.value * 1.4), // Adjusted for slower walking speed
+                durationSeconds: Math.round(leg.duration.value * 1.4),
                 distanceMeters: leg.distance.value,
                 routeWarnings: [...new Set(routeWarnings)],
                 routeFeatures: routeFeatures,
@@ -1355,10 +1503,10 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
             };
             
             console.log(`Walking route analysis complete:`, {
-            time: `${result.durationMinutes} mins (adjusted)`,  // ✅ Shows adjusted time
-            distance: result.distance,
-            accessibility: result.accessibilityScore
-});
+                time: `${result.durationMinutes} mins (adjusted)`,
+                distance: result.distance,
+                accessibility: result.accessibilityScore
+            });
             
             return result;
         }
@@ -1371,7 +1519,6 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
     }
 }
 
-// Calculate route accessibility score
 function calculateRouteAccessibilityScore(features, durationMinutes) {
     let score = 5;
     
@@ -1384,11 +1531,9 @@ function calculateRouteAccessibilityScore(features, durationMinutes) {
     return Math.max(1, Math.round(score * 10) / 10);
 }
 
-// Generate detailed accessibility notes
 function generateAccessibilityNotes(durationMinutes, features, warnings) {
     const notes = [];
     
-    // Updated descriptions to match new scoring bands
     if (durationMinutes <= 5) {
         notes.push("Excellent proximity - very manageable walk");
     } else if (durationMinutes <= 10) {
@@ -1424,11 +1569,9 @@ function generateAccessibilityNotes(durationMinutes, features, warnings) {
     return notes.join('. ') + '.';
 }
 
-// Calculate final GP proximity score
 function calculateGPProximityScore(durationMinutes, routeAccessibilityScore = null) {
     let baseScore;
     
-    // Updated scoring bands for adjusted walking times
     if (durationMinutes <= 5) baseScore = 5;
     else if (durationMinutes <= 10) baseScore = 4;
     else if (durationMinutes <= 15) baseScore = 3;
@@ -1444,41 +1587,332 @@ function calculateGPProximityScore(durationMinutes, routeAccessibilityScore = nu
     return baseScore;
 }
 
-// ✅ PUBLIC TRANSPORT ANALYSIS
+async function analyzeGPProximity(lat, lng) {
+    try {
+        console.log('Analyzing GP proximity with enhanced search...');
+        
+        let nearestGPs = await findNearestGPs(lat, lng, 2000);
+
+        // Safety check in case findNearestGPs fails
+        if (!nearestGPs) {
+            nearestGPs = [];
+        }
+
+        console.log('🔍 DEBUG: nearestGPs after initial search:', nearestGPs.length, 'GPs found');
+
+
+        // If no GPs within 2km, search up to 10km for reference
+        if (nearestGPs.length === 0) {
+            console.log('No GPs within 2km, searching up to 10km for reference...');
+            
+            const requestBody = {
+                includedTypes: ["doctor"],
+                maxResultCount: 5,
+                locationRestriction: {
+                    circle: {
+                        center: { latitude: lat, longitude: lng },
+                        radius: 10000.0
+                    }
+                },
+                rankPreference: "DISTANCE",
+                languageCode: "en-GB",
+                regionCode: "GB"
+            };
+            
+            try {
+                const response = await axios.post(
+                    'https://places.googleapis.com/v1/places:searchNearby',
+                    requestBody,
+                    {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+                            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.rating,places.id,places.businessStatus'
+                        },
+                        timeout: 8000
+                    }
+                );
+                
+                if (response.data.places && response.data.places.length > 0) {
+                    const closestPlace = response.data.places[0];
+                    const gpLat = closestPlace.location?.latitude;
+                    const gpLng = closestPlace.location?.longitude;
+                    const straightLineDistance = calculateStraightLineDistance(lat, lng, gpLat, gpLng);
+                    
+                    nearestGPs = [{
+                        name: closestPlace.displayName?.text || 'Medical Practice',
+                        address: closestPlace.formattedAddress || 'Address not available',
+                        location: { lat: gpLat, lng: gpLng },
+                        rating: closestPlace.rating || null,
+                        placeId: closestPlace.id,
+                        straightLineDistance: straightLineDistance,
+                        tooFar: true
+                    }];
+                    
+                    console.log(`Found distant GP: ${nearestGPs[0].name} at ${straightLineDistance.toFixed(2)} km`);
+                }
+            } catch (distantError) {
+                console.error('10km search failed:', distantError.message);
+            }
+        }
+        
+        if (nearestGPs.length === 0) {
+            return {
+                score: 0,
+                rating: 'Very Poor',
+                nearestGPs: [],
+                details: 'No GP surgeries found in the area'
+            };
+        }
+        
+        const gpsWithRoutes = [];
+        
+        for (const gp of nearestGPs.slice(0, 5)) {
+            if (gp.tooFar) {
+                gpsWithRoutes.push({
+                    ...gp,
+                    walkingTime: null,
+                    adjustedTime: null,
+                    distance: `${gp.straightLineDistance.toFixed(2)} km (too far to walk)`,
+                    routeWarnings: [],
+                    routeAccessibilityScore: 0,
+                    baseScore: 0,
+                    overallScore: 0
+                });
+                continue;
+            }
+            
+            const route = await analyzeWalkingRoute(lat, lng, gp.location.lat, gp.location.lng, gp.name);
+            
+            if (route) {
+                const baseScore = calculateGPProximityScore(route.durationMinutes, null);
+                const overallScore = calculateGPProximityScore(route.durationMinutes, route.accessibilityScore);
+                
+                gpsWithRoutes.push({
+                    ...gp,
+                    walkingTime: route.duration,
+                    adjustedTime: `${route.durationMinutes} mins`,
+                    distance: route.distance,
+                    routeWarnings: route.routeWarnings,
+                    routeAccessibilityScore: route.accessibilityScore,
+                    accessibilityNotes: route.accessibilityNotes,
+                    baseScore: baseScore,
+                    overallScore: overallScore
+                });
+            } else {
+                gpsWithRoutes.push({
+                    ...gp,
+                    walkingTime: 'Unable to calculate',
+                    adjustedTime: 'N/A',
+                    distance: `${gp.straightLineDistance.toFixed(2)} km (straight line)`,
+                    routeWarnings: [],
+                    baseScore: 0,
+                    overallScore: 0
+                });
+            }
+        }
+        
+        // Check if all GPs are too far
+        if (gpsWithRoutes.every(gp => gp.tooFar || gp.overallScore === 0)) {
+            return {
+                score: 0,
+                rating: 'Very Poor',
+                nearestGPs: gpsWithRoutes,
+                details: 'No GP surgeries found within reasonable walking distance'
+            };
+        }
+        
+        const accessibleGPs = gpsWithRoutes.filter(gp => !gp.tooFar && gp.overallScore > 0);
+        const bestGP = accessibleGPs.sort((a, b) => b.overallScore - a.overallScore)[0];
+        
+        return {
+            score: bestGP.overallScore,
+            rating: getScoreRating(bestGP.overallScore),
+            nearestGPs: gpsWithRoutes,
+            details: bestGP.accessibilityNotes
+        };
+        
+    } catch (error) {
+        console.error('Error analyzing GP proximity:', error);
+        return {
+            score: 0,
+            rating: 'Very Poor',
+            nearestGPs: [],
+            details: 'Unable to analyze GP proximity'
+        };
+    }
+}
+
 async function analyzePublicTransport(lat, lng) {
     try {
         console.log(`🚌 Finding public transport near ${lat}, ${lng}`);
         
-        // Find nearby bus stops
         const busStops = await findNearbyTransit(lat, lng, 'bus_station');
-        
-        // Find nearby train stations  
         const trainStations = await findNearbyTransit(lat, lng, 'train_station');
         
-        // Calculate score based on distance only
-        const transitScore = calculateTransitScore(busStops, trainStations);
+        let busScore = 0;
+        let trainScore = 0;
+        let busAccessibility = null;
+        let trainAccessibility = null;
         
-        console.log(`🚌 Found ${busStops.length} bus stops, ${trainStations.length} train stations`);
-        console.log(`🚌 Public transport score: ${transitScore}/5`);
+        // Analyze nearest bus stop with walking route
+        if (busStops.length > 0) {
+            const nearestBus = busStops[0];
+            console.log(`🚌 Analyzing walking route to nearest bus: ${nearestBus.name}`);
+            
+            const route = await analyzeWalkingRoute(lat, lng, nearestBus.location.lat, nearestBus.location.lng);
+            
+            if (route) {
+                busScore = calculateTransitScoreFromTime(route.adjustedDuration);
+                nearestBus.walkingTime = route.adjustedDuration;
+                nearestBus.actualDistance = route.distance;
+                nearestBus.accessibilityFeatures = route.features;
+                nearestBus.warnings = route.warnings;
+                busAccessibility = route;
+                
+                console.log(`🚌 Bus route: ${route.adjustedDuration} mins (score: ${busScore})`);
+            }
+        }
+        
+        // Analyze nearest train station with walking route
+        if (trainStations.length > 0) {
+            const nearestTrain = trainStations[0];
+            console.log(`🚂 Analyzing walking route to nearest train: ${nearestTrain.name}`);
+            
+            const route = await analyzeWalkingRoute(lat, lng, nearestTrain.location.lat, nearestTrain.location.lng);
+            
+            if (route) {
+                trainScore = calculateTransitScoreFromTime(route.adjustedDuration);
+                nearestTrain.walkingTime = route.adjustedDuration;
+                nearestTrain.actualDistance = route.distance;
+                nearestTrain.accessibilityFeatures = route.features;
+                nearestTrain.warnings = route.warnings;
+                trainAccessibility = route;
+                
+                console.log(`🚂 Train route: ${route.adjustedDuration} mins (score: ${trainScore})`);
+            }
+        }
+        
+        // Combined score: average of bus and train (or whichever is available)
+        let transitScore;
+        if (busScore > 0 && trainScore > 0) {
+            transitScore = (busScore + trainScore) / 2;
+        } else if (busScore > 0) {
+            transitScore = busScore;
+        } else if (trainScore > 0) {
+            transitScore = trainScore;
+        } else {
+            transitScore = 0;
+        }
+        
+        console.log(`🚌 Public transport score: ${transitScore}/5 (bus: ${busScore}, train: ${trainScore})`);
         
         return {
-            score: transitScore,
-            busStops: busStops.slice(0, 3), // Top 3 nearest stops
+            score: Math.round(transitScore * 10) / 10,
+            busStops: busStops.slice(0, 3),
             trainStations: trainStations.slice(0, 3),
-            summary: generateTransitSummary(transitScore, busStops, trainStations)
+            busAccessibility: busAccessibility,
+            trainAccessibility: trainAccessibility
         };
         
     } catch (error) {
         console.error('Public transport analysis failed:', error.message);
         return {
-            score: 2,
+            score: 1,
             busStops: [],
-            trainStations: [],
-            summary: 'Public transport analysis unavailable'
+            trainStations: []
         };
     }
 }
 
+// Reuse GP proximity walking route analysis
+async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng) {
+    try {
+        const response = await axios.get('https://maps.googleapis.com/maps/api/directions/json', {
+            params: {
+                origin: `${fromLat},${fromLng}`,
+                destination: `${toLat},${toLng}`,
+                mode: 'walking',
+                key: process.env.GOOGLE_MAPS_API_KEY
+            },
+            timeout: 8000
+        });
+
+        if (response.data.status === 'OK' && response.data.routes.length > 0) {
+            const route = response.data.routes[0];
+            const leg = route.legs[0];
+            
+            // Extract duration and distance
+            const durationSeconds = leg.duration.value;
+            const baseDurationMinutes = Math.round(durationSeconds / 60);
+            const distanceMeters = leg.distance.value;
+            
+            // Analyze route for accessibility features
+            const features = analyzeRouteFeatures(leg.steps);
+            
+            // Calculate adjusted time (1.4x for older adults)
+            const adjustedDuration = Math.round(baseDurationMinutes * 1.4);
+            
+            console.log(`   Base time: ${baseDurationMinutes} mins → Adjusted: ${adjustedDuration} mins`);
+            
+            return {
+                distance: `${(distanceMeters / 1000).toFixed(2)} km`,
+                baseDuration: baseDurationMinutes,
+                adjustedDuration: adjustedDuration,
+                features: features,
+                warnings: features.hasStairs || features.hasSteepIncline ? 
+                    ['Route has accessibility challenges'] : []
+            };
+        }
+        
+        return null;
+        
+    } catch (error) {
+        console.error('Walking route analysis failed:', error.message);
+        return null;
+    }
+}
+
+// Analyze route steps for accessibility features (reuse from GP analysis)
+function analyzeRouteFeatures(steps) {
+    const features = {
+        hasStairs: false,
+        hasSteepIncline: false,
+        crossesBusyRoads: false,
+        hasTrafficLights: false
+    };
+    
+    const routeText = steps.map(step => step.html_instructions.toLowerCase()).join(' ');
+    
+    if (routeText.includes('stairs') || routeText.includes('steps')) {
+        features.hasStairs = true;
+    }
+    
+    if (routeText.includes('steep') || routeText.includes('hill')) {
+        features.hasSteepIncline = true;
+    }
+    
+    if (routeText.includes('cross') || routeText.includes('junction')) {
+        features.crossesBusyRoads = true;
+        if (routeText.includes('traffic light') || routeText.includes('crossing')) {
+            features.hasTrafficLights = true;
+        }
+    }
+    
+    return features;
+}
+
+// Score based on adjusted walking time (same as GP proximity)
+function calculateTransitScoreFromTime(adjustedMinutes) {
+    if (adjustedMinutes <= 5) return 5;
+    if (adjustedMinutes <= 10) return 4;
+    if (adjustedMinutes <= 15) return 3;
+    if (adjustedMinutes <= 20) return 2;
+    if (adjustedMinutes <= 25) return 1;
+    return 0;
+}
+
+// Update findNearbyTransit to remove the inaccurate walkingTime calculation
 async function findNearbyTransit(lat, lng, transitType) {
     try {
         const requestBody = {
@@ -1487,7 +1921,7 @@ async function findNearbyTransit(lat, lng, transitType) {
             locationRestriction: {
                 circle: {
                     center: { latitude: lat, longitude: lng },
-                    radius: 2000.0 // 2km radius
+                    radius: 2000.0
                 }
             },
             rankPreference: "DISTANCE",
@@ -1517,7 +1951,7 @@ async function findNearbyTransit(lat, lng, transitType) {
                     lng: place.location?.longitude
                 },
                 distance: calculateStraightLineDistance(lat, lng, place.location?.latitude, place.location?.longitude),
-                walkingTime: Math.round((calculateStraightLineDistance(lat, lng, place.location?.latitude, place.location?.longitude) * 1000) / 57), // 57m/min walking speed
+                // Remove inaccurate walkingTime - will be set by analyzeWalkingRoute
                 placeId: place.id
             })).sort((a, b) => a.distance - b.distance);
         }
@@ -1528,46 +1962,6 @@ async function findNearbyTransit(lat, lng, transitType) {
         console.error(`${transitType} search failed:`, error.message);
         return [];
     }
-}
-
-function calculateTransitScore(busStops, trainStations) {
-    const nearestBusDistance = busStops[0]?.distance ? busStops[0].distance * 1000 : Infinity; // Convert km to meters
-    const nearestTrainDistance = trainStations[0]?.distance ? trainStations[0].distance * 1000 : Infinity;
-    
-    console.log(`🚌 Nearest bus: ${nearestBusDistance}m, Nearest train: ${nearestTrainDistance}m`);
-    
-    // Scoring criteria based on your requirements
-    if ((nearestBusDistance <= 200 && nearestTrainDistance <= 800)) return 5;
-    if (nearestBusDistance <= 400 || nearestTrainDistance <= 1200) return 4;
-    if (nearestBusDistance <= 600 || nearestTrainDistance <= 1500) return 3;
-    if (nearestBusDistance <= 800 || nearestTrainDistance <= 2000) return 2;
-    return 1;
-}
-
-function generateTransitSummary(score, busStops, trainStations) {
-    let summary = ``;
-    
-    if (busStops.length > 0) {
-        summary += "🚌 **Nearest Bus Stops:**\n";
-        busStops.slice(0, 3).forEach((stop, index) => {
-            summary += `${index + 1}. **${stop.name}** (${Math.round(stop.distance * 1000)}m away, ${stop.walkingTime}-min walk)\n`;
-        });
-        summary += "\n";
-    }
-    
-    if (trainStations.length > 0) {
-        summary += "🚂 **Nearest Train Stations:**\n";
-        trainStations.slice(0, 3).forEach((station, index) => {
-            summary += `${index + 1}. **${station.name}** (${Math.round(station.distance * 1000)}m away, ${station.walkingTime}-min walk)\n`;
-        });
-        summary += "\n";
-    }
-    
-    if (busStops.length === 0 && trainStations.length === 0) {
-        summary += "No public transport found within 2km walking distance.\n";
-    }
-    
-    return summary;
 }
 
 // ✅ ENHANCED EPC EXTRACTION with lazy Vision API loading
@@ -1827,6 +2221,34 @@ async function scrapeRightmoveProperty(url) {
         const titleMatch = fullTitle.match(/(.+?) for sale/i);
         const title = titleMatch ? titleMatch[1].trim() : fullTitle.split('open-rightmove')[0].trim();
 
+        // Extract parking section
+        let parkingInfo = '';
+        $('dt, .key, [class*="key"]').each((i, el) => {
+            const keyText = $(el).text().toLowerCase().trim();
+            if (keyText === 'parking') {
+                const valueElement = $(el).next();
+                if (valueElement.length) {
+                    parkingInfo = valueElement.text().trim();
+                    console.log('🅿️ Found parking section:', parkingInfo);
+                }
+            }
+        });
+
+        // Extract garden section
+        let gardenInfo = '';
+        $('dt, .key, [class*="key"]').each((i, el) => {
+            const keyText = $(el).text().toLowerCase().trim();
+            if (keyText === 'garden') {
+                const valueElement = $(el).next();
+                if (valueElement.length) {
+                    gardenInfo = valueElement.text().trim();
+                    console.log('🌱 Found garden section:', gardenInfo);
+                }
+            }
+        });
+
+        
+        
         // Extract location (street and area) - appears above the map
         let location = '';
         
@@ -1975,14 +2397,31 @@ async function scrapeRightmoveProperty(url) {
             '.property-description',
             '[class*="description"]',
             '.PropertyDescription',
-            '[data-test="property-description"]'
+            '[data-test="property-description"]',
+            'article',
+            'main'
         ];
 
         for (const selector of descriptionSelectors) {
             const desc = $(selector).text().trim();
             if (desc && desc.length > 50) {
                 description = desc;
+                console.log('🏠 DEBUG: Description length:', desc.length);
+                console.log('🏠 DEBUG: Description includes "council tax"?', desc.toLowerCase().includes('council tax'));
+                console.log('🏠 DEBUG: Description includes "front garden"?', desc.toLowerCase().includes('front garden'));
+                console.log('🏠 DEBUG: First 500 chars:', desc.substring(0, 500));
                 break;
+            }
+        }
+
+        // If description doesn't include garden info, try to find and append it
+        if (description && !description.toLowerCase().includes('front garden') && !description.toLowerCase().includes('rear garden')) {
+            console.log('🌱 Description missing garden info, searching for Outside section...');
+            const bodyText = $('body').text();
+            const outsideMatch = bodyText.match(/Outside:[\s\S]*?(?=WORKSHOP:|Agent's Note|Mortgage|$)/i);
+            if (outsideMatch) {
+                description += '\n\n' + outsideMatch[0];
+                console.log('✅ Appended Outside section to description');
             }
         }
 
@@ -1995,6 +2434,9 @@ async function scrapeRightmoveProperty(url) {
             );
             description = textSections[0] || 'No detailed description available';
         }
+
+        console.log('🏠 Final description length:', description.length);
+        console.log('🏠 Final description includes garden:', description.toLowerCase().includes('front garden') || description.toLowerCase().includes('rear garden'));
 
         // Extract images and floorplan
         const images = [];
@@ -2158,6 +2600,40 @@ async function scrapeRightmoveProperty(url) {
                     }
                 }
             });
+        }
+
+        // Method 3: Search in description and full page text
+        if (!councilTaxBand) {
+            const fullPageText = $('body').text();
+            const allText = `${description} ${features.join(' ')} ${fullPageText}`.toLowerCase();
+            
+            // Look for common patterns
+            const patterns = [
+                /council\s+tax:\s+band\s+([a-h])\b/i,  // "council tax: band c"
+                /council\s+tax\s+band[:\s]+([a-h])\b/i,
+                /tax\s+band[:\s]+([a-h])\b/i,
+                /band\s+([a-h])\s+council\s+tax/i
+            ];
+            
+            for (const pattern of patterns) {
+                const match = allText.match(pattern);
+                if (match) {
+                    // Verify it's about council tax (not EPC band)
+                    const context = allText.substring(
+                        Math.max(0, match.index - 50), 
+                        match.index + match[0].length + 50
+                    );
+                    
+                    const isCouncilTax = context.includes('council') && context.includes('tax');
+                    const notEPC = !context.includes('epc') && !context.includes('energy') && !context.includes('rating c (');
+                    
+                    if (isCouncilTax && notEPC) {
+                        councilTaxBand = `Band ${match[1].toUpperCase()}`;
+                        console.log('Found council tax in text:', councilTaxBand, 'Context:', context.substring(0, 100));
+                        break;
+                    }
+                }
+            }
         }
 
         console.log('Final council tax band from scraping:', councilTaxBand);
@@ -2324,6 +2800,7 @@ if (!leaseholdDetails.leaseYears) {
             console.log('🔍 Step 1: Checking for clear EPC declarations in text...');
             
             const clearDeclarations = [
+                /epc\s*[-:]\s*rating\s*([a-g])\b/gi,  // NEW: "EPC: rating C" or "epc rating c"
                 /epc\s*[-:]\s*([a-g])\b/gi,           // "EPC - A" or "EPC: A"
                 /epc\s+([a-g])\b/gi,                  // "EPC A"
                 /energy\s+rating\s*[-:]\s*([a-g])\b/gi, // "Energy Rating - A"
@@ -2651,6 +3128,21 @@ if (epcResult && epcResult.rating) {
         console.log('Location variable before return:', location);
         console.log('Title:', title);
         console.log('Price:', price);
+
+        // Extract council tax from same text source used for EPC
+        if (!councilTaxBand) {
+            const fullPageText = $('body').text();
+            const allTextSources = `${title} ${description} ${features.join(' ')} ${fullPageText}`.toLowerCase();
+            
+            const councilTaxMatch = allTextSources.match(/council\s+tax:\s+band\s+([a-h])\b/i);
+            if (councilTaxMatch) {
+                councilTaxBand = `Band ${councilTaxMatch[1].toUpperCase()}`;
+                console.log('✅ Found council tax in full text:', councilTaxBand);
+            }
+        }
+
+        // Just before return statement in scrapeRightmoveProperty()
+        const fullPageText = $('body').text();
         
         return {
             id: propertyId,
@@ -2658,6 +3150,9 @@ if (epcResult && epcResult.rating) {
             location: location,
             price: price,
             description: description,
+            parkingInfo: parkingInfo,
+            gardenInfo: gardenInfo,
+            fullPageText: fullPageText,
             features: features,
             images: images.slice(0, 5),
             floorplan: floorplan,
@@ -2692,78 +3187,31 @@ async function analyzePropertyAccessibility(property) {
     // Step 1: Analyze GP proximity
     let gpProximity = null;
     if (property.coordinates) {
-        console.log('Analyzing GP proximity with enhanced search...');
-        
         try {
-            const nearbyGPs = await findNearestGPs(property.coordinates.lat, property.coordinates.lng);
+            const gpResult = await analyzeGPProximity(property.coordinates.lat, property.coordinates.lng);
             
-            if (nearbyGPs.length > 0) {
-                console.log(`Found ${nearbyGPs.length} GP surgeries nearby`);
-                
-                const route = await analyzeWalkingRoute(
-                    property.coordinates.lat, 
-                    property.coordinates.lng,
-                    nearbyGPs[0].location.lat,
-                    nearbyGPs[0].location.lng,
-                    nearbyGPs[0].name
-                );
-                
-                if (route) {
-                    gpProximity = {
-                    nearestGP: nearbyGPs[0].name,
-                    address: nearbyGPs[0].address,
-                    walkingTime: `${route.durationMinutes} mins`,  // ✅ Now shows adjusted time
-                    distance: route.distance,
-                    score: calculateGPProximityScore(route.durationMinutes, route.accessibilityScore),
-                        routeAccessibilityScore: route.accessibilityScore,
-                        accessibilityNotes: route.accessibilityNotes,
-                        warnings: route.routeWarnings,
-                        allNearbyGPs: nearbyGPs.slice(0, 3).map(gp => ({
-                            name: gp.name,
-                            address: gp.address
-                        }))
-                    };
-                    
-                    console.log('GP proximity analysis complete:', { 
-                    gp: nearbyGPs[0].name,
-                    time: `${route.durationMinutes} mins (adjusted)`,
-                    score: gpProximity.score
-                });
-                } else {
-                    gpProximity = {
-                        nearestGP: nearbyGPs[0].name,
-                        address: nearbyGPs[0].address,
-                        score: 3,
-                        accessibilityNotes: 'GP surgery found nearby, but walking route could not be calculated',
-                        allNearbyGPs: nearbyGPs.slice(0, 3).map(gp => ({
-                            name: gp.name,
-                            address: gp.address
-                        }))
-                    };
-                }
-            } else {
-                gpProximity = {
-                    score: 1,
-                    accessibilityNotes: 'No GP surgeries found within reasonable walking distance'
-                };
-            }
+            // Transform new structure to match what frontend expects
+            gpProximity = {
+                score: gpResult.score,
+                rating: gpResult.rating,
+                details: gpResult.details,
+                nearestGPs: gpResult.nearestGPs  // Pass the array through
+            };
         } catch (error) {
             console.error('GP proximity analysis failed:', error.message);
             gpProximity = {
-                score: 2,
-                accessibilityNotes: 'Unable to analyze GP proximity at this time'
+                score: 0,
+                rating: 'Very Poor',
+                nearestGPs: [],
+                details: 'Unable to analyze GP proximity'
             };
         }
-    } else {
-        gpProximity = {
-            score: 2,
-            accessibilityNotes: 'Property location coordinates not available for GP proximity analysis'
-        };
     }
 
-    // Step 2: Calculate EPC Score
+    
+// Step 2: Calculate EPC Score
 function calculateEPCScore(epcRating) {
-    if (!epcRating) return { score: 3, rating: 'Not available', description: 'Energy rating not available' };
+    if (!epcRating) return { score: null, rating: 'Not available', description: 'Energy rating not available' };
     
     const rating = epcRating.toUpperCase();
     
@@ -2771,55 +3219,55 @@ function calculateEPCScore(epcRating) {
         case 'A':
             return {
                 score: 5,
-                rating: 'Most efficient',
+                rating: 'Excellent',
                 description: `Energy rating A - Most efficient. This property has excellent energy efficiency with very low heating costs, ideal for maintaining comfortable temperatures year-round.`
             };
         
         case 'B':
             return {
                 score: 5,
-                rating: 'Very efficient',
+                rating: 'Excellent',
                 description: `Energy rating B - Very efficient. This property has excellent energy efficiency with low heating costs, helping maintain comfortable temperatures.`
             };
         
         case 'C':
             return {
                 score: 4,
-                rating: 'Above average',
-                description: `Energy rating C - Above average efficiency. This property has good energy efficiency with reasonable heating costs.`
+                rating: 'Very Good',
+                description: `Energy rating C - Above average efficiency. This property has very good energy efficiency with reasonable heating costs.`
             };
             
         case 'D':
             return {
                 score: 3,
-                rating: 'Average',
-                description: `Energy rating D - Average efficiency. This property has typical energy efficiency with moderate heating costs.`
+                rating: 'Good',
+                description: `Energy rating D - Average efficiency. This property has good energy efficiency with moderate heating costs.`
             };
             
         case 'E':
             return {
                 score: 2,
-                rating: 'Below average',
-                description: `Energy rating E - Below average efficiency. This property may have higher heating costs and could be harder to keep warm in winter.`
+                rating: 'Fair',
+                description: `Energy rating E - Below average efficiency. This property has fair energy efficiency and may have higher heating costs.`
             };
         
         case 'F':
             return {
                 score: 1,
                 rating: 'Poor',
-                description: `Energy rating F - Poor efficiency. This property is likely to have high heating costs and may be challenging to maintain comfortable temperatures.`
+                description: `Energy rating F - Poor efficiency. This property has poor energy efficiency and is likely to have high heating costs.`
             };
         
         case 'G':
             return {
                 score: 0,
-                rating: 'Very poor',
-                description: `Energy rating G - Very poor efficiency. This property is likely to have very high heating costs and may be difficult to keep warm, which could significantly impact comfort and affordability.`
+                rating: 'Very Poor',
+                description: `Energy rating G - Very poor efficiency. This property has very poor energy efficiency and is likely to have very high heating costs.`
             };
             
         default:
             return {
-                score: 3,
+                score: null,
                 rating: 'Unknown',
                 description: 'Energy rating not available'
             };
@@ -3208,6 +3656,11 @@ if (availableScores.length > 0) {
 // Updated overall score calculation (6 categories)
 let scoresToAverage = [gpProximity.score, epcScore, accessibleFeatures.score, publicTransport.score, roomScore.score];
 
+// Only include EPC if it was actually found
+if (epcScore !== null) {
+    scoresToAverage.push(epcScore);
+}
+
 if (propertyCostScore !== null) {
     scoresToAverage.push(propertyCostScore);
 }
@@ -3255,14 +3708,9 @@ try {
     return {
         gpProximity: {
             score: gpProximity.score || 0,
-            rating: getScoreRating(gpProximity.score || 0),
-            details: gpProximity.accessibilityNotes || 'No details available',
-            nearestGP: gpProximity.nearestGP || null,
-            address: gpProximity.address || null,
-            walkingTime: gpProximity.walkingTime || null,
-            distance: gpProximity.distance || null,
-            warnings: gpProximity.warnings || [],
-            allNearbyGPs: gpProximity.allNearbyGPs || []
+            rating: gpProximity.rating || getScoreRating(gpProximity.score || 0),
+            details: gpProximity.details || 'No details available',
+            nearestGPs: gpProximity.nearestGPs || []  // NEW - pass the array
         },
         epcRating: {
             score: epcScore || 0,
