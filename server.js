@@ -3693,10 +3693,12 @@ try {
         cost,
         councilTaxAnalysis,
         pricePerSqMAnalysis,
+        stampDutyAnalysis,  // ADD THIS
         overallScore, 
         property.title, 
         property.epcRating, 
-        property.location
+        property.location,
+        roomScore  // ADD THIS (pass roomScore as roomAccommodation)
     );
     console.log('✅ Summary generated successfully');
 } catch (error) {
@@ -3778,224 +3780,249 @@ try {
     };
 }
 
-// Add publicTransport parameter to the function
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, councilTaxAnalysis, pricePerSqMAnalysis, overallScore, title, epcRating, location) {
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, councilTaxAnalysis, pricePerSqMAnalysis, stampDutyAnalysis, overallScore, title, epcRating, location, roomAccommodation) {
     let summary = "";
     
     const accessibleFeaturesScore = accessibleFeatures.score || 0;
     
-    // Extract property details from title (keep your existing logic)
-    let propertyDescription = "property";
+    // Extract property type from title
+    let propertyType = "property";
+    let bedrooms = "";
     if (title) {
         const titleLower = title.toLowerCase();
-        if (titleLower.includes("bedroom")) {
-            const bedroomMatch = titleLower.match(/(\d+)\s*bedroom/);
-            if (bedroomMatch) {
-                const propertyTypeMatch = titleLower.match(/\d+\s*bedroom\s*(\w+)/);
-                const propertyType = propertyTypeMatch ? propertyTypeMatch[1] : "property";
-                propertyDescription = `${bedroomMatch[1]} bedroom ${propertyType}`;
+        const bedroomMatch = titleLower.match(/(\d+)\s*bedroom/);
+        if (bedroomMatch) {
+            bedrooms = `${bedroomMatch[1]} bedroom `;
+            const typeMatch = titleLower.match(/\d+\s*bedroom\s*(\w+)/);
+            if (typeMatch) {
+                propertyType = typeMatch[1];
+            }
+        }
+    }
+
+    // Add "property" if propertyType is just an adjective like "terraced"
+    const propertyAdjectives = ['terraced', 'detached', 'semi-detached', 'end-terrace'];
+    let fullPropertyType = propertyType;
+    if (propertyAdjectives.includes(propertyType.toLowerCase())) {
+        fullPropertyType = `${propertyType} house`;
+    }
+
+    summary += `This ${bedrooms}${fullPropertyType}`;
+
+    if (location) {
+        // Extract just the area/town (second to last part of address)
+        if (location.includes(',')) {
+            const parts = location.split(',').map(p => p.trim());
+            const area = parts.length >= 2 ? parts[parts.length - 2] : parts[parts.length - 1];
+            summary += ` located in ${area}`;
+        } else {
+            summary += ` located in ${location}`;
+        }
+    }
+
+    const overallRating = getScoreRating(overallScore);
+    summary += ` has achieved an overall accessibility score of ${Math.round(overallScore * 10) / 10}/5 (${overallRating}). `;
+
+    console.log('💷 DEBUG Stamp Duty Description:', stampDutyAnalysis.description);
+
+    // 2. FIXED: Match "Low stamp duty cost" pattern
+    if (cost && cost.price) {
+        const priceComponents = [];
+        priceComponents.push(`The property is priced at ${cost.price}`);
+        
+        if (stampDutyAnalysis && stampDutyAnalysis.amount && stampDutyAnalysis.amount !== '£0') {
+            let dutyDescriptor = 'moderate cost';
+            
+            if (stampDutyAnalysis.description) {
+                const descLower = stampDutyAnalysis.description.toLowerCase();
+                // Match patterns: "low stamp duty cost", "low cost", etc.
+                if (descLower.includes('low')) {
+                    dutyDescriptor = 'low cost';
+                } else if (descLower.includes('moderate')) {
+                    dutyDescriptor = 'moderate cost';
+                } else if (descLower.includes('high')) {
+                    dutyDescriptor = 'high cost';
+                }
+            }
+            
+            const formattedAmount = String(stampDutyAnalysis.amount).startsWith('£') ? 
+                stampDutyAnalysis.amount : `£${stampDutyAnalysis.amount}`;
+            
+            priceComponents.push(`with ${dutyDescriptor} stamp duty of ${formattedAmount}`);
+        }
+        
+        summary += priceComponents.join(' ') + '. ';
+    }
+    
+    // 3. FIXED: Combined rooms and features with proper "and" before last item
+    const foundFeatures = accessibleFeatures.features || [];
+    const totalFeatures = 8;
+    
+    let combinedSentence = '';
+    
+    // Add room count if available
+    if (roomAccommodation && roomAccommodation.roomsFound) {
+        const essentialRooms = roomAccommodation.roomsFound.filter(r => 
+            !r.toLowerCase().includes('bedroom 3') && 
+            !r.toLowerCase().includes('additional')
+        );
+        combinedSentence += `This property has ${essentialRooms.length}/6 essential rooms`;
+    } else {
+        combinedSentence += `This property has`;
+    }
+    
+    // Add feature count
+    if (foundFeatures.length > 0) {
+        if (combinedSentence.includes('rooms')) {
+            combinedSentence += ` and ${foundFeatures.length}/${totalFeatures} accessible features including `;
+        } else {
+            combinedSentence += ` ${foundFeatures.length}/${totalFeatures} accessible features including `;
+        }
+        
+        // Format list with "and" before last item
+        const featureList = foundFeatures.slice(0, 4).map(f => f.toLowerCase());
+        if (featureList.length > 1) {
+            const lastFeature = featureList.pop();
+            combinedSentence += featureList.join(', ') + ' and ' + lastFeature;
+        } else {
+            combinedSentence += featureList[0];
+        }
+        
+        if (foundFeatures.length > 4) {
+            combinedSentence += `, plus ${foundFeatures.length - 4} more`;
+        }
+    }
+    
+    summary += combinedSentence + '. ';
+    
+    // 5. Healthcare access
+    const gpRating = getScoreRating(gpProximity.score || 0);
+    summary += `Proximity to a GP is ${gpRating.toLowerCase()}`;
+    
+    if (gpProximity.nearestGPs && gpProximity.nearestGPs.length > 0) {
+        const nearestGP = gpProximity.nearestGPs[0];
+        
+        if (nearestGP.tooFar) {
+            const distance = nearestGP.distance.replace(/(\d+\.\d+)\s*km/, '$1km away');
+            summary += ` with the nearest surgery (${nearestGP.name}) located ${distance}`;
+            if (gpProximity.score === 0) {
+                summary += ` and will require transport assistance for medical appointments`;
+            }
+        } else if (nearestGP.adjustedTime) {
+            summary += ` with ${nearestGP.name} accessible within a ${nearestGP.adjustedTime} walk`;
+        }
+    } else {
+        summary += ` due to no GP surgeries found in the area`;
+    }
+    summary += '. ';
+    
+    // DEBUG: Check public transport data structure
+    console.log('🚌 DEBUG Public Transport Data:', JSON.stringify(publicTransport, null, 2));
+    // 6. Public transport with improved readability
+    const transportRating = getScoreRating(publicTransport.score || 0);
+    summary += `Public transport connectivity is ${transportRating.toLowerCase()}`;
+
+    const nearestBus = publicTransport.busStops?.[0];
+    const nearestTrain = publicTransport.trainStations?.[0];
+
+    if (nearestBus && nearestTrain) {
+        // Both available
+        summary += ` with the nearest bus and train stops ${nearestBus.walkingTime} and ${nearestTrain.walkingTime} mins walk away, respectively`;
+    } else if (nearestBus && !nearestTrain) {
+        // Bus only
+        summary += ` with the nearest bus stop ${nearestBus.walkingTime} mins walk away`;
+    } else if (nearestTrain && !nearestBus) {
+        // Train only
+        summary += ` with the nearest train station ${nearestTrain.walkingTime} mins walk away`;
+    }
+
+    summary += '. ';
+    
+    // 7. Energy efficiency
+    const epcRatingText = getScoreRating(epcScore);
+    summary += `Energy efficiency is ${epcRatingText.toLowerCase()}`;
+    if (epcRating) {
+        summary += ` (EPC rating ${epcRating})`;
+    }
+    
+    if (epcScore >= 4) {
+        summary += ", helping to keep heating costs manageable";
+    } else if (epcScore >= 2) {
+        summary += " with moderate running costs";
+    } else {
+        summary += ", which may result in higher heating bills";
+    }
+    summary += '. ';
+    
+    // 8. Ongoing costs
+    const costElements = [];
+    
+    if (cost.councilTax && councilTaxAnalysis) {
+        const bandInfo = cost.councilTax.includes('Band') ? cost.councilTax : `Band ${cost.councilTax}`;
+        costElements.push(`${councilTaxAnalysis.rating.toLowerCase()} council tax (${bandInfo})`);
+    }
+    
+    if (cost.serviceCharge && !cost.serviceCharge.includes('Not mentioned') && !cost.serviceCharge.includes('No service')) {
+        costElements.push(`service charges of ${cost.serviceCharge}`);
+    }
+    
+    if (cost.groundRent && !cost.groundRent.includes('Ask agent') && !cost.groundRent.includes('Peppercorn')) {
+        costElements.push(`ground rent of ${cost.groundRent}`);
+    }
+    
+    if (costElements.length > 0) {
+        summary += `Ongoing costs include ${costElements.join(', ')}. `;
+    }
+    
+    // 9. Accessibility limitations with transport considerations
+    const criticalMissing = [];
+    const transportNeeds = [];
+
+    if (!foundFeatures.some(f => f.toLowerCase().includes('lateral') || f.toLowerCase().includes('single'))) {
+        criticalMissing.push("single-level living");
+    }
+    if (!foundFeatures.some(f => f.toLowerCase().includes('level') || f.toLowerCase().includes('ramp'))) {
+        criticalMissing.push("level access entry");
+    }
+
+    // Check if transport will be needed
+    if (gpProximity.score === 0 || (gpProximity.nearestGPs?.[0]?.tooFar)) {
+        transportNeeds.push("GP access");
+    }
+    if (publicTransport.score <= 1) {
+        transportNeeds.push("public transport access");
+    }
+
+    if (criticalMissing.length > 0 || transportNeeds.length > 0) {
+        summary += "Important considerations: ";
+        
+        if (criticalMissing.length > 0) {
+            summary += `the property lacks ${criticalMissing.join(' and ')}, which may limit suitability for wheelchair users or those with significant mobility challenges. `;
+        }
+        
+        if (transportNeeds.length > 0) {
+            if (transportNeeds.length === 2) {
+                summary += "Residents will require personal transport or taxi services for both medical appointments and general travel. ";
+            } else if (transportNeeds.includes("GP access")) {
+                summary += "Residents will require transport for medical appointments. ";
+            } else {
+                summary += "Residents will require transport for general travel due to limited public transport. ";
             }
         }
     }
     
-    // 1. Property introduction with overall accessibility assessment
-    summary += `This ${propertyDescription}`;
-    if (location) {
-        summary += ` in ${location}`;
-    }
-    
-    // Use the overall score that's calculated elsewhere (matches the top of page display)
-    let overallRating = "Limited";
-    if (overallScore >= 4) overallRating = "Excellent";
-    else if (overallScore >= 3) overallRating = "Good"; 
-    else if (overallScore >= 2) overallRating = "Fair";
-    
-    summary += ` offers ${overallRating.toLowerCase()} accessibility features for older adults, with an overall accessibility score of ${Math.round(overallScore * 10) / 10}/5 (${overallRating}). `;
-    
-    // NEW: Cost information early in summary
-    if (cost && cost.price) {
-        summary += `The property is priced at ${cost.price}`;
-        if (cost.pricePerSqFt && !cost.pricePerSqFt.includes('Unable')) {
-            summary += ` (${cost.pricePerSqFt})`;
-        }
-        summary += '. ';
-    }
-    
-    // 2. Key accessibility strengths - focus on what works well
-    if (accessibleFeaturesScore >= 3) {
-        summary += "The property's key strength is its accessible design, featuring ";
-        
-        const foundFeatures = accessibleFeatures.features || [];
-        const accessibilityHighlights = [];
-        
-        if (foundFeatures.some(f => f.toLowerCase().includes('lateral') || f.toLowerCase().includes('single floor'))) {
-            accessibilityHighlights.push("complete single-level living that eliminates stairs from daily life");
-        }
-        if (foundFeatures.some(f => f.toLowerCase().includes('bedroom'))) {
-            accessibilityHighlights.push("a downstairs bedroom for flexible sleeping arrangements");
-        }
-        if (foundFeatures.some(f => f.toLowerCase().includes('bathroom'))) {
-            accessibilityHighlights.push("downstairs bathroom facilities");
-        }
-        if (foundFeatures.some(f => f.toLowerCase().includes('parking'))) {
-            accessibilityHighlights.push("private parking that eliminates street parking challenges");
-        }
-        
-        if (accessibilityHighlights.length > 0) {
-            summary += accessibilityHighlights.join(', ') + ". ";
-        }
-    }
-    
-    // 3. Healthcare access from accessibility perspective
-    let gpRating = "limited";
-    if (gpProximity.score >= 4.5) gpRating = "excellent";
-    else if (gpProximity.score >= 3.5) gpRating = "good";
-    else if (gpProximity.score >= 2.5) gpRating = "fair";
-    
-    summary += `For healthcare independence, the GP proximity is ${gpRating}`;
-    
-    if (gpProximity.score >= 4) {
-        summary += " with easy walking access that supports medical independence";
-    } else if (gpProximity.score >= 3) {
-        summary += " with reasonable walking distance to maintain healthcare autonomy";
-    } else if (gpProximity.score >= 2) {
-        summary += ", though the walking distance may challenge those with mobility limitations";
+    // 10. Final recommendation
+    summary += "Overall, this property is ";
+    if (overallScore >= 4.5) {
+        summary += "highly suitable for seniors planning to age in place, with excellent accessibility features throughout.";
+    } else if (overallScore >= 3.5) {
+        summary += "very suitable for active seniors and those planning long-term residence.";
+    } else if (overallScore >= 2.5) {
+        summary += "well-suited for seniors with good mobility and some adaptability.";
+    } else if (overallScore >= 1.5) {
+        summary += "suitable for those with minimal mobility requirements or willingness to make modifications.";
     } else {
-        summary += " due to significant distance that may require transport assistance";
-    }
-    
-    if (gpProximity.nearestGP) {
-        summary += ` to ${gpProximity.nearestGP}`;
-    }
-    summary += ". ";
-
-    // NEW: Public Transport Context
-    let transportRating = "limited";
-    if (publicTransport.score >= 4.5) transportRating = "excellent";
-    else if (publicTransport.score >= 3.5) transportRating = "good";
-    else if (publicTransport.score >= 2.5) transportRating = "fair";
-    
-    summary += `Public transport connectivity is ${transportRating}`;
-    
-    if (publicTransport.score >= 4) {
-        summary += " with convenient access to buses and trains that supports independent travel";
-    } else if (publicTransport.score >= 3) {
-        summary += " with reasonable access to public transport for regular journeys";
-    } else if (publicTransport.score >= 2) {
-        summary += ", though limited options may require planning for longer journeys";
-    } else {
-        summary += " due to minimal nearby public transport options";
-    }
-    
-    const nearestBus = publicTransport.busStops?.[0];
-    const nearestTrain = publicTransport.trainStations?.[0];
-    
-    if (nearestBus || nearestTrain) {
-        summary += " (";
-        const transportDetails = [];
-        if (nearestBus) transportDetails.push(`bus ${Math.round(nearestBus.distance * 1000)}m away`);
-        if (nearestTrain) transportDetails.push(`train station ${Math.round(nearestTrain.distance * 1000)}m away`);
-        summary += transportDetails.join(', ');
-        summary += ")";
-    }
-    summary += ". ";
-    
-    // 4. Accessibility considerations and limitations
-    const foundFeatures = accessibleFeatures.features || [];
-    const missingFeatures = [];
-    
-    const allFeatures = [
-        { key: 'lateral', name: 'single-level living', critical: true },
-        { key: 'bedroom', name: 'downstairs bedroom', critical: false },
-        { key: 'bathroom', name: 'downstairs bathroom/WC', critical: true },
-        { key: 'access', name: 'level access to the property', critical: true },
-        { key: 'parking', name: 'off-street parking', critical: false }
-    ];
-    
-    allFeatures.forEach(feature => {
-        const isFound = foundFeatures.some(found => 
-            found.toLowerCase().includes(feature.key) || 
-            found.toLowerCase().includes(feature.name.split(' ')[0])
-        );
-        if (!isFound) {
-            missingFeatures.push(feature);
-        }
-    });
-    
-    if (missingFeatures.length > 0) {
-        const criticalMissing = missingFeatures.filter(f => f.critical);
-        if (criticalMissing.length > 0) {
-            summary += `Important accessibility considerations include the lack of ${criticalMissing.map(f => f.name).join(' and ')}, which may limit suitability for wheelchair users or those with significant mobility challenges. `;
-        }
-    }
-
-    // Additional cost considerations with enhanced context
-    if (cost) {
-        const costConsiderations = [];
-        
-        // Add council tax with descriptor - restructured for better flow
-        if (cost.councilTax && councilTaxAnalysis && councilTaxAnalysis.rating) {
-            const bandInfo = cost.councilTax.includes('Band') ? cost.councilTax : `Band ${cost.councilTax}`;
-            costConsiderations.push(`${councilTaxAnalysis.rating.toLowerCase()} council tax (${bandInfo})`);
-        }
-        
-        // Only add service charge if it exists and has actual info
-        if (cost.serviceCharge && !cost.serviceCharge.includes('Not mentioned') && !cost.serviceCharge.includes('No service charge')) {
-            costConsiderations.push(`service charges of ${cost.serviceCharge}`);
-        }
-        
-        // Only add ground rent if it exists and isn't "Ask agent"
-        if (cost.groundRent && !cost.groundRent.includes('Ask agent') && !cost.groundRent.includes('Peppercorn')) {
-            costConsiderations.push(`ground rent of ${cost.groundRent}`);
-        }
-        
-        if (costConsiderations.length > 0) {
-            summary += `Additional ongoing costs include ${costConsiderations.join(' and ')}. `;
-        }
-        
-        // Add price per sq m context as separate sentence
-        if (cost.pricePerSqM && pricePerSqMAnalysis && pricePerSqMAnalysis.description && !cost.pricePerSqM.includes('Unable')) {
-            summary += `${pricePerSqMAnalysis.description} `;
-        }
-        
-        if (cost.leaseholdInfo && !cost.leaseholdInfo.includes('Freehold')) {
-            summary += `The property is leasehold with ${cost.leaseholdInfo}. `;
-        }
-    }
-    
-    // 5. Energy efficiency in context of comfort and accessibility
-    let epcRatingText = "very poor";
-    if (epcScore >= 5) epcRatingText = "excellent";
-    else if (epcScore >= 4) epcRatingText = "above average";
-    else if (epcScore >= 3) epcRatingText = "average";
-    else if (epcScore >= 2) epcRatingText = "below average";
-    else if (epcScore >= 1) epcRatingText = "poor";
-
-    // Always mention EPC, regardless of score
-    summary += `The energy efficiency is ${epcRatingText}`;
-    if (epcRating) {
-        summary += ` with a ${epcRating} rating`;
-    }
-
-    // Add context based on rating
-    if (epcScore >= 4) {
-        summary += ", which should help keep heating costs manageable and maintain comfortable temperatures year-round. ";
-    } else if (epcScore >= 3) {
-        summary += ", with moderate heating costs typical for properties of this type. ";
-    } else {
-        summary += ", which may result in higher heating costs that could impact comfort for temperature-sensitive residents. ";
-    }
-    
-    // 6. Final recommendation integrated into sentence
-    summary += "This property would be best suited for ";
-    if (overallScore >= 4) {
-        summary += "seniors across a wide range of mobility levels, particularly those planning to age in place.";
-    } else if (overallScore >= 3) {
-        summary += "active seniors and those with mild mobility considerations who value accessible features.";
-    } else if (overallScore >= 2) {
-        summary += "seniors with good mobility who can adapt to some accessibility limitations.";
-    } else {
-        summary += "seniors who can make significant modifications, as the property may require substantial accessibility improvements.";
+        summary += "best suited for those able to undertake significant accessibility modifications.";
     }
     
     return summary;
