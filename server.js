@@ -297,28 +297,40 @@ const isGroundFloor = hasSingleLevelKeywords && !isUpperFloor;
 console.log('🏠 Property type: Single level =', isSingleLevel, '| Ground floor =', isGroundFloor, '| Multi-level =', isMultiLevel);
 console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlift);
 
-    // CRITERIA 1: Step-free internal access OR lift (mutually exclusive)
-    let hasStepFreeInternal = false;
-    
-    if (isSingleLevel && !hasMultipleLevels) {
-        hasStepFreeInternal = true;
-        score += 1;
-        features.push('Step-free internal access');
-        console.log('✓ Step-free internal access (single level property)');
-    } else if (hasMultipleLevels && hasAnyLift) {
-        score += 1;
-        if (hasStairlift) {
-            features.push('Stairlift');
-            console.log('✓ Stairlift (compensates for internal stairs)');
-        } else {
-            features.push('Lift');
-            console.log('✓ Lift (compensates for internal stairs)');
-        }
-    } else {
-        console.log('✗ No step-free internal access or lift');
-    }
+ // Detect property type first
+const isFlat = /\b(flat|apartment)\b/i.test(fullText);
+const floorLevelMatch = fullText.match(/\b(ground|first|second|third|top)[\s-]?floor\s+(flat|apartment|independent living apartment)/i);
+const floorLevel = floorLevelMatch ? floorLevelMatch[1].toLowerCase() : null;
+const isGroundFloorFlat = isFlat && floorLevel === 'ground';
+const isUpperFloorFlat = isFlat && floorLevel && floorLevel !== 'ground';
 
-    // CRITERIA 2: Downstairs bedroom
+console.log(`🏠 Property type: Flat=${isFlat}, Floor level=${floorLevel}, Ground floor flat=${isGroundFloorFlat}, Upper floor=${isUpperFloorFlat}`);
+
+// CRITERIA 1: Step-free internal access OR lift (mutually exclusive)
+let hasStepFreeInternal = false;
+
+if (isSingleLevel && !hasMultipleLevels) {
+    hasStepFreeInternal = true;
+    score += 1;
+    features.push('Step-free internal access');
+    console.log('✓ Step-free internal access (single level property)');
+} else if (hasMultipleLevels && hasAnyLift) {
+    score += 1;
+    if (hasStairlift) {
+        features.push('Stairlift');
+        console.log('✓ Stairlift (compensates for internal stairs)');
+    } else {
+        features.push('Lift');
+        console.log('✓ Lift (compensates for internal stairs)');
+    }
+} else {
+    console.log('✗ No step-free internal access or lift');
+}
+
+// CRITERIA 2: Downstairs bedroom (only relevant for houses or ground floor flats, not upper floor flats)
+let hasDownstairsBedroom = false;
+
+if (!isUpperFloorFlat) {
     const downstairsBedroomKeywords = [
         'downstairs bedroom', 'ground floor bedroom', 'bedroom downstairs',
         'bedroom on ground floor', 'ground floor bed', 'downstairs bed',
@@ -326,17 +338,17 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
     ];
 
     const groundFloorBedroomPatterns = [
-        /ground floor[:\s\S]{0,500}?\bbedroom\b/gi,  // Match "bedroom" as whole word within 500 chars
-        /\bbedroom\b[:\s\S]{0,200}?ground floor/gi   // Or bedroom mentioned near ground floor
+        /ground floor[:\s\S]{0,500}?\bbedroom\b/gi,
+        /\bbedroom\b[:\s\S]{0,200}?ground floor/gi
     ];
 
-    let hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
+    hasDownstairsBedroom = downstairsBedroomKeywords.some(keyword => fullText.includes(keyword));
 
     if (!hasDownstairsBedroom) {
         hasDownstairsBedroom = groundFloorBedroomPatterns.some(pattern => pattern.test(fullText));
     }
 
-    // Remove this inference logic entirely for multi-level properties
+    // Infer for single level properties (houses/bungalows/ground floor flats)
     if (!hasDownstairsBedroom && isSingleLevel && (fullText.includes('bedroom') || fullText.includes('bed'))) {
         hasDownstairsBedroom = true;
         console.log('✓ Inferred downstairs bedroom from single level property');
@@ -347,28 +359,34 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
         features.push('Downstairs bedroom');
         console.log('✓ Downstairs bedroom');
     }
+} else {
+    console.log('✗ Upper floor flat - downstairs bedroom not applicable');
+}
 
-    // CRITERIA 3: Downstairs bathroom/WC
+// CRITERIA 3: Downstairs bathroom/WC (only relevant for houses or ground floor flats, not upper floor flats)
+let hasDownstairsBathroom = false;
+
+if (!isUpperFloorFlat) {
     const downstairsBathroomKeywords = [
         'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
         'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
         'downstairs toilet', 'ground floor toilet', 'downstairs shower room',
         'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom',
-        'shower room'  // NEW - add this since the description format uses "SHOWER ROOM:"
+        'shower room'
     ];
 
     const groundFloorBathroomPatterns = [
-        /ground floor[:\s\S]{0,500}?\b(bathroom|shower room|wc|toilet|cloakroom)\b/gi,  // Match within 500 chars of "ground floor"
+        /ground floor[:\s\S]{0,500}?\b(bathroom|shower room|wc|toilet|cloakroom)\b/gi,
         /\b(bathroom|shower room|wc|toilet)\b[:\s\S]{0,200}?ground floor/gi
     ];
 
-    let hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
+    hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
 
     if (!hasDownstairsBathroom) {
         hasDownstairsBathroom = groundFloorBathroomPatterns.some(pattern => pattern.test(fullText));
     }
 
-    // Single level properties with bathrooms automatically have "downstairs" bathrooms
+    // Infer for single level properties
     if (!hasDownstairsBathroom && isSingleLevel) {
         const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
                                 fullText.includes('toilet') || fullText.includes('wc') || 
@@ -384,10 +402,24 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
         features.push('Downstairs bathroom/WC');
         console.log('✓ Downstairs bathroom/WC');
     }
+} else {
+    console.log('✗ Upper floor flat - downstairs bathroom not applicable');
+}
 
-    // CRITERIA 4: Ground floor entry
+// CRITERIA 4: Ground floor entry
+// For flats: only true if ground floor flat
+// For houses: check for ground floor entry keywords
+let hasGroundFloorEntry = false;
+
+if (isFlat) {
+    hasGroundFloorEntry = isGroundFloorFlat;
+    if (hasGroundFloorEntry) {
+        console.log('✓ Ground floor entry (ground floor flat)');
+    } else {
+        console.log('✗ Upper floor flat - no ground floor entry');
+    }
+} else {
     const groundFloorEntryKeywords = [
-        'ground floor flat', 'ground floor apartment', 'ground floor maisonette',
         'bungalow', 'detached bungalow', 'semi-detached bungalow', 'dormer bungalow', 
         'chalet bungalow', 'terraced bungalow',
         'house', 'detached house', 'semi-detached house', 'terraced house', 
@@ -396,48 +428,49 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
         'single storey', 'single story', 'ranch style'
     ];
     
-    const hasGroundFloorEntry = isGroundFloor || groundFloorEntryKeywords.some(keyword => fullText.includes(keyword));
+    hasGroundFloorEntry = isGroundFloor || groundFloorEntryKeywords.some(keyword => fullText.includes(keyword));
     
     if (hasGroundFloorEntry) {
-        score += 1;
-        features.push('Ground floor entry');
         console.log('✓ Ground floor entry');
     }
+}
 
+if (hasGroundFloorEntry) {
+    score += 1;
+    features.push('Ground floor entry');
+}
 
-    // CRITERIA 5: Off-street or private parking
-    // Check structured parking section first
-    const structuredParking = property.parkingInfo || '';
-    const hasStructuredParking = structuredParking.length > 0 && 
-        !structuredParking.toLowerCase().includes('none') &&
-        !structuredParking.toLowerCase().includes('no parking');
+// CRITERIA 5: Off-street or private parking
+const structuredParking = property.parkingInfo || '';
+const hasStructuredParking = structuredParking.length > 0 && 
+    !structuredParking.toLowerCase().includes('none') &&
+    !structuredParking.toLowerCase().includes('no parking');
 
-    const parkingKeywords = [
-        'private parking', 'off-street parking', 'off street parking',
-        'off-road parking', 'off road parking',  // NEW - catches "off road parking"
-        'block paved parking',  // NEW - catches "block paved off road parking"
-        'designated parking', 'allocated parking', 'residents parking',
-        'driveway', 'garage', 'car port', 'carport', 'parking space',
-        'parking bay', 'secure parking', 'covered parking', 'underground parking',
-        'gated parking', 'private garage', 'double garage', 'single garage',
-        'own parking', 'dedicated parking', 'assigned parking',
-        'parking for'  // NEW - catches "parking for 3 cars"
-    ];
-    
+const parkingKeywords = [
+    'private parking', 'off-street parking', 'off street parking',
+    'off-road parking', 'off road parking',
+    'block paved parking',
+    'designated parking', 'allocated parking', 'residents parking',
+    'driveway', 'garage', 'car port', 'carport', 'parking space',
+    'parking bay', 'secure parking', 'covered parking', 'underground parking',
+    'gated parking', 'private garage', 'double garage', 'single garage',
+    'own parking', 'dedicated parking', 'assigned parking',
+    'parking for'
+];
 
-    const parkingExclusions = [
-        'on-street parking', 'on street parking', 'street parking',
-        'roadside parking', 'permit parking'
-    ];
-    
-    const hasPrivateParking = hasStructuredParking || parkingKeywords.some(keyword => fullText.includes(keyword));
-    const hasOnStreetOnly = parkingExclusions.some(exclusion => fullText.includes(exclusion)) && !hasPrivateParking;
-    
-    if (hasPrivateParking && !hasOnStreetOnly) {
-        score += 1;
-        features.push('Off-street/private parking');
-        console.log('✓ Off-street/private parking');
-    }
+const parkingExclusions = [
+    'on-street parking', 'on street parking', 'street parking',
+    'roadside parking', 'permit parking'
+];
+
+const hasPrivateParking = hasStructuredParking || parkingKeywords.some(keyword => fullText.includes(keyword));
+const hasOnStreetOnly = parkingExclusions.some(exclusion => fullText.includes(exclusion)) && !hasPrivateParking;
+
+if (hasPrivateParking && !hasOnStreetOnly) {
+    score += 1;
+    features.push('Off-street/private parking');
+    console.log('✓ Off-street/private parking');
+}
 
     // CRITERIA 6: Garden access
     // Check structured garden section first
@@ -548,8 +581,13 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
             externalLevelAccess: hasLevelAccess,
             externalAccessVerified: externalAccessVerified,
             isSingleLevel: isSingleLevel,
-            isGroundFloor: isGroundFloor
-        }
+            isGroundFloor: isGroundFloor,
+            isSingleLevel: isSingleLevel,
+            isFlat: isFlat,
+            hasAnyLift: hasAnyLift,
+            isUpperFloorFlat: isUpperFloorFlat,
+            floorLevel: floorLevel
+            }
     };
     return {
         score: preciseScore,
@@ -1478,7 +1516,9 @@ async function findGPsLegacyAPI(lat, lng) {
 
 async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
     try {
-        console.log(`Calculating precise walking route to ${gpName} using Directions API`);
+        console.log(`🚶 Calculating walking route to ${gpName}`);
+        console.log(`   From: ${fromLat}, ${fromLng}`);
+        console.log(`   To: ${toLat}, ${toLng}`);
         
         const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?` +
             `origin=${fromLat},${fromLng}&` +
@@ -1493,75 +1533,40 @@ async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
             timeout: 12000
         });
         
+        console.log('   Directions API status:', response.data.status);
+        
+        if (response.data.status !== 'OK') {
+            console.error('   Directions API error:', response.data.status, response.data.error_message);
+            return null;
+        }
+        
         if (response.data.routes && response.data.routes.length > 0) {
             const route = response.data.routes[0];
             const leg = route.legs[0];
             
-            console.log('Directions API returned route data:');
-            console.log('- Distance:', leg.distance.text);
-            console.log('- Duration:', leg.duration.text);
-            console.log('- Steps:', leg.steps.length);
-            
-            const steps = leg.steps;
-            const routeWarnings = [];
-            const routeFeatures = {
-                hasStairs: false,
-                hasSteepIncline: false,
-                crossesBusyRoads: false,
-                hasTrafficLights: false
-            };
-            
-            steps.forEach(step => {
-                const instruction = step.html_instructions.toLowerCase();
-                
-                if (instruction.includes('stairs') || instruction.includes('steps')) {
-                    routeWarnings.push('Route includes stairs');
-                    routeFeatures.hasStairs = true;
-                }
-                if (instruction.includes('steep') || instruction.includes('hill') || instruction.includes('incline')) {
-                    routeWarnings.push('Steep incline detected');
-                    routeFeatures.hasSteepIncline = true;
-                }
-                if (instruction.includes('main') || instruction.includes('busy') || instruction.includes('major') || instruction.includes('a road') || instruction.includes('dual carriageway')) {
-                    routeWarnings.push('Crosses busy roads');
-                    routeFeatures.crossesBusyRoads = true;
-                }
-                if (instruction.includes('traffic lights') || instruction.includes('crossing') || instruction.includes('pedestrian crossing')) {
-                    routeFeatures.hasTrafficLights = true;
-                }
-            });
-            
             const durationMinutes = Math.ceil((leg.duration.value / 60) * 1.4);
-
-            console.log(`⏱️ Google says: ${Math.ceil(leg.duration.value / 60)} mins → Adjusted: ${durationMinutes} mins`);
-
-            const result = {
+            
+            console.log(`   Base time: ${Math.ceil(leg.duration.value / 60)} mins → Adjusted: ${durationMinutes} mins`);
+            
+            // ... rest of your existing code to analyze the route ...
+            
+            return {
                 distance: leg.distance.text,
                 duration: leg.duration.text,
                 durationMinutes: durationMinutes,
-                durationSeconds: Math.round(leg.duration.value * 1.4),
-                distanceMeters: leg.distance.value,
-                routeWarnings: [...new Set(routeWarnings)],
-                routeFeatures: routeFeatures,
-                accessibilityScore: calculateRouteAccessibilityScore(routeFeatures, durationMinutes),
-                accessibilityNotes: generateAccessibilityNotes(durationMinutes, routeFeatures, routeWarnings),
-                gpName: gpName,
-                steps: steps.length
+                // ... rest of return object
             };
-            
-            console.log(`Walking route analysis complete:`, {
-                time: `${result.durationMinutes} mins (adjusted)`,
-                distance: result.distance,
-                accessibility: result.accessibilityScore
-            });
-            
-            return result;
         }
         
+        console.log('   No routes found in response');
         return null;
         
     } catch (error) {
-        console.error('Directions API error:', error.response?.data || error.message);
+        console.error('🚶 Directions API error:', error.message);
+        if (error.response) {
+            console.error('   Response status:', error.response.status);
+            console.error('   Response data:', error.response.data);
+        }
         return null;
     }
 }
@@ -1873,53 +1878,86 @@ async function analyzePublicTransport(lat, lng) {
 }
 
 // Reuse GP proximity walking route analysis
-async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng) {
+async function analyzeWalkingRoute(fromLat, fromLng, toLat, toLng, gpName) {
     try {
-        const response = await axios.get('https://maps.googleapis.com/maps/api/directions/json', {
-            params: {
-                origin: `${fromLat},${fromLng}`,
-                destination: `${toLat},${toLng}`,
-                mode: 'walking',
-                key: process.env.GOOGLE_MAPS_API_KEY
-            },
-            timeout: 8000
+        console.log(`🚶 Calculating walking route to ${gpName || 'location'}`);
+        
+        const directionsUrl = `https://maps.googleapis.com/maps/api/directions/json?` +
+            `origin=${fromLat},${fromLng}&` +
+            `destination=${toLat},${toLng}&` +
+            `mode=walking&` +
+            `units=metric&` +
+            `region=uk&` +
+            `language=en-GB&` +
+            `key=${process.env.GOOGLE_MAPS_API_KEY}`;
+        
+        const response = await axios.get(directionsUrl, {
+            timeout: 12000
         });
-
-        if (response.data.status === 'OK' && response.data.routes.length > 0) {
+        
+        if (response.data.status !== 'OK') {
+            console.error('   Directions API error:', response.data.status);
+            return null;
+        }
+        
+        if (response.data.routes && response.data.routes.length > 0) {
             const route = response.data.routes[0];
             const leg = route.legs[0];
             
-            // Extract duration and distance
-            const durationSeconds = leg.duration.value;
-            const baseDurationMinutes = Math.round(durationSeconds / 60);
-            const distanceMeters = leg.distance.value;
+            const steps = leg.steps;
+            const routeWarnings = [];
+            const routeFeatures = {
+                hasStairs: false,
+                hasSteepIncline: false,
+                crossesBusyRoads: false,
+                hasTrafficLights: false
+            };
             
-            // Analyze route for accessibility features
-            const features = analyzeRouteFeatures(leg.steps);
+            steps.forEach(step => {
+                const instruction = step.html_instructions.toLowerCase();
+                
+                if (instruction.includes('stairs') || instruction.includes('steps')) {
+                    routeWarnings.push('Route includes stairs');
+                    routeFeatures.hasStairs = true;
+                }
+                if (instruction.includes('steep') || instruction.includes('hill') || instruction.includes('incline')) {
+                    routeWarnings.push('Steep incline detected');
+                    routeFeatures.hasSteepIncline = true;
+                }
+                if (instruction.includes('main') || instruction.includes('busy') || instruction.includes('major')) {
+                    routeWarnings.push('Crosses busy roads');
+                    routeFeatures.crossesBusyRoads = true;
+                }
+                if (instruction.includes('traffic lights') || instruction.includes('crossing')) {
+                    routeFeatures.hasTrafficLights = true;
+                }
+            });
             
-            // Calculate adjusted time (1.4x for older adults)
-            const adjustedDuration = Math.round(baseDurationMinutes * 1.4);
-            
-            console.log(`   Base time: ${baseDurationMinutes} mins → Adjusted: ${adjustedDuration} mins`);
-            
+            const durationMinutes = Math.ceil((leg.duration.value / 60) * 1.4);
+            console.log(`   Base time: ${Math.ceil(leg.duration.value / 60)} mins → Adjusted: ${durationMinutes} mins`);
+
             return {
-                distance: `${(distanceMeters / 1000).toFixed(2)} km`,
-                baseDuration: baseDurationMinutes,
-                adjustedDuration: adjustedDuration,
-                features: features,
-                warnings: features.hasStairs || features.hasSteepIncline ? 
-                    ['Route has accessibility challenges'] : []
+                distance: leg.distance.text,
+                duration: leg.duration.text,
+                durationMinutes: durationMinutes,
+                durationSeconds: Math.round(leg.duration.value * 1.4),
+                distanceMeters: leg.distance.value,
+                routeWarnings: [...new Set(routeWarnings)],
+                routeFeatures: routeFeatures,
+                accessibilityScore: calculateRouteAccessibilityScore(routeFeatures, durationMinutes),
+                accessibilityNotes: generateAccessibilityNotes(durationMinutes, routeFeatures, routeWarnings),
+                gpName: gpName,
+                steps: steps.length
             };
         }
         
         return null;
         
     } catch (error) {
-        console.error('Walking route analysis failed:', error.message);
+        console.error('Directions API error:', error.message);
         return null;
     }
 }
-
 // Analyze route steps for accessibility features (reuse from GP analysis)
 function analyzeRouteFeatures(steps) {
     const features = {
@@ -2011,7 +2049,52 @@ async function findNearbyTransit(lat, lng, transitType) {
     }
 }
 
-// ✅ ENHANCED EPC EXTRACTION with lazy Vision API loading
+const pdfParse = require('pdf-parse');
+
+// Helper function to extract text from PDF first page
+async function extractTextFromPDFFirstPage(pdfUrl) {
+    try {
+        console.log('📄 Extracting text from PDF first page...');
+        
+        const response = await axios.get(pdfUrl, { 
+            responseType: 'arraybuffer',
+            timeout: 10000
+        });
+        
+        const data = await pdfParse(response.data, {
+            max: 1  // Only parse first page
+        });
+        
+        // Get first 2000 characters (should include the EPC rating section)
+        const text = data.text.substring(0, 2000);
+        console.log('📄 PDF text preview:', text.substring(0, 300));
+        
+        // Look for "Energy rating X" pattern
+        const ratingPatterns = [
+            /energy\s+rating\s+([a-g])/i,
+            /current\s+rating[:\s]+([a-g])/i,
+            /rating[:\s]+([a-g])\s+/i
+        ];
+        
+        for (const pattern of ratingPatterns) {
+            const match = text.match(pattern);
+            if (match) {
+                const rating = match[1].toUpperCase();
+                console.log(`✅ Found EPC rating in PDF text: ${rating}`);
+                return rating;
+            }
+        }
+        
+        console.log('⚠️ No EPC rating found in PDF text');
+        return null;
+        
+    } catch (error) {
+        console.error('❌ PDF text extraction failed:', error.message);
+        return null;
+    }
+}
+
+// Main EPC extraction function
 async function extractEPCFromRightmoveDropdown(url) {
     try {
         console.log('🔍 Enhanced Rightmove EPC detection...');
@@ -2034,21 +2117,22 @@ async function extractEPCFromRightmoveDropdown(url) {
         });
 
         const $ = cheerio.load(rightmoveResponse.data);
-        const epcImageUrls = [];
+        const epcUrls = {
+            pdfs: [],
+            images: []
+        };
         
-        // Strategy 1: Look for PDF brochures
+        // Strategy 1: Look for EPC PDFs and images
         $('a[href*=".pdf"]').each((i, link) => {
             const href = $(link).attr('href');
             const text = $(link).text().toLowerCase();
             
-            if (text.includes('brochure') || text.includes('details') || 
-                text.includes('information') || href.toLowerCase().includes('epc')) {
-                
+            if (text.includes('epc') || href.toLowerCase().includes('epc')) {
                 const fullUrl = href.startsWith('http') ? href : 
                               href.startsWith('//') ? `https:${href}` : 
                               `https://www.rightmove.co.uk${href}`;
                 
-                epcImageUrls.push(fullUrl);
+                epcUrls.pdfs.push(fullUrl);
             }
         });
         
@@ -2067,49 +2151,44 @@ async function extractEPCFromRightmoveDropdown(url) {
                                   value.startsWith('//') ? `https:${value}` : 
                                   `https://www.rightmove.co.uk${value}`;
                     
-                    if (!epcImageUrls.includes(fullUrl)) {
-                        epcImageUrls.push(fullUrl);
+                    if (fullUrl.toLowerCase().endsWith('.pdf')) {
+                        if (!epcUrls.pdfs.includes(fullUrl)) {
+                            epcUrls.pdfs.push(fullUrl);
+                        }
+                    } else {
+                        if (!epcUrls.images.includes(fullUrl)) {
+                            epcUrls.images.push(fullUrl);
+                        }
                     }
                 }
             });
         });
         
-        console.log(`📊 Total potential EPC sources found: ${epcImageUrls.length}`);
-        return epcImageUrls.filter(url => url && url.startsWith('http'));
-
-    } catch (error) {
-        console.error('❌ Error in enhanced EPC detection:', error.message);
-        
-        // Strategy 3: Look for direct EPC images in media URLs
-        console.log('🖼️ Strategy 3: Looking for direct EPC images...');
-        $('img[src*="EPC"], img[data-src*="EPC"]').each((i, img) => {
-            const src = $(img).attr('src') || $(img).attr('data-src');
-            if (src && (src.includes('EPC') || src.includes('epc'))) {
-                const fullUrl = src.startsWith('http') ? src : 
-                              src.startsWith('//') ? `https:${src}` : 
-                              `https://www.rightmove.co.uk${src}`;
-                
-                if (!epcImageUrls.includes(fullUrl)) {
-                    epcImageUrls.push(fullUrl);
-                    console.log('🎯 Found direct EPC image:', fullUrl);
-                }
-            }
-        });
-
-        // Strategy 4: Look in page scripts for EPC image URLs
+        // Strategy 3: Look in scripts for EPC URLs
         $('script').each((i, script) => {
             const scriptContent = $(script).html() || '';
-            const epcMatches = scriptContent.match(/https?:\/\/[^"'\s]*EPC[^"'\s]*/gi);
+            const epcMatches = scriptContent.match(/https?:\/\/[^"'\s]*[Ee][Pp][Cc][^"'\s]*\.(pdf|png|jpg|jpeg)/gi);
             if (epcMatches) {
                 epcMatches.forEach(match => {
-                    if (!epcImageUrls.includes(match)) {
-                        epcImageUrls.push(match);
-                        console.log('🎯 Found EPC URL in script:', match);
+                    if (match.toLowerCase().endsWith('.pdf')) {
+                        if (!epcUrls.pdfs.includes(match)) {
+                            epcUrls.pdfs.push(match);
+                        }
+                    } else {
+                        if (!epcUrls.images.includes(match)) {
+                            epcUrls.images.push(match);
+                        }
                     }
                 });
             }
         });
-        return [];
+        
+        console.log(`📊 Found ${epcUrls.pdfs.length} EPC PDFs and ${epcUrls.images.length} EPC images`);
+        return epcUrls;
+
+    } catch (error) {
+        console.error('❌ Error in enhanced EPC detection:', error.message);
+        return { pdfs: [], images: [] };
     }
 }
 
@@ -2649,34 +2728,46 @@ async function scrapeRightmoveProperty(url) {
             });
         }
 
-        // Method 3: Search in description and full page text
+        // Method 3: Look for "Council band X" pattern FIRST (most common in key features)
+        if (!councilTaxBand) {
+            const fullPageText = $('body').text();
+            const allText = `${description} ${features.join(' ')} ${fullPageText}`;
+            
+            // Priority pattern: "Council band E" from key features
+            const councilBandMatch = allText.match(/council\s+band\s+([a-h])\b/i);
+            if (councilBandMatch) {
+                councilTaxBand = `Band ${councilBandMatch[1].toUpperCase()}`;
+                console.log('💷 Found "Council band" in text:', councilTaxBand);
+            }
+        }
+
+        // Method 4: Search with other patterns if still not found
         if (!councilTaxBand) {
             const fullPageText = $('body').text();
             const allText = `${description} ${features.join(' ')} ${fullPageText}`.toLowerCase();
             
-            // Look for common patterns
+            // Look for other common patterns
             const patterns = [
-                /council\s+tax:\s+band\s+([a-h])\b/i,  // "council tax: band c"
+                /council\s+tax:\s+band\s+([a-h])\b/i,
                 /council\s+tax\s+band[:\s]+([a-h])\b/i,
-                /tax\s+band[:\s]+([a-h])\b/i,
-                /band\s+([a-h])\s+council\s+tax/i
+                /tax\s+band[:\s]+([a-h])\b/i
             ];
             
             for (const pattern of patterns) {
                 const match = allText.match(pattern);
                 if (match) {
-                    // Verify it's about council tax (not EPC band)
                     const context = allText.substring(
                         Math.max(0, match.index - 50), 
                         match.index + match[0].length + 50
                     );
                     
                     const isCouncilTax = context.includes('council') && context.includes('tax');
-                    const notEPC = !context.includes('epc') && !context.includes('energy') && !context.includes('rating c (');
+                    const notEPC = !context.includes('epc') && !context.includes('energy') && !context.includes('rating');
+                    const notGenericTax = !context.includes('tax a payment'); // Avoid "COUNCIL TAXA payment"
                     
-                    if (isCouncilTax && notEPC) {
+                    if (isCouncilTax && notEPC && notGenericTax) {
                         councilTaxBand = `Band ${match[1].toUpperCase()}`;
-                        console.log('Found council tax in text:', councilTaxBand, 'Context:', context.substring(0, 100));
+                        console.log('Found council tax in text:', councilTaxBand);
                         break;
                     }
                 }
@@ -2891,9 +2982,47 @@ if (!leaseholdDetails.leaseYears) {
                 if (epcData.rating) break; // Exit outer loop if found
             }
 
-            // STEP 2: Try Vision API on EPC images (only if no clear text found)
+            // STEP 2: Try PDF text extraction first, then Vision API on images
             if (!epcData.rating) {
-                console.log('🔍 Step 2: No clear text found, trying Vision API...');
+                console.log('🔍 Step 2: Searching for EPC files...');
+                
+                const epcUrls = await extractEPCFromRightmoveDropdown(url);
+                
+                // Try PDFs first (text extraction - faster and more reliable)
+                for (const pdfUrl of epcUrls.pdfs.slice(0, 2)) {
+                    const rating = await extractTextFromPDFFirstPage(pdfUrl);
+                    if (rating) {
+                        epcData = {
+                            rating: rating,
+                            score: null,
+                            confidence: 90,
+                            reason: 'Extracted from EPC PDF',
+                            numericalScore: 0
+                        };
+                        break;
+                    }
+                }
+                
+                // If PDF extraction failed, try Vision API on images
+                if (!epcData.rating && epcUrls.images.length > 0 && process.env.CLAUDE_API_KEY) {
+                    console.log('🔑 Trying Vision API on EPC images...');
+                    
+                    for (const imageUrl of epcUrls.images.slice(0, 2)) {
+                        // Skip if it's a GIF
+                        if (imageUrl.includes('.gif')) continue;
+                        
+                        try {
+                            // Your existing Vision API code here...
+                        } catch (error) {
+                            console.log(`❌ Vision analysis failed: ${error.message}`);
+                        }
+                    }
+                }
+            }
+
+            // STEP 3: Enhanced text pattern matching (your existing code)
+            if (!epcData.rating) {
+                console.log('🔍 Step 3: Using enhanced text pattern matching...');
                 
                 const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
 
@@ -3740,13 +3869,19 @@ try {
         cost,
         councilTaxAnalysis,
         pricePerSqMAnalysis,
-        stampDutyAnalysis,  // ADD THIS
+        stampDutyAnalysis,
         overallScore, 
         property.title, 
         property.epcRating, 
         property.location,
-        roomScore  // ADD THIS (pass roomScore as roomAccommodation)
+        roomScore,
+        accessibleFeatures.details.isSingleLevel,      // From returned object
+        accessibleFeatures.details.isFlat,             // From returned object
+        accessibleFeatures.details.hasAnyLift,         // From returned object
+        accessibleFeatures.details.isUpperFloorFlat,   // From returned object
+        accessibleFeatures.details.floorLevel          // From returned object
     );
+    
     console.log('✅ Summary generated successfully');
 } catch (error) {
     console.error('❌ Summary generation failed:', error.message);
@@ -3827,7 +3962,7 @@ try {
     };
 }
 
-function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, councilTaxAnalysis, pricePerSqMAnalysis, stampDutyAnalysis, overallScore, title, epcRating, location, roomAccommodation) {
+function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures, publicTransport, cost, councilTaxAnalysis, pricePerSqMAnalysis, stampDutyAnalysis, overallScore, title, epcRating, location, roomAccommodation, isSingleLevel, isFlat, hasAnyLift, isUpperFloorFlat, floorLevel)  {
     let summary = "";
     
     const accessibleFeaturesScore = accessibleFeatures.score || 0;
@@ -3840,7 +3975,7 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         const bedroomMatch = titleLower.match(/(\d+)\s*bedroom/);
         if (bedroomMatch) {
             bedrooms = `${bedroomMatch[1]} bedroom `;
-            const typeMatch = titleLower.match(/\d+\s*bedroom\s*(\w+)/);
+            const typeMatch = titleLower.match(/\d+\s*bedroom\s+(.+)/);
             if (typeMatch) {
                 propertyType = typeMatch[1];
             }
@@ -4025,39 +4160,58 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     const criticalMissing = [];
     const transportNeeds = [];
 
-    if (!foundFeatures.some(f => f.toLowerCase().includes('lateral') || f.toLowerCase().includes('single'))) {
+    // Check if property has internal stairs (multi-level without lift)
+    // Don't flag flats as lacking single-level living - they're single-level by definition
+    const hasInternalStairs = !isSingleLevel && !isFlat && !hasAnyLift;
+    if (hasInternalStairs) {
         criticalMissing.push("single-level living");
     }
-    if (!foundFeatures.some(f => f.toLowerCase().includes('level') || f.toLowerCase().includes('ramp'))) {
+
+    // Check for level access entry (this is about external access to the property)
+    const hasLevelAccessEntry = foundFeatures.some(f => 
+        f.toLowerCase().includes('level') || 
+        f.toLowerCase().includes('ramp') ||
+        f.toLowerCase().includes('ground floor entry')
+    );
+
+    if (!hasLevelAccessEntry) {
         criticalMissing.push("level access entry");
     }
 
-    // Check if transport will be needed
+    // Check if transport will be needed for essential services
     if (gpProximity.score === 0 || (gpProximity.nearestGPs?.[0]?.tooFar)) {
-        transportNeeds.push("GP access");
+        transportNeeds.push("medical appointments");
     }
     if (publicTransport.score <= 1) {
-        transportNeeds.push("public transport access");
+        transportNeeds.push("general travel");
     }
 
     if (criticalMissing.length > 0 || transportNeeds.length > 0) {
         summary += "Important considerations: ";
         
         if (criticalMissing.length > 0) {
-            summary += `the property lacks ${criticalMissing.join(' and ')}, which may limit suitability for wheelchair users or those with significant mobility challenges. `;
+            summary += `the property lacks ${criticalMissing.join(' and ')}`;
+            
+            // Add specific context for upper floor flats
+            if (isUpperFloorFlat && criticalMissing.includes("level access entry")) {
+                summary += " (first floor location requires stairs or lift access)";
+            } else if (isFlat && floorLevel && floorLevel !== 'ground' && criticalMissing.includes("level access entry")) {
+                summary += ` (${floorLevel} floor location requires stairs or lift access)`;
+            }
+            
+            summary += ", which may limit suitability for wheelchair users or those with significant mobility challenges. ";
         }
         
         if (transportNeeds.length > 0) {
+            summary += "Residents will require personal transport or taxi services for ";
             if (transportNeeds.length === 2) {
-                summary += "Residents will require personal transport or taxi services for both medical appointments and general travel. ";
-            } else if (transportNeeds.includes("GP access")) {
-                summary += "Residents will require transport for medical appointments. ";
+                summary += `both ${transportNeeds[0]} and ${transportNeeds[1]}. `;
             } else {
-                summary += "Residents will require transport for general travel due to limited public transport. ";
+                summary += `${transportNeeds[0]}. `;
             }
         }
     }
-    
+
     // 10. Final recommendation
     summary += "Overall, this property is ";
     if (overallScore >= 4.5) {
@@ -4071,7 +4225,7 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     } else {
         summary += "best suited for those able to undertake significant accessibility modifications.";
     }
-    
+
     return summary;
 }
 
