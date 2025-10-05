@@ -1672,17 +1672,19 @@
                 
                 // Special handling for external access - show warning if unable to verify
                 let icon = isFound ? '✅' : '❌';
-                if (criterion.key === 'externalLevelAccess' && !isFound && accessibleFeatures.externalAccessWarning) {
-                    icon = '⚠️';
-                }
-                
                 let displayLabel;
-                if (criterion.key === 'stepFreeOrLift' && matchedFeature) {
+
+                if (criterion.key === 'externalLevelAccess') {
+                    displayLabel = criterion.displayAs;
+                    // Just show found/not found based on text search
+                
+
+                } else if (criterion.key === 'stepFreeOrLift' && matchedFeature) {
                     displayLabel = matchedFeature;
                 } else {
                     displayLabel = criterion.displayAs;
                 }
-                
+
                 detailsHtml += `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${displayLabel}</div>`;
             });
             

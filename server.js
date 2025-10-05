@@ -141,60 +141,43 @@ const getEPCExtractor = () => {
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// Analyze entrance photos for steps using Vision API
+// COMMENTED OUT - Vision API causing timeout issues
+// Keeping for future reference if we want to revisit
+/*
 async function analyzeEntranceForSteps(images) {
     if (!images || images.length === 0) {
         return { entrancePhotosFound: false, hasSteps: null };
     }
     
-    // Take first 5 images
-    const imagesToAnalyze = images.slice(0, 5);
+    const imagesToAnalyze = images.slice(0, 3); // Reduced from 5 to 3 images
     
     console.log(`🚪 Analyzing ${imagesToAnalyze.length} photos for entrance accessibility...`);
     
     const content = [
         {
             type: "text",
-            text: `You are analyzing property entrance photos to COUNT STEPS from ground level to the front door.
+            text: `Analyze these property photos to determine if the main entrance has steps.
 
-VISUAL CUES TO DETECT STEPS:
-1. Shadow lines across the path (each shadow = potential step edge)
-2. Color/material changes in paving (brick to concrete = elevation change)
-3. Horizontal lines perpendicular to the path
-4. Depth perspective changes - items appearing "higher" than the path
-5. Risers (vertical faces between horizontal surfaces)
+CRITICAL: Only report "NO STEPS" if you can clearly see:
+1. The main entrance door
+2. A continuous flat path from ground level to the door
+3. No visible steps, stairs, or elevation changes
 
-HEIGHT ESTIMATION METHOD:
-- Average UK door height = 6.5 feet (78 inches / 198cm)
-- Use the door in the photo as a reference scale
-- Compare step height to door height to estimate step size
-- Example: If step appears 1/12th of door height = ~6.5 inches (significant step)
-- Example: If step appears 1/40th of door height = ~2 inches (threshold only)
+If ANY of these are true, report "STEPS PRESENT":
+- You can see steps/stairs leading to the door
+- There's any visible elevation change
+- The entrance is not clearly visible in the photos
+- You're uncertain for any reason
 
-STEP COUNTING RULES:
-- 0 steps: Completely flat path to door, no visible elevation change, or tiny threshold only (<2 inches)
-- 1 step: Single elevation change of 3+ inches 
-- 2 steps: Two distinct elevation changes
-- 3+ steps: Multiple stairs/stepped approach
-
-ANALYSIS PROCESS:
-1. Locate the front door in the images
-2. Trace the path from ground to door
-3. Look for shadow lines, color changes, horizontal edges
-4. Estimate step height using door as reference
-5. Count total number of steps
-
-If entrance is not clearly visible or too distant to see details, mark entranceVisible=false.
-
-Respond with ONLY this JSON:
+RESPOND WITH ONLY:
 {
   "entranceVisible": true/false,
-  "stepCount": 0/1/2/3+/null,
-  "estimatedStepHeight": "description of height if visible",
-  "visualCues": "shadows/color changes/edges you observed",
+  "hasSteps": true/false/null,
   "confidence": 0-100,
-  "reasoning": "Your analysis process"
-}`
+  "reasoning": "Brief explanation"
+}
+
+Be CONSERVATIVE - when in doubt, assume steps are present.`
         }
     ];
     
@@ -212,7 +195,7 @@ Respond with ONLY this JSON:
     try {
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
             model: 'claude-sonnet-4-20250514',
-            max_tokens: 500,
+            max_tokens: 300,
             messages: [{
                 role: 'user',
                 content: content
@@ -222,26 +205,34 @@ Respond with ONLY this JSON:
                 'Content-Type': 'application/json',
                 'x-api-key': process.env.CLAUDE_API_KEY,
                 'anthropic-version': '2023-06-01'
-            }
+            },
+            timeout: 30000  // Increased to 30 seconds
         });
         
         const analysisText = response.data.content[0].text;
         console.log('Vision API entrance analysis:', analysisText);
         
-        // Parse JSON response
         const cleanText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         const result = JSON.parse(cleanText);
         
-        console.log(`🚪 Entrance analysis result: Photos found=${result.entrancePhotosFound}, Has steps=${result.hasSteps}, Confidence=${result.confidence}%`);
+        const levelAccess = result.hasSteps === false && result.confidence >= 80;
         
-        return result;
+        console.log(`🚪 Analysis: hasSteps=${result.hasSteps}, confidence=${result.confidence}%, level access=${levelAccess}`);
+        
+        return {
+            entrancePhotosFound: result.entranceVisible,
+            hasSteps: result.hasSteps,
+            confidence: result.confidence,
+            levelAccess: levelAccess,
+            error: false
+        };
         
     } catch (error) {
-        console.error('Vision API error analyzing entrance:', error.response?.data || error.message);
+        console.error('Vision API error:', error.message);
         return { entrancePhotosFound: false, hasSteps: null, error: true };
     }
 }
-
+*/
 // REVISED: Accessible Features Detection with 8 Criteria
 async function calculateAccessibleFeaturesScore(property) {
     let score = 0;
@@ -497,6 +488,9 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
     }
 
     // CRITERIA 8: External level/ramp access
+    let externalAccessVerified = false;
+    let externalAccessWarning = false;
+
     const levelAccessKeywords = [
         'level access', 'step-free access', 'step free access', 'no steps',
         'wheelchair accessible', 'ramp access', 'ramped access', 'access ramp',
@@ -506,50 +500,57 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
     ];
 
     let hasLevelAccess = levelAccessKeywords.some(keyword => fullText.includes(keyword));
-    let externalAccessVerified = hasLevelAccess; // true if found via text
-    let externalAccessWarning = false;
-
-    // If not found via text AND property has ground floor entry, use Vision API
-    if (!hasLevelAccess && hasGroundFloorEntry) {
-        console.log('🚪 No text mention of level access - analyzing entrance photos with Vision API...');
-        
-        const visionResult = await analyzeEntranceForSteps(property.images);
-        
-        if (visionResult.entrancePhotosFound && visionResult.confidence >= 70) {
-            // Entrance visible and confident assessment
-            hasLevelAccess = !visionResult.hasSteps;
-            externalAccessVerified = true;
-            console.log(`🚪 Vision API: ${hasLevelAccess ? 'No steps detected' : 'Steps detected'} (${visionResult.confidence}% confidence)`);
-            console.log(`   Reasoning: ${visionResult.reasoning}`);
-        } else if (visionResult.error) {
-            // API error - treat as unknown
-            externalAccessWarning = true;
-            console.log('⚠️ Vision API error - unable to verify entrance accessibility');
-        } else {
-            // No entrance photos found
-            externalAccessWarning = true;
-            console.log('⚠️ No clear entrance photos found in first 5 images');
-        }
-    }
 
     if (hasLevelAccess) {
         score += 1;
         features.push('External level/ramp access');
+        externalAccessVerified = true;
         console.log('✓ External level/ramp access');
-    } else if (externalAccessWarning) {
-        console.log('⚠️ External level/ramp access - unable to verify');
     } else {
-        console.log('✗ External level/ramp access - steps detected');
+        console.log('✗ External level/ramp access not mentioned');
     }
 
-    // Calculate final score (max 8 out of 8, converted to 0-5 scale)
+    // Calculate final score (max 8 features)
     const maxScore = 8;
     const preciseScore = Math.min(5, (score / maxScore) * 5);
     const displayScore = Math.round(preciseScore);
-    
+
     console.log(`🏠 Accessible Features Score: ${displayScore}/5 (${score}/${maxScore} features found)`);
     console.log('✓ Features found:', features);
-    
+
+    return {
+        score: preciseScore,
+        displayScore: displayScore,
+        maxScore: 5,
+        features: features,
+        percentage: Math.round((score / maxScore) * 100),
+        externalAccessWarning: externalAccessWarning,
+        applicableCriteria: {
+            stepFreeOrLift: true,
+            downstairsBedroom: true,
+            downstairsBathroom: true,
+            groundFloorEntry: true,
+            privateParking: true,
+            garden: true,
+            balcony: true,
+            externalLevelAccess: true
+        },
+        details: {
+            stepFreeInternal: hasStepFreeInternal,
+            lift: hasAnyLift && !hasStepFreeInternal,
+            liftType: hasStairlift ? 'stairlift' : hasLift ? 'lift' : null,
+            downstairsBedroom: hasDownstairsBedroom,
+            downstairsBathroom: hasDownstairsBathroom,
+            groundFloorEntry: hasGroundFloorEntry,
+            privateParking: hasPrivateParking && !hasOnStreetOnly,
+            garden: hasGarden,
+            balcony: hasBalcony,
+            externalLevelAccess: hasLevelAccess,
+            externalAccessVerified: externalAccessVerified,
+            isSingleLevel: isSingleLevel,
+            isGroundFloor: isGroundFloor
+        }
+    };
     return {
         score: preciseScore,
         displayScore: displayScore,
@@ -557,6 +558,7 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
         features: features,
         percentage: Math.round((score / maxScore) * 100),
         externalAccessWarning: externalAccessWarning, // NEW - for showing ⚠️ icon
+         externalAccessAssessed: externalAccessAssessed,
         applicableCriteria: {
             stepFreeOrLift: true,
             downstairsBedroom: true,
