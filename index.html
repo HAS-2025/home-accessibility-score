@@ -2010,7 +2010,18 @@ function displayDimensions(dimensions, roomAccommodation) {
                             propertyCost.pricePerSqMPercentile === '50th' ? '#856404' : 
                             '#721c24'
                         }; padding: 0.25rem 0.5rem; border-radius: 4px;">
-                            Cheaper than ${propertyCost.pricePerSqMPercentile === '10th' ? '90%' : propertyCost.pricePerSqMPercentile === '25th' ? '75%' : propertyCost.pricePerSqMPercentile === '50th' ? '50%' : propertyCost.pricePerSqMPercentile === '75th' ? '25%' : propertyCost.pricePerSqMPercentile === '90th' ? '10%' : '0%'} of properties
+                            ${(() => {
+                                if (propertyCost.pricePerSqMPercentile === '10th') return 'Cheaper than 90% of properties';
+                                if (propertyCost.pricePerSqMPercentile === '25th') return 'Cheaper than 75% of properties';
+                                if (propertyCost.pricePerSqMPercentile === '50th') {
+                                    // Check actual price to determine if cheap or expensive side of 50th
+                                    const price = parseInt(cost.pricePerSqM.replace(/[£,]/g, ''));
+                                    return price <= 2507 ? 'Cheaper than 50% of properties' : 'More expensive than 50% of properties';
+                                }
+                                if (propertyCost.pricePerSqMPercentile === '75th') return 'More expensive than 75% of properties';
+                                if (propertyCost.pricePerSqMPercentile === '90th') return 'More expensive than 90% of properties';
+                                return 'More expensive than 90% of properties';
+                            })()}
                         </span>
                     ` : cost.pricePerSqMNote ? `
                         <span class="dimension-secondary-size">${cost.pricePerSqMNote}</span>

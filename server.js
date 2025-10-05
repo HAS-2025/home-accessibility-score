@@ -3513,7 +3513,7 @@ function calculateCouncilTaxScore(councilTaxBand) {
     }
 }
 
-// Calculate Price per Sq M Score based on percentile thresholds
+/// Calculate Price per Sq M Score based on percentile thresholds
 function calculatePricePerSqMScore(pricePerSqM) {
     if (!pricePerSqM || typeof pricePerSqM !== 'number') {
         return {
@@ -3526,30 +3526,41 @@ function calculatePricePerSqMScore(pricePerSqM) {
     
     let score, percentile, description;
     
+    // £1,963 or below = 10th percentile (cheaper than 90% of properties)
     if (pricePerSqM <= 1963) {
         score = 5;
         percentile = '10th';
         description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 90% of properties on the market - excellent value.`;
-    } else if (pricePerSqM <= 2184) {
+    } 
+    // £1,964 - £2,184 = Above 10th, at/below 25th (cheaper than 75% of properties)
+    else if (pricePerSqM <= 2184) {
         score = 4;
         percentile = '25th';
         description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 75% of properties on the market - good value.`;
-    } else if (pricePerSqM <= 2507) {
+    } 
+    // £2,185 - £2,507 = Above 25th, at/below 50th (cheaper than 50% of properties)
+    else if (pricePerSqM <= 2507) {
         score = 3;
         percentile = '50th';
         description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 50% of properties on the market - average market value.`;
-    } else if (pricePerSqM <= 3622) {
+    } 
+    // £2,508 - £3,622 = Above 50th, at/below 75th (more expensive than 50% of properties)
+    else if (pricePerSqM <= 3622) {
         score = 2;
-        percentile = '75th';
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is only cheaper than 25% of properties on the market - above average cost.`;
-    } else if (pricePerSqM <= 6015) {
+        percentile = '50th';  // Last threshold passed was 50th
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 50% of properties on the market - above average cost.`;
+    } 
+    // £3,623 - £6,015 = Above 75th, at/below 90th (more expensive than 75% of properties)
+    else if (pricePerSqM <= 6015) {
         score = 1;
-        percentile = '90th';
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is only cheaper than 10% of properties on the market - premium pricing.`;
-    } else {
+        percentile = '75th';  // Last threshold passed was 75th
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 75% of properties on the market - premium pricing.`;
+    } 
+    // Above £6,015 = Above 90th percentile (more expensive than 90% of properties)
+    else {
         score = 0;
-        percentile = '>90th';
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property costs more than 90% of properties on the market - very expensive.`;
+        percentile = '90th';  // Passed 90th threshold
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 90% of properties on the market - very expensive.`;
     }
     
     return {
