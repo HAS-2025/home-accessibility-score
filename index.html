@@ -1553,6 +1553,14 @@
 }
 
        function displayGPProximity(gp) {
+            // At the start, check for API failure
+            if (!gp || gp.score === undefined) {
+                document.getElementById('gpScore').textContent = 'Error';
+                document.getElementById('gpScore').className = 'score-value fair';
+                document.getElementById('gpDescription').textContent = 'Unable to retrieve GP data';
+                document.getElementById('gpDetails').innerHTML = getRetryMessage('GP Information');
+                return;
+            }
             console.log('DEBUG: GP data received:', gp);
             console.log('DEBUG: nearestGPs array:', gp.nearestGPs);
             
@@ -1589,26 +1597,63 @@
         }
 
        function displayEPCRating(epc) {
-            document.getElementById('epcScore').textContent = epc.rating;
+            const scoreValue = document.getElementById('epcScore');
+            const scoreDescription = document.getElementById('epcDescription');
+            const scoreDetails = document.getElementById('epcDetails');
+            
+            // Check if API failed to return data
+            if (!epc || !epc.rating) {
+                scoreValue.textContent = 'Error';
+                scoreValue.className = 'score-value fair';
+                scoreDescription.textContent = 'Unable to retrieve EPC data';
+                scoreDetails.innerHTML = getRetryMessage('EPC Rating');
+                return;
+            }
+            
+            // Handle intentionally missing EPC (property doesn't have one)
+            if (epc.rating === 'Not available' || epc.rating === 'Unknown') {
+                scoreValue.textContent = 'Not Available';
+                scoreValue.className = 'score-value fair';
+                scoreDescription.textContent = 'EPC rating not found in property listing. This does not affect the overall score.';
+                scoreDetails.innerHTML = '<div style="padding: 0.5rem; background: #f0f9ff; border-radius: 8px; color: #666; font-size: 0.9rem;">💡 Contact the estate agent for energy efficiency information</div>';
+                return;
+            }
+            
+            // Handle missing EPC data
+            if (!epc.actualRating || epc.rating === 'Not available' || epc.rating === 'Unknown') {
+                scoreValue.textContent = 'Not Available';
+                scoreValue.className = 'score-value fair';  // Neutral gray color
+                scoreDescription.textContent = 'EPC rating not found in property listing. This does not affect the overall score.';
+                scoreDetails.innerHTML = '<div style="padding: 0.5rem; background: #f0f9ff; border-radius: 8px; color: #666; font-size: 0.9rem;">💡 Contact the estate agent for energy efficiency information</div>';
+                return;
+            }
+            
+            // Display found EPC rating
+            scoreValue.textContent = epc.rating;
             
             // Convert rating to CSS class (handle spaces)
             const ratingClass = epc.rating.toLowerCase().replace(/ /g, '-');
-            document.getElementById('epcScore').className = `score-value ${ratingClass}`;
+            scoreValue.className = `score-value ${ratingClass}`;
             
-            document.getElementById('epcDescription').textContent = epc.details;
+            scoreDescription.textContent = epc.details;
             
             let detailsHtml = '';
             if (epc.actualRating) {
                 detailsHtml += `<div><strong>EPC Rating:</strong> ${epc.actualRating}</div>`;
             }
-            document.getElementById('epcDetails').innerHTML = detailsHtml;
+            scoreDetails.innerHTML = detailsHtml;
         }
        function displayAccessibleFeatures(accessibleFeatures) {
+            const scoreValue = document.getElementById('accessibleFeaturesScore');
+            const scoreDescription = document.getElementById('accessibleFeaturesDescription');
+            const scoreDetails = document.getElementById('accessibleFeaturesDetails');
+            
+            // Check for API failure (no data returned)
             if (!accessibleFeatures) {
-                document.getElementById('accessibleFeaturesScore').textContent = '0/5';
-                document.getElementById('accessibleFeaturesScore').className = 'score-value very-poor';
-                document.getElementById('accessibleFeaturesDescription').textContent = 'Accessible features data not available';
-                document.getElementById('accessibleFeaturesDetails').innerHTML = '<div class="no-features-found">Unable to analyze accessible features</div>';
+                scoreValue.textContent = 'Error';
+                scoreValue.className = 'score-value fair';
+                scoreDescription.textContent = 'Unable to retrieve accessible features data';
+                scoreDetails.innerHTML = getRetryMessage('Accessible Features');
                 return;
             }
             
@@ -1627,19 +1672,17 @@
                 else ratingText = 'Very Poor';
             }
             
-            document.getElementById('accessibleFeaturesScore').textContent = ratingText;
+            scoreValue.textContent = ratingText;
             
             // Convert rating text to CSS class (handles "Very Good" -> "very-good")
             const scoreClass = ratingText.toLowerCase().replace(/ /g, '-');
             
-            document.getElementById('accessibleFeaturesScore').className = `score-value ${scoreClass}`;
-            document.getElementById('accessibleFeaturesDescription').textContent = '';
+            scoreValue.className = `score-value ${scoreClass}`;
+            scoreDescription.textContent = '';
             
             let detailsHtml = '<div class="accessible-features-list">';
             
             const foundFeatures = accessibleFeatures.features || [];
-            
-            
             
             // Define the 8 criteria in display order
             const criteriaMapping = [
@@ -1664,16 +1707,10 @@
                 
                 const isFound = !!matchedFeature;
                 
-                // Special handling for external access - show warning if unable to verify
                 let icon = isFound ? '✅' : '❌';
                 let displayLabel;
 
-                if (criterion.key === 'externalLevelAccess') {
-                    displayLabel = criterion.displayAs;
-                    // Just show found/not found based on text search
-                
-
-                } else if (criterion.key === 'stepFreeOrLift' && matchedFeature) {
+                if (criterion.key === 'stepFreeOrLift' && matchedFeature) {
                     displayLabel = matchedFeature;
                 } else {
                     displayLabel = criterion.displayAs;
@@ -1688,12 +1725,28 @@
             
             detailsHtml += '</div>';
             
-            document.getElementById('accessibleFeaturesDetails').innerHTML = detailsHtml;
+            scoreDetails.innerHTML = detailsHtml;
         }
         
 function displayDimensions(dimensions, roomAccommodation) {
     const dimensionsContainer = document.getElementById('dimensionsCard');
     
+    // Check for API failure (no data returned at all)
+    if (!dimensions && !roomAccommodation) {
+        dimensionsContainer.style.display = 'block';
+        dimensionsContainer.innerHTML = `
+            <div class="score-header">
+                <span class="score-icon">📐</span>
+                <span class="score-title">Room Breakdown</span>
+            </div>
+            <div class="score-value fair">Error</div>
+            <div class="score-description">Unable to retrieve room information</div>
+            <div class="score-details">${getRetryMessage('Room Information')}</div>
+        `;
+        return;
+    }
+    
+    // If we have some data but not all, continue with display
     if (!dimensions || (!dimensions.totalSqM && !roomAccommodation)) {
         dimensionsContainer.style.display = 'none';
         return;
@@ -1880,6 +1933,20 @@ function displayDimensions(dimensions, roomAccommodation) {
                        (typeToMatch === 'utility' && roomName.includes('utility'));
             });
         }
+
+        function getRetryMessage(categoryName) {
+            return `
+                <div style="padding: 1rem; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px; margin-top: 1rem;">
+                    <div style="font-weight: 500; color: #856404; margin-bottom: 0.5rem;">⚠️ Unable to Load ${categoryName}</div>
+                    <div style="font-size: 0.9rem; color: #856404; margin-bottom: 0.5rem;">
+                        This information couldn't be retrieved. This may be a temporary API issue.
+                    </div>
+                    <div style="font-size: 0.85rem; color: #856404;">
+                        💡 Try running the analysis again - it often works on the second attempt.
+                    </div>
+                </div>
+            `;
+        }
         
         function getRoomIcon(roomType) {
             const icons = {
@@ -1936,8 +2003,23 @@ function displayDimensions(dimensions, roomAccommodation) {
             return '🏠'; // Default icon
         }
 
-        function displayCostAnalysis(cost, propertyCost) {
+function displayCostAnalysis(cost, propertyCost) {
     const costContainer = document.getElementById('costCard');
+    
+    // Check for API failure (no data returned at all)
+    if (!cost && !propertyCost) {
+        costContainer.style.display = 'block';
+        costContainer.innerHTML = `
+            <div class="score-header">
+                <span class="score-icon">💷</span>
+                <span class="score-title">Property Costs</span>
+            </div>
+            <div class="score-value fair">Error</div>
+            <div class="score-description">Unable to retrieve cost information</div>
+            <div class="score-details">${getRetryMessage('Cost Information')}</div>
+        `;
+        return;
+    }
     
     // Show the card
     costContainer.style.display = 'block';
@@ -1952,6 +2034,8 @@ function displayDimensions(dimensions, roomAccommodation) {
         `;
         return;
     }
+
+    // Existing logic continues here...
 
     let html = `
         <div class="score-header">
@@ -2092,6 +2176,15 @@ function displayDimensions(dimensions, roomAccommodation) {
             
             if (!scoreValue || !scoreDescription || !scoreDetails) return;
             
+            // Check for API failure (no data returned at all)
+            if (!publicTransport || publicTransport.score === undefined) {
+                scoreValue.textContent = 'Error';
+                scoreValue.className = 'score-value fair';
+                scoreDescription.textContent = 'Unable to retrieve public transport data';
+                scoreDetails.innerHTML = getRetryMessage('Public Transport Information');
+                return;
+            }
+            
             // Only show rating text with color, no score number
             const rating = getScoreRating(publicTransport.score);
             scoreValue.textContent = rating;
@@ -2099,6 +2192,8 @@ function displayDimensions(dimensions, roomAccommodation) {
             
             // Remove the description line
             scoreDescription.textContent = '';
+            
+            // Rest of existing logic continues...
             
             // Handle completely empty state
             if ((!publicTransport.busStops || publicTransport.busStops.length === 0) && 
@@ -2174,23 +2269,38 @@ function displayDimensions(dimensions, roomAccommodation) {
         }
         
         function displayCouncilTax(councilTax) {
-            if (!councilTax || councilTax.score === null) {
-                document.getElementById('councilTaxScore').textContent = 'Unknown';
-                document.getElementById('councilTaxScore').className = 'score-value fair';
-                document.getElementById('councilTaxDescription').textContent = councilTax?.details || 'Council tax information not available';
-                document.getElementById('councilTaxDetails').innerHTML = '';
+            const scoreValue = document.getElementById('councilTaxScore');
+            const scoreDescription = document.getElementById('councilTaxDescription');
+            const scoreDetails = document.getElementById('councilTaxDetails');
+            
+            // Check for API failure (no data returned at all)
+            if (!councilTax) {
+                scoreValue.textContent = 'Error';
+                scoreValue.className = 'score-value fair';
+                scoreDescription.textContent = 'Unable to retrieve council tax data';
+                scoreDetails.innerHTML = getRetryMessage('Council Tax Information');
                 return;
             }
             
-            document.getElementById('councilTaxScore').textContent = councilTax.rating;
-            document.getElementById('councilTaxScore').className = `score-value ${councilTax.rating.toLowerCase().replace(' ', '-')}`;
-            document.getElementById('councilTaxDescription').textContent = councilTax.details;
+            // Handle when council tax data exists but wasn't found in property listing
+            if (councilTax.score === null) {
+                scoreValue.textContent = 'Unknown';
+                scoreValue.className = 'score-value fair';
+                scoreDescription.textContent = councilTax.details || 'Council tax information not available in listing';
+                scoreDetails.innerHTML = '';
+                return;
+            }
+            
+            // Normal display logic
+            scoreValue.textContent = councilTax.rating;
+            scoreValue.className = `score-value ${councilTax.rating.toLowerCase().replace(' ', '-')}`;
+            scoreDescription.textContent = councilTax.details;
             
             let detailsHtml = '';
             if (councilTax.band) {
                 detailsHtml += `<div><strong>Band:</strong> ${councilTax.band}</div>`;
             }
-            document.getElementById('councilTaxDetails').innerHTML = detailsHtml;
+            scoreDetails.innerHTML = detailsHtml;
         }
 
         document.getElementById('propertyUrl').addEventListener('keypress', function(e) {

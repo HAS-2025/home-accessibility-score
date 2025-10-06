@@ -4052,21 +4052,30 @@ if (availableScores.length > 0) {
     }
 
 
-// Updated overall score calculation (6 categories)
-let scoresToAverage = [gpProximity.score, epcScore, accessibleFeatures.score, publicTransport.score, roomScore.score];
+// Updated overall score calculation - only include available metrics
+let scoresToAverage = [
+    gpProximity.score, 
+    accessibleFeatures.score, 
+    publicTransport.score, 
+    roomScore.score
+];
 
 // Only include EPC if it was actually found
 if (epcScore !== null) {
     scoresToAverage.push(epcScore);
 }
 
+// Only include property cost if available
 if (propertyCostScore !== null) {
     scoresToAverage.push(propertyCostScore);
 }
 
 const overallScore = scoresToAverage.reduce((sum, score) => sum + score, 0) / scoresToAverage.length;
 
+console.log('📊 Scores included in overall:', scoresToAverage.length);
 console.log('💷 Property Cost Score:', propertyCostScore);
+console.log('⚡ EPC Score:', epcScore);
+console.log('🎯 Overall Score:', overallScore);
 
 
 // Debug logging before summary generation
