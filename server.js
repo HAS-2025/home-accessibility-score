@@ -309,11 +309,49 @@ console.log(`🏠 Property type: Flat=${isFlat}, Floor level=${floorLevel}, Grou
 // CRITERIA 1: Step-free internal access OR lift (mutually exclusive)
 let hasStepFreeInternal = false;
 
+// Check for retirement property indicators
+const retirementKeywords = [
+    'retirement', 
+    'over 55', 
+    'over 60', 
+    'age restricted', 
+    'retirement community', 
+    'retirement village', 
+    'retirement scheme'
+];
+const isRetirementProperty = retirementKeywords.some(keyword => 
+    fullText.toLowerCase().includes(keyword)
+);
+
+// Check for evidence of upper floor/loft conversion
+const upperFloorKeywords = [
+    'first floor',
+    'second floor',
+    'upper floor',
+    'loft conversion',
+    'loft room',
+    'attic room',
+    'upstairs bedroom',
+    'upstairs bathroom',
+    'stairs to',
+    'staircase'
+];
+const hasUpperFloorEvidence = upperFloorKeywords.some(keyword => 
+    fullText.toLowerCase().includes(keyword)
+);
+
+// Single-level property
 if (isSingleLevel && !hasMultipleLevels) {
     hasStepFreeInternal = true;
     score += 1;
     features.push('Step-free internal access');
     console.log('✓ Step-free internal access (single level property)');
+} else if (isSingleLevel && isRetirementProperty && !hasUpperFloorEvidence) {
+    // Single-level retirement property with no mention of upper floors - infer step-free
+    hasStepFreeInternal = true;
+    score += 1;
+    features.push('Step-free internal access');
+    console.log('✓ Step-free internal access (inferred: single-level retirement property, no upper floor mentioned)');
 } else if (hasMultipleLevels && hasAnyLift) {
     score += 1;
     if (hasStairlift) {
@@ -1117,7 +1155,6 @@ async function getPropertyCoordinates(address, existingCoords) {
 }
 // STEP 1: Add this AI detection function at the top of your file (near other functions)
 
-// Replace the old isActualGP function with this batch version:
 async function batchDetectGPs(places) {
     const placeList = places.map((place, index) => 
         `${index + 1}. "${place.displayName?.text}" - ${place.formattedAddress}`
@@ -1128,7 +1165,7 @@ async function batchDetectGPs(places) {
 
 ${placeList}
 
-Return only the numbers of the actual GPs (e.g., "1,3,5"). 
+Return ONLY the numbers separated by commas (e.g., "1,3,5"). No other text.
 GPs provide general medical care - NOT specialists like nutrition, dentistry, imaging, etc.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
@@ -1145,7 +1182,16 @@ GPs provide general medical care - NOT specialists like nutrition, dentistry, im
         });
 
         const result = response.data.content[0].text.trim();
-        const validIndices = result.split(',').map(n => parseInt(n.trim()) - 1);
+        console.log('🤖 AI RESPONSE:', result);
+        
+        // IMPROVED PARSING - extract only the line with numbers
+        const numberLine = result.split('\n')
+            .find(line => /^\d+[\d,\s]+$/.test(line.trim())) || result;
+        
+        const validIndices = numberLine
+            .split(',')
+            .map(n => parseInt(n.trim()) - 1)
+            .filter(n => !isNaN(n)); // Filter out NaN values
         
         console.log(`🤖 Batch AI Detection: Valid GPs at indices ${validIndices}`);
         return validIndices;
@@ -1225,8 +1271,20 @@ async function findNearestGPs(lat, lng, maxRadius = 2000) {
             }
         );
         
-        console.log('Places API response received');
-        console.log('Total places found:', response.data.places?.length || 0);
+        // ADD THIS NEW DEBUG BLOCK HERE ⬇️
+        console.log('🔍 ALL PLACES RETURNED BY API:');
+        response.data.places?.forEach((place, index) => {
+            const distance = calculateStraightLineDistance(
+                lat, lng, 
+                place.location?.latitude, 
+                place.location?.longitude
+            );
+            console.log(`   ${index}: ${place.displayName?.text}`);
+            console.log(`      Address: ${place.formattedAddress}`);
+            console.log(`      Distance: ${(distance * 1000).toFixed(0)}m`);
+            console.log(`      Status: ${place.businessStatus}`);
+            console.log(`      ---`);
+        });
 
         if (response.data.places && response.data.places.length > 0) {
             const gps = [];
