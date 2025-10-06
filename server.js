@@ -1586,6 +1586,7 @@ function calculateRouteAccessibilityScore(features, durationMinutes) {
 function generateAccessibilityNotes(durationMinutes, features, warnings) {
     const notes = [];
     
+    // Main distance assessment
     if (durationMinutes <= 5) {
         notes.push("Excellent proximity - very manageable walk");
     } else if (durationMinutes <= 10) {
@@ -1600,6 +1601,7 @@ function generateAccessibilityNotes(durationMinutes, features, warnings) {
         notes.push("Very long walk - transport strongly recommended");
     }
     
+    // Specific route obstacles
     if (features.hasStairs) {
         notes.push("Route includes stairs - may be challenging for mobility aids");
     }
@@ -1614,7 +1616,8 @@ function generateAccessibilityNotes(durationMinutes, features, warnings) {
         }
     }
     
-    if (warnings.length === 0 && durationMinutes <= 10) {
+    // Positive note for ideal routes
+    if (warnings.length === 0 && durationMinutes <= 10 && !features.hasStairs && !features.hasSteepIncline) {
         notes.push("Route appears level and pedestrian-friendly");
     }
     
@@ -1738,8 +1741,7 @@ async function analyzeGPProximity(lat, lng) {
             
             if (route) {
                 const baseScore = calculateGPProximityScore(route.durationMinutes, null);
-                const overallScore = calculateGPProximityScore(route.durationMinutes, route.accessibilityScore);
-                
+                const overallScore = calculateGPProximityScore(route.durationMinutes, null);                
                 gpsWithRoutes.push({
                     ...gp,
                     walkingTime: route.duration,
@@ -1749,7 +1751,7 @@ async function analyzeGPProximity(lat, lng) {
                     routeAccessibilityScore: route.accessibilityScore,
                     accessibilityNotes: route.accessibilityNotes,
                     baseScore: baseScore,
-                    overallScore: overallScore
+                    overallScore: overallScore  // Now purely based on time, not averaged with accessibility
                 });
             } else {
                 gpsWithRoutes.push({
@@ -2348,10 +2350,11 @@ async function extractEPCFromRightmoveDropdown(url) {
             }
         });
         
-        // Strategy 2: Look for direct EPC images
+        // Strategy 2: Look for direct EPC images (including GIFs)
         const epcUrlPatterns = [
             /_EPC_/i, /\/epc\//i, /energy[-_]performance/i,
-            /energy[-_]certificate/i, /certificate.*energy/i
+            /energy[-_]certificate/i, /certificate.*energy/i,
+            /EPCGRAPH/i  // Added for Rightmove EPC graph pattern
         ];
         
         $('*').each((i, element) => {
@@ -2367,7 +2370,7 @@ async function extractEPCFromRightmoveDropdown(url) {
                         if (!epcUrls.pdfs.includes(fullUrl)) {
                             epcUrls.pdfs.push(fullUrl);
                         }
-                    } else {
+                    } else if (fullUrl.match(/\.(png|jpg|jpeg|gif)$/i)) {  // Added .gif support
                         if (!epcUrls.images.includes(fullUrl)) {
                             epcUrls.images.push(fullUrl);
                         }
@@ -2376,10 +2379,10 @@ async function extractEPCFromRightmoveDropdown(url) {
             });
         });
         
-        // Strategy 3: Look in scripts for EPC URLs
+        // Strategy 3: Look in scripts for EPC URLs (including GIFs)
         $('script').each((i, script) => {
             const scriptContent = $(script).html() || '';
-            const epcMatches = scriptContent.match(/https?:\/\/[^"'\s]*[Ee][Pp][Cc][^"'\s]*\.(pdf|png|jpg|jpeg)/gi);
+            const epcMatches = scriptContent.match(/https?:\/\/[^"'\s]*[Ee][Pp][Cc][^"'\s]*\.(pdf|png|jpg|jpeg|gif)/gi);  // Added gif
             if (epcMatches) {
                 epcMatches.forEach(match => {
                     if (match.toLowerCase().endsWith('.pdf')) {
@@ -2722,7 +2725,11 @@ async function scrapeRightmoveProperty(url) {
         
         // Clean up location if found
         if (location) {
-            location = location.replace(/^[,\s]+|[,\s]+$/g, ''); // Remove leading/trailing commas and spaces
+            location = location
+                .replace(/^[,\s]+|[,\s]+$/g, '') // Remove leading/trailing commas and spaces
+                .replace(/GUIDE PRICE/gi, '') // Remove "GUIDE PRICE" text
+                .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+                .trim(); // Final trim
             console.log('Cleaned location:', location);
         }
         
@@ -3232,11 +3239,12 @@ if (!leaseholdDetails.leaseYears) {
                 }
             }
 
-            // STEP 3: Enhanced text pattern matching (your existing code)
+            // STEP 3: Enhanced text pattern matching
             if (!epcData.rating) {
                 console.log('🔍 Step 3: Using enhanced text pattern matching...');
                 
-                const epcImageUrls = await extractEPCFromRightmoveDropdown(url);
+                const epcUrls = await extractEPCFromRightmoveDropdown(url);
+                const epcImageUrls = [...epcUrls.images];  // Convert to array, copy the images array
 
                 // ENHANCED: Additional EPC image search
                 console.log('🔍 Searching for direct EPC images in page source...');
@@ -4332,6 +4340,7 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     
     // DEBUG: Check public transport data structure
     console.log('🚌 DEBUG Public Transport Data:', JSON.stringify(publicTransport, null, 2));
+
     // 6. Public transport with improved readability
     const transportRating = getScoreRating(publicTransport.score || 0);
     summary += `Public transport connectivity is ${transportRating.toLowerCase()}`;
@@ -4339,15 +4348,37 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     const nearestBus = publicTransport.busStops?.[0];
     const nearestTrain = publicTransport.trainStations?.[0];
 
-    if (nearestBus && nearestTrain) {
-        // Both available
-        summary += ` with the nearest bus and train stops ${nearestBus.walkingTime} and ${nearestTrain.walkingTime} mins walk away, respectively`;
-    } else if (nearestBus && !nearestTrain) {
-        // Bus only
-        summary += ` with the nearest bus stop ${nearestBus.walkingTime} mins walk away`;
-    } else if (nearestTrain && !nearestBus) {
-        // Train only
-        summary += ` with the nearest train station ${nearestTrain.walkingTime} mins walk away`;
+    const busWalkable = nearestBus?.walkingTime;
+    const trainWalkable = nearestTrain?.walkingTime;
+    const busDistance = nearestBus?.distance;
+    const trainDistance = nearestTrain?.distance;
+
+    if (busWalkable && trainWalkable) {
+        // Both walkable
+        summary += ` with the nearest bus stop ${busWalkable} mins walk and train station ${trainWalkable} mins walk away`;
+    } else if (busWalkable && !trainWalkable) {
+        // Only bus walkable
+        summary += ` with the nearest bus stop ${busWalkable} mins walk away`;
+        if (trainDistance) {
+            summary += `. The nearest train station is ${trainDistance} away`;
+        }
+    } else if (!busWalkable && trainWalkable) {
+        // Only train walkable
+        summary += ` with the nearest train station ${trainWalkable} mins walk away`;
+        if (busDistance) {
+            summary += `. The nearest bus stop is ${busDistance} away`;
+        }
+    } else {
+        // Neither walkable
+        if (busDistance || trainDistance) {
+            summary += ` but public transport requires additional travel`;
+            const distances = [];
+            if (busDistance) distances.push(`nearest bus stop ${busDistance} away`);
+            if (trainDistance) distances.push(`nearest train station ${trainDistance} away`);
+            if (distances.length > 0) {
+                summary += ` (${distances.join(', ')})`;
+            }
+        }
     }
 
     summary += '. ';
