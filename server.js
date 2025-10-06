@@ -1797,82 +1797,294 @@ async function analyzeGPProximity(lat, lng) {
 
 async function analyzePublicTransport(lat, lng) {
     try {
-        console.log(`🚌 Finding public transport near ${lat}, ${lng}`);
+        console.log('🚌 Finding public transport near', lat, lng);
         
-        const busStops = await findNearbyTransit(lat, lng, 'bus_station');
-        const trainStations = await findNearbyTransit(lat, lng, 'train_station');
+        let busStops = [];
+        let trainStations = [];
         
-        let busScore = 0;
-        let trainScore = 0;
-        let busAccessibility = null;
-        let trainAccessibility = null;
-        
-        // Analyze nearest bus stop with walking route
-        if (busStops.length > 0) {
-            const nearestBus = busStops[0];
-            console.log(`🚌 Analyzing walking route to nearest bus: ${nearestBus.name}`);
-            
-            const route = await analyzeWalkingRoute(lat, lng, nearestBus.location.lat, nearestBus.location.lng);
-            
-            if (route) {
-                busScore = calculateTransitScoreFromTime(route.adjustedDuration);
-                nearestBus.walkingTime = route.adjustedDuration;
-                nearestBus.actualDistance = route.distance;
-                nearestBus.accessibilityFeatures = route.features;
-                nearestBus.warnings = route.warnings;
-                busAccessibility = route;
+        // Search for bus stops within 1500m using new Places API
+        console.log('🚌 Searching for bus stops within 1500m...');
+
+        // Search for transit_station type to capture more bus stops
+        const busRequest = {
+            includedTypes: ["transit_station"],
+            maxResultCount: 20,
+            locationRestriction: {
+                circle: { 
+                    center: { latitude: lat, longitude: lng }, 
+                    radius: 1500.0 
+                }
+            },
+            rankPreference: "DISTANCE"
+        };
+
+        const busResponse = await axios.post(
+            'https://places.googleapis.com/v1/places:searchNearby',
+            busRequest,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location,places.types'
+                },
+                timeout: 8000
+            }
+        );
+
+        // Filter to only bus-related stops
+        let allBusPlaces = [];
+        if (busResponse.data.places && busResponse.data.places.length > 0) {
+            allBusPlaces = busResponse.data.places.filter(place => {
+                const name = (place.displayName?.text || '').toLowerCase();
+                const types = place.types || [];
+                // Include if name contains 'bus' or if it's a bus/transit station type
+                return name.includes('bus') || 
+                    types.includes('bus_station') || 
+                    types.includes('transit_station');
+            });
+            console.log(`🚌 Found ${allBusPlaces.length} bus stops from ${busResponse.data.places.length} transit stations`);
+        }
+
+        if (allBusPlaces.length > 0) {
+            for (const stop of allBusPlaces.slice(0, 3)) {
+                const distance = calculateStraightLineDistance(
+                    lat, lng,
+                    stop.location.latitude,
+                    stop.location.longitude
+                );
                 
-                console.log(`🚌 Bus route: ${route.adjustedDuration} mins (score: ${busScore})`);
+                const route = await analyzeWalkingRoute(
+                    lat, lng,
+                    stop.location.latitude,
+                    stop.location.longitude,
+                    stop.displayName?.text || 'Bus Stop'
+                );
+                
+                if (route) {
+                    busStops.push({
+                        name: stop.displayName?.text || 'Bus Stop',
+                        address: stop.formattedAddress || 'Address not available',
+                        location: {
+                            lat: stop.location.latitude,
+                            lng: stop.location.longitude
+                        },
+                        distance: route.distance,
+                        walkingTime: Math.ceil(route.durationMinutes),
+                        straightLineDistance: distance
+                    });
+                }
             }
         }
         
-        // Analyze nearest train station with walking route
-        if (trainStations.length > 0) {
-            const nearestTrain = trainStations[0];
-            console.log(`🚂 Analyzing walking route to nearest train: ${nearestTrain.name}`);
+        // If no bus stops within 1500m, search up to 5km
+        if (busStops.length === 0) {
+            console.log('🚌 No bus stops within 1500m, searching up to 5km...');
             
-            const route = await analyzeWalkingRoute(lat, lng, nearestTrain.location.lat, nearestTrain.location.lng);
+            const wideBusRequest = {
+                includedTypes: ["bus_station"],
+                maxResultCount: 5,
+                locationRestriction: {
+                    circle: { 
+                        center: { latitude: lat, longitude: lng }, 
+                        radius: 5000.0 
+                    }
+                },
+                rankPreference: "DISTANCE"
+            };
             
-            if (route) {
-                trainScore = calculateTransitScoreFromTime(route.adjustedDuration);
-                nearestTrain.walkingTime = route.adjustedDuration;
-                nearestTrain.actualDistance = route.distance;
-                nearestTrain.accessibilityFeatures = route.features;
-                nearestTrain.warnings = route.warnings;
-                trainAccessibility = route;
+            const wideBusResponse = await axios.post(
+                'https://places.googleapis.com/v1/places:searchNearby',
+                wideBusRequest,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+                        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location'
+                    },
+                    timeout: 8000
+                }
+            );
+            
+            if (wideBusResponse.data.places && wideBusResponse.data.places.length > 0) {
+                const nearestBus = wideBusResponse.data.places[0];
+                const distance = calculateStraightLineDistance(
+                    lat, lng,
+                    nearestBus.location.latitude,
+                    nearestBus.location.longitude
+                );
                 
-                console.log(`🚂 Train route: ${route.adjustedDuration} mins (score: ${trainScore})`);
+                busStops.push({
+                    name: nearestBus.displayName?.text || 'Bus Stop',
+                    address: nearestBus.formattedAddress || 'Address not available',
+                    location: {
+                        lat: nearestBus.location.latitude,
+                        lng: nearestBus.location.longitude
+                    },
+                    distance: `${distance.toFixed(2)} km`,
+                    walkingTime: null,
+                    straightLineDistance: distance,
+                    tooFar: true
+                });
+                
+                console.log(`🚌 Found distant bus stop: ${nearestBus.displayName?.text} at ${distance.toFixed(2)}km`);
             }
         }
         
-        // Combined score: average of bus and train (or whichever is available)
-        let transitScore;
-        if (busScore > 0 && trainScore > 0) {
-            transitScore = (busScore + trainScore) / 2;
-        } else if (busScore > 0) {
-            transitScore = busScore;
-        } else if (trainScore > 0) {
-            transitScore = trainScore;
-        } else {
-            transitScore = 0;
+        // Search for train stations within 2500m using new Places API
+        console.log('🚂 Searching for train stations within 2500m...');
+        const trainRequest = {
+            includedTypes: ["train_station"],
+            maxResultCount: 5,
+            locationRestriction: {
+                circle: { 
+                    center: { latitude: lat, longitude: lng }, 
+                    radius: 2500.0 
+                }
+            },
+            rankPreference: "DISTANCE"
+        };
+        
+        const trainResponse = await axios.post(
+            'https://places.googleapis.com/v1/places:searchNearby',
+            trainRequest,
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+                    'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location'
+                },
+                timeout: 8000
+            }
+        );
+        
+        if (trainResponse.data.places && trainResponse.data.places.length > 0) {
+            console.log(`🚂 Found ${trainResponse.data.places.length} train stations within 2500m`);
+            
+            for (const station of trainResponse.data.places.slice(0, 2)) {
+                const distance = calculateStraightLineDistance(
+                    lat, lng,
+                    station.location.latitude,
+                    station.location.longitude
+                );
+                
+                const route = await analyzeWalkingRoute(
+                    lat, lng,
+                    station.location.latitude,
+                    station.location.longitude,
+                    station.displayName?.text || 'Train Station'
+                );
+                
+                if (route) {
+                    trainStations.push({
+                        name: station.displayName?.text || 'Train Station',
+                        address: station.formattedAddress || 'Address not available',
+                        location: {
+                            lat: station.location.latitude,
+                            lng: station.location.longitude
+                        },
+                        distance: route.distance,
+                        walkingTime: Math.ceil(route.durationMinutes),
+                        straightLineDistance: distance
+                    });
+                }
+            }
         }
         
-        console.log(`🚌 Public transport score: ${transitScore}/5 (bus: ${busScore}, train: ${trainScore})`);
+        // If no train stations within 2500m, search up to 10km
+        if (trainStations.length === 0) {
+            console.log('🚂 No train stations within 2500m, searching up to 10km...');
+            
+            const wideTrainRequest = {
+                includedTypes: ["train_station"],
+                maxResultCount: 5,
+                locationRestriction: {
+                    circle: { 
+                        center: { latitude: lat, longitude: lng }, 
+                        radius: 10000.0 
+                    }
+                },
+                rankPreference: "DISTANCE"
+            };
+            
+            const wideTrainResponse = await axios.post(
+                'https://places.googleapis.com/v1/places:searchNearby',
+                wideTrainRequest,
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Goog-Api-Key': process.env.GOOGLE_MAPS_API_KEY,
+                        'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.location'
+                    },
+                    timeout: 8000
+                }
+            );
+            
+            if (wideTrainResponse.data.places && wideTrainResponse.data.places.length > 0) {
+                const nearestTrain = wideTrainResponse.data.places[0];
+                const distance = calculateStraightLineDistance(
+                    lat, lng,
+                    nearestTrain.location.latitude,
+                    nearestTrain.location.longitude
+                );
+                
+                trainStations.push({
+                    name: nearestTrain.displayName?.text || 'Train Station',
+                    address: nearestTrain.formattedAddress || 'Address not available',
+                    location: {
+                        lat: nearestTrain.location.latitude,
+                        lng: nearestTrain.location.longitude
+                    },
+                    distance: `${distance.toFixed(2)} km`,
+                    walkingTime: null,
+                    straightLineDistance: distance,
+                    tooFar: true
+                });
+                
+                console.log(`🚂 Found distant train station: ${nearestTrain.displayName?.text} at ${distance.toFixed(2)}km`);
+            }
+        }
+        
+        // Calculate score based ONLY on bus stops (doubled thresholds)
+        let score = 0;
+        const walkableBusStops = busStops.filter(b => !b.tooFar);
+        
+        if (walkableBusStops.length > 0) {
+            const nearestBus = walkableBusStops[0];
+            const time = nearestBus.walkingTime;
+            
+            if (time <= 5) score = 5;
+            else if (time <= 10) score = 4;
+            else if (time <= 15) score = 3;
+            else if (time <= 20) score = 2;
+            else if (time <= 25) score = 1;
+            
+            console.log(`🚌 Nearest bus stop: ${nearestBus.name}, ${time} mins walk, score: ${score}/5`);
+        }
+        
+        console.log(`🚌 Public transport score: ${score}/5 (based on bus accessibility only)`);
         
         return {
-            score: Math.round(transitScore * 10) / 10,
-            busStops: busStops.slice(0, 3),
-            trainStations: trainStations.slice(0, 3),
-            busAccessibility: busAccessibility,
-            trainAccessibility: trainAccessibility
+            score: score,
+            busStops: busStops,
+            trainStations: trainStations,
+            busAccessibility: walkableBusStops.length > 0 ? 
+                `Nearest bus stop ${walkableBusStops[0].walkingTime} mins walk` : 
+                busStops.length > 0 ? `Nearest bus stop ${busStops[0].straightLineDistance.toFixed(2)}km away - transport required` : 
+                'No bus stops found',
+            trainAccessibility: trainStations.length > 0 && !trainStations[0].tooFar ? 
+                `Nearest train station ${trainStations[0].walkingTime} mins walk` :
+                trainStations.length > 0 ? `Nearest train station ${trainStations[0].straightLineDistance.toFixed(2)}km away` :
+                'No train stations found nearby'
         };
         
     } catch (error) {
-        console.error('Public transport analysis failed:', error.message);
+        console.error('Error analyzing public transport:', error.message);
         return {
-            score: 1,
+            score: 0,
             busStops: [],
-            trainStations: []
+            trainStations: [],
+            busAccessibility: 'Unable to analyze',
+            trainAccessibility: 'Unable to analyze'
         };
     }
 }
