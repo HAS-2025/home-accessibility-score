@@ -1756,28 +1756,41 @@ function displayDimensions(dimensions, roomAccommodation) {
     
     // Parse found rooms to determine actual room types
     const foundRoomsList = roomAccommodation?.roomsFound || [];
-    
+
     // Determine actual room configuration
     const hasKitchen = foundRoomsList.some(r => r.toLowerCase().includes('kitchen'));
     const hasLivingRoom = foundRoomsList.some(r => r.toLowerCase().includes('living room'));
     const hasBathroom1 = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 1'));
-    const hasBathroom2 = foundRoomsList.some(r => r.toLowerCase().includes('en suite'));
+    const hasBathroom2 = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 2'));
+    const hasBathroom3Plus = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 3+'));
     const hasBedroom1 = foundRoomsList.some(r => r === 'Bedroom 1');
     const hasBedroom2 = foundRoomsList.some(r => r === 'Bedroom 2');
-    
+    const hasBedroom3Plus = foundRoomsList.some(r => r === 'Bedroom 3+');
+
     // Determine kitchen type based on living room presence
     const kitchenName = hasLivingRoom ? 'Kitchen' : 'Kitchen/diner';
     const livingRoomName = 'Separate living room';
-    
+
     const roomStatus = [
         { name: kitchenName, found: hasKitchen },
         { name: livingRoomName, found: hasLivingRoom },
         { name: 'Bathroom 1', found: hasBathroom1 },
-        { name: 'Bathroom 2', found: hasBathroom2 },
-        { name: 'Bedroom 1', found: hasBedroom1 },
-        { name: 'Bedroom 2', found: hasBedroom2 }
+        { name: 'Bathroom 2', found: hasBathroom2 }
     ];
-    
+
+    // Add Bathroom 3+ if present
+    if (hasBathroom3Plus) {
+        roomStatus.push({ name: 'Bathroom 3+', found: true });
+    }
+
+    roomStatus.push({ name: 'Bedroom 1', found: hasBedroom1 });
+    roomStatus.push({ name: 'Bedroom 2', found: hasBedroom2 });
+
+    // Add Bedroom 3+ if present
+    if (hasBedroom3Plus) {
+        roomStatus.push({ name: 'Bedroom 3+', found: true });
+    }
+
     let html = `
         <div class="score-header">
             <span class="score-icon">📐</span>

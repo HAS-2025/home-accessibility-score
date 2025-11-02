@@ -4048,76 +4048,93 @@ if (availableScores.length > 0) {
 }
 
 // Calculate room-based score
-    function calculateRoomScore(property) {
-        let score = 0;
-        let foundRooms = [];
-        
-        const description = (property.description || '').toLowerCase();
-        const title = (property.title || '').toLowerCase();
-        const combinedText = `${title} ${description}`;
-        
-        // Living room - must be separate from kitchen (1 point)
-        let hasSeparateLivingRoom = false;
-        if ((combinedText.includes('living room') || combinedText.includes('lounge') || combinedText.includes('reception')) 
-            && !combinedText.includes('open plan')) {
-            score += 1;
-            foundRooms.push('Living room (separate from kitchen)');
-            hasSeparateLivingRoom = true;
-        }
-
-        // Kitchen or kitchen diner (1 point)
-        let hasKitchen = combinedText.includes('kitchen');
-
-        // If no explicit kitchen mention but we found a separate living room, assume separate kitchen exists
-        if (!hasKitchen && hasSeparateLivingRoom) {
-            hasKitchen = true;
-        }
-
-        if (hasKitchen) {
-            score += 1;
-            foundRooms.push('Kitchen or kitchen diner');
-        }
-        
-        // Bathroom/toilet 1 (1 point)
-        if (combinedText.includes('bathroom') || combinedText.includes('toilet') || combinedText.includes('wc')) {
-            score += 1;
-            foundRooms.push('Bathroom/toilet 1');
-        }
-        
-        // En suite including toilet (1 point)
-        if (combinedText.includes('en suite') || combinedText.includes('ensuite')) {
-            score += 1;
-            foundRooms.push('Bathroom/en suite including toilet 2');
-        }
-        
-        // Bedrooms from title
-        const bedroomMatch = title.match(/(\d+)\s*bedroom/);
-        if (bedroomMatch) {
-            const bedroomCount = parseInt(bedroomMatch[1]);
-            if (bedroomCount >= 1) {
-                score += 1;
-                foundRooms.push('Bedroom 1');
-            }
-            if (bedroomCount >= 2) {
-                score += 1;
-                foundRooms.push('Bedroom 2');
-            }
-            if (bedroomCount >= 3) {
-                foundRooms.push('Bedroom 3+ (no additional points)');
-            }
-        }
-        
-        
-        // Maximum score is 6, convert to 0-5 scale (each room worth 5/6 = 0.833...)
-        const finalScore = Math.round((score * (5 / 6)) * 10) / 10; // Round to 1 decimal
-        
-        return {
-            score: finalScore,
-            roomsFound: foundRooms,
-            rawScore: score,
-            maxPossible: 6
-        };
+function calculateRoomScore(property) {
+    let score = 0;
+    let foundRooms = [];
+    
+    const description = (property.description || '').toLowerCase();
+    const title = (property.title || '').toLowerCase();
+    const combinedText = `${title} ${description}`;
+    
+    // Living room - must be separate from kitchen (1 point)
+    let hasSeparateLivingRoom = false;
+    if ((combinedText.includes('living room') || combinedText.includes('lounge') || combinedText.includes('reception')) 
+        && !combinedText.includes('open plan')) {
+        score += 1;
+        foundRooms.push('Living room (separate from kitchen)');
+        hasSeparateLivingRoom = true;
     }
+
+    // Kitchen or kitchen diner (1 point)
+    let hasKitchen = combinedText.includes('kitchen');
+
+    // If no explicit kitchen mention but we found a separate living room, assume separate kitchen exists
+    if (!hasKitchen && hasSeparateLivingRoom) {
+        hasKitchen = true;
+    }
+
+    if (hasKitchen) {
+        score += 1;
+        foundRooms.push('Kitchen or kitchen diner');
+    }
+    
+    // Count bathrooms from description
+    let bathroomCount = 0;
+    
+    // Try to find explicit bathroom count
+    const bathroomMatch = combinedText.match(/(\d+)\s*bathroom/);
+    if (bathroomMatch) {
+        bathroomCount = parseInt(bathroomMatch[1]);
+    } else if (combinedText.includes('bathroom') || combinedText.includes('toilet') || combinedText.includes('wc')) {
+        bathroomCount = 1;
+    }
+    
+    // Check for en-suite (adds to bathroom count)
+    if (combinedText.includes('en suite') || combinedText.includes('ensuite')) {
+        bathroomCount += 1;
+    }
+    
+    // Award points and list bathrooms
+    if (bathroomCount >= 1) {
+        score += 1;
+        foundRooms.push('Bathroom/toilet 1');
+    }
+    if (bathroomCount >= 2) {
+        score += 1;
+        foundRooms.push('Bathroom/toilet 2');
+    }
+    if (bathroomCount >= 3) {
+        foundRooms.push('Bathroom/toilet 3+');
+    }
+    
+    // Bedrooms from title
+    const bedroomMatch = title.match(/(\d+)\s*bedroom/);
+    if (bedroomMatch) {
+        const bedroomCount = parseInt(bedroomMatch[1]);
+        if (bedroomCount >= 1) {
+            score += 1;
+            foundRooms.push('Bedroom 1');
+        }
+        if (bedroomCount >= 2) {
+            score += 1;
+            foundRooms.push('Bedroom 2');
+        }
+        if (bedroomCount >= 3) {
+            foundRooms.push('Bedroom 3+');
+        }
+    }
+    
+    
+    // Maximum score is 6, convert to 0-5 scale (each room worth 5/6 = 0.833...)
+    const finalScore = Math.round((score * (5 / 6)) * 10) / 10; // Round to 1 decimal
+    
+    return {
+        score: finalScore,
+        roomsFound: foundRooms,
+        rawScore: score,
+        maxPossible: 6
+    };
+}
 
 
 // Updated overall score calculation - only include available metrics
