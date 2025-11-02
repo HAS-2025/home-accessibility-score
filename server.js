@@ -771,7 +771,7 @@ Respond with EXACTLY one of these:
 Be conservative - only say BALCONY_FOUND if you're confident.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-3-5-sonnet-latest',
             max_tokens: 50,
             messages: [{
                 role: 'user',
@@ -1169,7 +1169,7 @@ Return ONLY the numbers separated by commas (e.g., "1,3,5"). No other text.
 GPs provide general medical care - NOT specialists like nutrition, dentistry, imaging, etc.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-3-5-sonnet-latest',
             max_tokens: 50,
             messages: [{ role: 'user', content: prompt }]
         }, {
@@ -3337,7 +3337,7 @@ if (!leaseholdDetails.leaseYears) {
                             
                             // Replace your existing Vision API call with this updated version:
                             const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
-                                model: 'claude-3-5-sonnet-20241022',
+                                model: 'claude-3-5-sonnet-latest',
                                 max_tokens: 600,
                                 messages: [{
                                     role: 'user',
@@ -3857,14 +3857,16 @@ function calculateStampDuty(propertyPrice) {
     
     let stampDuty = 0;
     
-    if (propertyPrice <= 250000) {
+    if (propertyPrice <= 125000) {
         stampDuty = 0;
+    } else if (propertyPrice <= 250000) {
+        stampDuty = (propertyPrice - 125000) * 0.02;
     } else if (propertyPrice <= 925000) {
-        stampDuty = (propertyPrice - 250000) * 0.05;
+        stampDuty = (125000) * 0.02 + (propertyPrice - 250000) * 0.05;
     } else if (propertyPrice <= 1500000) {
-        stampDuty = (925000 - 250000) * 0.05 + (propertyPrice - 925000) * 0.10;
+        stampDuty = (125000) * 0.02 + (675000) * 0.05 + (propertyPrice - 925000) * 0.10;
     } else {
-        stampDuty = (925000 - 250000) * 0.05 + (1500000 - 925000) * 0.10 + (propertyPrice - 1500000) * 0.12;
+        stampDuty = (125000) * 0.02 + (675000) * 0.05 + (575000) * 0.10 + (propertyPrice - 1500000) * 0.12;
     }
     
     return Math.round(stampDuty);
@@ -4650,32 +4652,28 @@ async function validateAPIKey() {
         return false;
     }
     
-    // Test API call
+    console.log('🧪 Testing API key with simple call...');
     try {
-        console.log('🧪 Testing API key with simple call...');
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-5-sonnet-20241022', // Updated to newer model
-            max_tokens: 10,
-            messages: [{
-                role: 'user',
-                content: 'Hi'
-            }]
+            model: 'claude-3-5-sonnet-latest',
+            max_tokens: 50,
+            messages: [{ role: 'user', content: 'test' }]
         }, {
             headers: {
                 'Content-Type': 'application/json',
                 'x-api-key': apiKey,
                 'anthropic-version': '2023-06-01'
             },
-            timeout: 10000
+            timeout: 5000
         });
         
-        console.log('✅ API key is valid and working!');
+        console.log('✅ API key test successful');
         
         // Test Vision capability
         try {
             console.log('👁️ Testing Vision capability...');
             const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
-                model: 'claude-3-5-sonnet-20241022', // Updated model
+                model: 'claude-3-5-sonnet-latest',
                 max_tokens: 50,
                 messages: [{
                     role: 'user',
@@ -4701,7 +4699,6 @@ async function validateAPIKey() {
             });
             
             console.log('✅ Vision API is enabled and working!');
-            return true;
             
         } catch (visionError) {
             if (visionError.response?.status === 400 && 
@@ -4710,18 +4707,23 @@ async function validateAPIKey() {
             } else {
                 console.log('⚠️ Vision test inconclusive:', visionError.response?.data?.error?.message || visionError.message);
             }
-            return true; // API key works, just no vision
         }
         
+        return true;
+        
     } catch (error) {
-        if (error.response?.status === 401) {
-            console.error('❌ API key authentication failed (401)');
-            console.error('   This API key is invalid, expired, or revoked');
-        } else if (error.response?.status === 403) {
-            console.error('❌ API key permissions denied (403)');
-        } else {
-            console.error('❌ API test failed:', error.response?.data?.error?.message || error.message);
-        }
+        console.log('❌ API test failed:', error.message);
+        console.log('📋 Status code:', error.response?.status);
+        console.log('📋 Error type:', error.response?.data?.error?.type);
+        console.log('📋 Error message:', error.response?.data?.error?.message);
+        console.log('📋 Full error data:', JSON.stringify(error.response?.data, null, 2));
+        
+        console.log('🔧 To fix API key issues:');
+        console.log('   1. Go to console.anthropic.com');
+        console.log('   2. Click "Get API Key" or navigate to API settings');
+        console.log('   3. Generate a new API key');
+        console.log('   4. Update your CLAUDE_API_KEY environment variable');
+        
         return false;
     }
 }
