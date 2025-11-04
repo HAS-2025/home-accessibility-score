@@ -125,7 +125,7 @@ const getEPCExtractor = () => {
             // Override the model if the extractor has outdated model
             if (instance.model && instance.model.includes('claude-3-sonnet-20240229')) {
                 console.log('🔄 Updating EPC extractor to use newer model...');
-                instance.model = 'claude-3-5-sonnet-20241022';
+                instance.model = 'claude-sonnet-4-20250514';
             }
             
             return instance;
@@ -771,7 +771,7 @@ Respond with EXACTLY one of these:
 Be conservative - only say BALCONY_FOUND if you're confident.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-5-sonnet-latest',
+            model: 'claude-sonnet-4-20250514',
             max_tokens: 50,
             messages: [{
                 role: 'user',
@@ -1169,7 +1169,7 @@ Return ONLY the numbers separated by commas (e.g., "1,3,5"). No other text.
 GPs provide general medical care - NOT specialists like nutrition, dentistry, imaging, etc.`;
 
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-5-sonnet-latest',
+            model: 'claude-sonnet-4-20250514',
             max_tokens: 50,
             messages: [{ role: 'user', content: prompt }]
         }, {
@@ -3338,7 +3338,7 @@ if (!leaseholdDetails.leaseYears) {
                             
                             // Replace your existing Vision API call with this updated version:
                             const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
-                                model: 'claude-3-5-sonnet-latest',
+                                model: 'claude-sonnet-4-20250514',
                                 max_tokens: 600,
                                 messages: [{
                                     role: 'user',
@@ -4673,7 +4673,7 @@ async function validateAPIKey() {
     console.log('🧪 Testing API key with simple call...');
     try {
         const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-3-5-sonnet-latest',
+            model: 'claude-sonnet-4-20250514',
             max_tokens: 50,
             messages: [{ role: 'user', content: 'test' }]
         }, {
@@ -4691,7 +4691,7 @@ async function validateAPIKey() {
         try {
             console.log('👁️ Testing Vision capability...');
             const visionResponse = await axios.post('https://api.anthropic.com/v1/messages', {
-                model: 'claude-3-5-sonnet-latest',
+                model: 'claude-sonnet-4-20250514',
                 max_tokens: 50,
                 messages: [{
                     role: 'user',
