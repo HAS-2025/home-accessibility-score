@@ -691,18 +691,30 @@ async function tryFloorplanURL(propertyId) {
         
         const floorplanImages = [];
         
-        // NEW: Look for full-size images (not thumbnails)
+        // Extract ALL images first for debugging
+        console.log('🔍 All found images:');
         $('img').each((i, img) => {
             const src = $(img).attr('src') || $(img).attr('data-src');
-            if (src && (src.includes('floorplan') || src.includes('plan') || 
-                       $(img).attr('alt')?.toLowerCase().includes('floorplan'))) {
-                
-                // Skip GIF files for Claude compatibility
-                if (!src.includes('.gif')) {
-                    floorplanImages.push(src);
-                }
+            if (src) {
+                console.log(`   ${i}: ${src}`);
             }
         });
+
+        // Now extract property images with better filtering
+        $('img').each((i, img) => {
+            const src = $(img).attr('src') || $(img).attr('data-src');
+            if (src && 
+                (src.includes('media.rightmove') || src.includes('rightmove.co.uk')) &&
+                !src.includes('logo') && 
+                !src.includes('icon') &&
+                !src.includes('marker') &&
+                !src.includes('svg')) {
+                images.push(src);
+                console.log('✅ Added property image:', src);
+            }
+        });
+
+        console.log('📊 Total property images found:', images.length);
         
         // NEW: Look in script tags for full-resolution URLs
         $('script').each((i, script) => {
@@ -2621,6 +2633,36 @@ async function scrapeRightmoveProperty(url) {
         const titleMatch = fullTitle.match(/(.+?) for sale/i);
         const title = titleMatch ? titleMatch[1].trim() : fullTitle.split('open-rightmove')[0].trim();
 
+        // Inside scrapeRightmoveProperty, after const $ = cheerio.load(rightmoveResponse.data);
+
+        // Extract property images
+        const images = [];
+        console.log('🔍 Extracting property images...');
+        $('img').each((i, img) => {
+            const src = $(img).attr('src') || $(img).attr('data-src');
+            if (src) {
+                console.log(`   Image ${i}: ${src}`);
+                
+                // Filter for ACTUAL property photos
+                if ((src.includes('media.rightmove') || src.includes('rightmove.co.uk')) &&
+                    src.match(/IMG_\d+_\d+\.(jpeg|jpg|png)/i) &&  // Must match property image pattern
+                    !src.includes('logo') && 
+                    !src.includes('icon') &&
+                    !src.includes('marker') &&
+                    !src.includes('epc') &&
+                    !src.includes('flp') &&
+                    !src.includes('_bp_') &&  // Exclude banner ads (_bp_ = banner/promotional)
+                    !src.includes('branch_logo') &&
+                    !src.includes('affiliation') &&
+                    !src.includes('svg')) {
+                    images.push(src);
+                    console.log('   ✅ Added as property image');
+                }
+            }
+        });
+
+        console.log(`📊 Total property images found: ${images.length}`);
+        
         // Extract parking section
         let parkingInfo = '';
         $('dt, .key, [class*="key"]').each((i, el) => {
@@ -2842,19 +2884,7 @@ async function scrapeRightmoveProperty(url) {
         console.log('🏠 Final description length:', description.length);
         console.log('🏠 Final description includes garden:', description.toLowerCase().includes('front garden') || description.toLowerCase().includes('rear garden'));
 
-        // Extract images and floorplan
-        const images = [];
-        $('img').each((i, img) => {
-            const src = $(img).attr('src') || $(img).attr('data-src');
-            if (src && (
-                src.includes('rightmove') ||
-                src.includes('property') ||
-                src.includes('photo')
-            ) && !src.includes('logo') && !src.includes('icon')) {
-                images.push(src);
-            }
-        });
-
+        
         // ADD THE DEBUG CODE RIGHT HERE:
         console.log('🔍 All found images:', images?.slice(0, 5));
         console.log('🔍 Total images found:', images?.length);
@@ -4606,6 +4636,7 @@ app.post('/api/analyze', async (req, res) => {
                     price: property.price,
                     location: property.location,
                     coordinates: property.coordinates,
+                    images: property.images,  // ADD THIS LINE
                     url: url
                 },
                 analysis: analysis,

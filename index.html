@@ -130,18 +130,6 @@
             display: block;
         }
 
-        .property-info {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            text-align: center;
-            margin-bottom: 0;
-            display: flex;                    /* ADD */
-            flex-direction: column;           /* ADD */
-            justify-content: center;          /* ADD */
-        }
-
         /* Property header - two column layout */
         .property-header-container {
             display: grid;
@@ -150,9 +138,32 @@
             margin-bottom: 2rem;
         }
 
-        /* Adjust existing .property-info to work in grid */
         .property-info {
-            margin-bottom: 0; /* Remove bottom margin since it's in grid now */
+            background: white;
+            border-radius: 20px;
+            padding: 0; /* Changed from 2rem since text-section has its own padding */
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            overflow: hidden; /* ADD THIS - ensures image respects border-radius */
+        }
+
+        .property-text-section {
+            padding: 1.5rem 1.5rem 0.5rem 1.5rem;  /* Reduced bottom padding */
+        }
+
+        .property-main-image {
+            width: 100%;
+            height: auto;
+            max-height: 400px;  /* Increased from 300px */
+            object-fit: contain;  /* Changed from cover to contain */
+            background: white;  /* White background for letterboxing */
+            padding: 1.5rem;  /* White padding around image */
+            box-sizing: border-box;
+            margin: 0;
         }
 
         /* Keep existing .map-card styles but ensure proper sizing */
@@ -1307,9 +1318,12 @@
             <!-- NEW: Property info + Map side by side -->
             <div class="property-header-container">
                 <div class="property-info">
-                    <div class="property-location" id="propertyLocation"></div>
-                    <div class="property-title" id="propertyTitle"></div>
-                    <div class="property-price" id="propertyPrice"></div>
+                    <div class="property-text-section">
+                        <div class="property-location" id="propertyLocation"></div>
+                        <div class="property-title" id="propertyTitle"></div>
+                        <div class="property-price" id="propertyPrice"></div>
+                    </div>
+                    <img id="propertyImage" class="property-main-image" style="display: none;" alt="Property image">
                 </div>
                 
                 <div class="map-card">
@@ -1510,6 +1524,9 @@
 
         function displayResults(data) {
             console.log('Frontend received mapUrl:', data.mapUrl);
+            console.log('🖼️ Property images:', data.property.images);
+            console.log('🖼️ Number of images:', data.property.images?.length);
+
             
             const { property, analysis, mapUrl } = data;
             
@@ -1523,6 +1540,18 @@
             document.getElementById('propertyPrice').textContent = property.price;
             document.getElementById('overallScore').textContent = analysis.overall;
             
+            // Display property image
+            if (property.images && property.images.length > 0) {
+                const propertyImage = document.getElementById('propertyImage');
+                propertyImage.src = property.images[0];
+                propertyImage.style.display = 'block';
+                propertyImage.onerror = function() {
+                    this.style.display = 'none'; // Hide if image fails to load
+                };
+            } else {
+                document.getElementById('propertyImage').style.display = 'none';
+            }
+
             // Display map
             if (mapUrl) {
                 console.log('Setting map image src to:', mapUrl);
