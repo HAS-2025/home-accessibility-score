@@ -369,7 +369,7 @@
             display: inline-flex;
             margin-left: 8px;
         }
-        
+
         .info-icon {
             display: inline-flex;
             align-items: center;
@@ -383,33 +383,41 @@
             font-weight: bold;
             cursor: help;
             transition: all 0.2s ease;
+            user-select: none;
         }
-        
+
         .info-icon:hover {
             background: #0056b3;
             transform: scale(1.1);
         }
-        
+
         .tooltip .tooltiptext {
             visibility: hidden;
-            width: 280px;
+            width: 300px;
             background-color: #333;
             color: #fff;
             text-align: left;
-            border-radius: 6px;
-            padding: 12px;
+            border-radius: 8px;
+            padding: 14px;
             position: absolute;
             z-index: 1000;
             bottom: 125%;
             left: 50%;
-            margin-left: -140px;
+            margin-left: -150px;
             opacity: 0;
             transition: opacity 0.3s ease;
             font-size: 13px;
-            line-height: 1.4;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            line-height: 1.5;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            pointer-events: none;
         }
-        
+
+        .tooltip .tooltiptext strong {
+            color: #4da6ff;
+            display: block;
+            margin-bottom: 4px;
+        }
+
         .tooltip .tooltiptext::after {
             content: "";
             position: absolute;
@@ -420,18 +428,39 @@
             border-style: solid;
             border-color: #333 transparent transparent transparent;
         }
-        
-        .tooltip:hover .tooltiptext {
-            visibility: visible;
-            opacity: 1;
+
+        /* Desktop: Show on hover */
+        @media (hover: hover) {
+            .tooltip:hover .tooltiptext {
+                visibility: visible;
+                opacity: 1;
+            }
         }
-        
-        /* Mobile responsive */
+
+        /* Mobile: Show on click/tap */
+        @media (hover: none) {
+            .tooltip.active .tooltiptext {
+                visibility: visible;
+                opacity: 1;
+            }
+            
+            .tooltip .tooltiptext {
+                width: 280px;
+                margin-left: -140px;
+                font-size: 12px;
+                padding: 12px;
+            }
+        }
+
+        /* Small mobile screens */
         @media (max-width: 480px) {
             .tooltip .tooltiptext {
                 width: 250px;
                 margin-left: -125px;
-                font-size: 12px;
+                font-size: 11px;
+                padding: 10px;
+                left: 50%;
+                right: auto;
             }
         }
 
@@ -1253,7 +1282,7 @@
     <div class="container">
         <div class="header">
             <h1>🏠 Home Accessibility Score</h1>
-            <p>Analyze properties for older adults and those with mobility needs</p>
+            <p>Analyse properties for older adults and those with mobility needs</p>
         </div>
 
         <div class="input-section">
@@ -1312,7 +1341,18 @@
             <!-- Score overview (keep as is) -->
             <div class="score-overview">
                 <div class="overall-score" id="overallScore"></div>
-                <div class="score-label">Overall Accessibility Score</div>
+                <div class="score-label">
+                    Overall Accessibility Score
+                    <span class="tooltip">
+                        <span class="info-icon" style="font-size: 14px;">i</span>
+                        <span class="tooltiptext">
+                            <strong>How Overall Score Works</strong><br><br>
+                            Features are combined to produce an overall score ranging from 0 to 5.<br><br>
+                            Only information within the property listing is used for scoring. Where information is missing, it is advised to ASK AGENT.<br><br>
+                            Where information is unavailable, that feature will not score and will not affect the overall score. This ensures properties aren't penalised for missing data.
+                        </span>
+                    </span>
+                </div>
                 <div class="star-rating" id="starRating"></div>
             </div>
 
@@ -1324,6 +1364,19 @@
                     <div class="score-header">
                         <span class="score-icon">🏥</span>
                         <span class="score-title">GP Proximity</span>
+                        <span class="tooltip">
+                            <span class="info-icon">i</span>
+                            <span class="tooltiptext">
+                                <strong>GP Proximity Scoring (0-5)</strong><br><br>
+                                • 5 (Excellent): ≤5 mins<br>
+                                • 4 (Very Good): ≤10 mins<br>
+                                • 3 (Good): ≤15 mins<br>
+                                • 2 (Fair): ≤20 mins<br>
+                                • 1 (Poor): ≤25 mins<br>
+                                • 0 (Very Poor): >25 mins<br><br>
+                                Walking times include 40% adjustment for mobility considerations.
+                            </span>
+                        </span>
                     </div>
                     <div class="score-value" id="gpScore"></div>
                     <div class="score-description" id="gpDescription"></div>
@@ -1334,6 +1387,19 @@
                     <div class="score-header">
                         <span class="score-icon">⚡</span>
                         <span class="score-title">Energy Efficiency</span>
+                        <span class="tooltip">
+                            <span class="info-icon">i</span>
+                            <span class="tooltiptext">
+                                <strong>Energy Efficiency Scoring</strong><br><br>
+                                Based on the internationally used EPC scale from A to G:<br>
+                                • A/B = Excellent (most efficient)<br>
+                                • C = Good<br>
+                                • D = Average<br>
+                                • E = Below Average<br>
+                                • F/G = Poor (least efficient)<br><br>
+                                Energy efficiency affects running costs and environmental impact.
+                            </span>
+                        </span>
                     </div>
                     <div class="score-value" id="epcScore"></div>
                     <div class="score-description" id="epcDescription"></div>
@@ -1344,6 +1410,22 @@
                     <div class="score-header">
                         <span class="score-icon">🏠</span>
                         <span class="score-title">Accessible Features</span>
+                        <span class="tooltip">
+                            <span class="info-icon">i</span>
+                            <span class="tooltiptext">
+                                <strong>Accessible Features (8 criteria)</strong><br><br>
+                                Scored out of 8 features, converted to 0-5 scale:<br>
+                                1. Step-free internal access OR lift*<br>
+                                2. Downstairs bedroom<br>
+                                3. Downstairs bathroom/WC<br>
+                                4. Ground floor entry<br>
+                                5. Off-street/private parking<br>
+                                6. Garden access<br>
+                                7. Balcony/terrace/patio<br>
+                                8. External level/ramp access<br><br>
+                                *Multi-level properties score for having a lift/stairlift. Single-level properties automatically score for step-free access.
+                            </span>
+                        </span>
                     </div>
                     <div class="score-value" id="accessibleFeaturesScore"></div>
                     <div class="score-description" id="accessibleFeaturesDescription"></div>
@@ -1354,6 +1436,20 @@
                     <div class="score-header">
                         <span class="score-icon">🚌</span>
                         <span class="score-title">Public Transport</span>
+                        <span class="tooltip">
+                            <span class="info-icon">i</span>
+                            <span class="tooltiptext">
+                                <strong>Public Transport Scoring (0-5)</strong><br><br>
+                                Based on nearest bus stop walking time:<br>
+                                • 5 (Excellent): ≤5 mins<br>
+                                • 4 (Very Good): ≤10 mins<br>
+                                • 3 (Good): ≤15 mins<br>
+                                • 2 (Fair): ≤20 mins<br>
+                                • 1 (Poor): ≤25 mins<br>
+                                • 0 (Very Poor): >25 mins<br><br>
+                                Train station information shown for reference only.
+                            </span>
+                        </span>
                     </div>
                     <div class="score-value" id="publicTransportScore"></div>
                     <div class="score-description" id="publicTransportDescription"></div>
@@ -1795,7 +1891,20 @@ function displayDimensions(dimensions, roomAccommodation) {
         <div class="score-header">
             <span class="score-icon">📐</span>
             <span class="score-title">Room Breakdown</span>
-            <span class="info-icon" onclick="alert('Room accommodation is scored based on having essential rooms for independent living: kitchen, living room, bedrooms, and bathrooms. Maximum score is achieved with 6 key rooms.')">i</span>
+            <span class="tooltip">
+                <span class="info-icon">i</span>
+                <span class="tooltiptext">
+                    <strong>Room Accommodation Scoring</strong><br><br>
+                    Scored out of 6 desirable rooms, converted to 0-5 scale:<br>
+                    • Kitchen or kitchen/diner<br>
+                    • Separate living room (not open plan)<br>
+                    • Bedroom 1<br>
+                    • Bedroom 2<br>
+                    • Bathroom/toilet 1<br>
+                    • Bathroom/toilet 2<br><br>
+                    Additional bedrooms/bathrooms (3+) shown for information only.
+                </span>
+            </span>
         </div>
         
         ${roomAccommodation && roomAccommodation.score !== null ? `
@@ -2054,7 +2163,17 @@ function displayCostAnalysis(cost, propertyCost) {
         <div class="score-header">
             <span class="score-icon">💷</span>
             <span class="score-title">Property Costs</span>
-            <span class="info-icon" onclick="alert('Property Cost score combines council tax band (scored 0-5), price per square meter percentile (scored 0-5), and stamp duty (scored 0-5). All factors help assess the overall affordability of the property.')">i</span>
+            <<span class="tooltip">
+                <span class="info-icon">i</span>
+                <span class="tooltiptext">
+                    <strong>Property Cost Scoring</strong><br><br>
+                    Average of available factors:<br>
+                    • Council Tax: Bands A (lowest) to H (highest). Band D is average<br>
+                    • Price per sq m: Compared to national percentiles<br>
+                    • Stamp Duty: Based on purchase price<br><br>
+                    All measurements shown in metric units.
+                </span>
+            </span>
         </div>
     
         ${propertyCost && propertyCost.score !== null ? `
@@ -2320,6 +2439,40 @@ function displayCostAnalysis(cost, propertyCost) {
             if (e.key === 'Enter') {
                 analyzeProperty();
             }
+        });
+    // ... your existing functions ...
+        
+        // Mobile tooltip click handling
+        document.addEventListener('DOMContentLoaded', function() {
+            const tooltips = document.querySelectorAll('.tooltip');
+            
+            tooltips.forEach(tooltip => {
+                tooltip.addEventListener('click', function(e) {
+                    // Only handle on touch devices
+                    if (window.matchMedia('(hover: none)').matches) {
+                        e.stopPropagation();
+                        
+                        // Close other tooltips
+                        tooltips.forEach(t => {
+                            if (t !== tooltip) {
+                                t.classList.remove('active');
+                            }
+                        });
+                        
+                        // Toggle this tooltip
+                        tooltip.classList.toggle('active');
+                    }
+                });
+            });
+            
+            // Close tooltips when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.tooltip')) {
+                    tooltips.forEach(tooltip => {
+                        tooltip.classList.remove('active');
+                    });
+                }
+            });
         });
     </script>
 </body>

@@ -1411,12 +1411,12 @@ function generateStaticMapURL(property, gpProximity, publicTransport) {
     
     const markers = [];
     
-    // Property marker (red H)
-    if (property.coordinates) {
-        console.log('Adding property marker at:', property.coordinates);
-        markers.push(`pin-s-h+ef4444(${property.coordinates.lng},${property.coordinates.lat})`);
-    } else {
-        console.warn('No property coordinates available!');
+    // Add other markers FIRST (bottom layer)
+    
+    // Train station marker (orange) - furthest away, render first
+    if (publicTransport?.trainStations?.[0]?.location) {
+        const train = publicTransport.trainStations[0];
+        markers.push(`pin-s+f97316(${train.location.lng},${train.location.lat})`);
     }
     
     // GP marker (blue)
@@ -1432,15 +1432,16 @@ function generateStaticMapURL(property, gpProximity, publicTransport) {
         markers.push(`pin-s+10b981(${bus.location.lng},${bus.location.lat})`);
     }
     
-    // Train station marker (orange)
-    if (publicTransport?.trainStations?.[0]?.location) {
-        const train = publicTransport.trainStations[0];
-        markers.push(`pin-s+f97316(${train.location.lng},${train.location.lat})`);
+    // Property marker (red H) - LAST so it renders on top
+    if (property.coordinates) {
+        console.log('Adding property marker at:', property.coordinates);
+        markers.push(`pin-s-h+ef4444(${property.coordinates.lng},${property.coordinates.lat})`);
+    } else {
+        console.warn('No property coordinates available!');
     }
     
     const overlays = markers.join(',');
     
-    // Added attribution=false and logo=false to remove branding, scale will show by default
     const mapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/${overlays}/auto/400x400@2x?attribution=false&logo=false&access_token=${process.env.MAPBOX_ACCESS_TOKEN}`;
     
     console.log('🗺️ Generated Mapbox URL with', markers.length, 'markers');
