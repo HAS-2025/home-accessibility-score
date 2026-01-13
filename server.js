@@ -224,82 +224,246 @@ function calculatePricePerSqMScore(pricePerSqM) {
 }
 
 /**
+ * Detect which UK nation a property is in based on postcode
+ * @param {string|null} postcode - UK postcode
+ * @returns {string} 'england', 'wales', or 'scotland'
+ */
+function detectCountryFromPostcode(postcode) {
+    if (!postcode) return 'england'; // Default to England
+    
+    // Clean and extract prefix
+    const cleaned = postcode.toUpperCase().replace(/\s+/g, '');
+    const prefix = cleaned.match(/^[A-Z]{1,2}/)?.[0];
+    
+    if (!prefix) return 'england';
+    
+    // Scottish postcodes
+    const scottishPrefixes = ['AB', 'DD', 'DG', 'EH', 'FK', 'G', 'HS', 'IV', 'KA', 'KW', 'KY', 'ML', 'PA', 'PH', 'TD', 'ZE'];
+    if (scottishPrefixes.includes(prefix)) return 'scotland';
+    
+    // Welsh postcodes
+    const welshPrefixes = ['CF', 'LD', 'LL', 'NP', 'SA'];
+    if (welshPrefixes.includes(prefix)) return 'wales';
+    
+    // CH postcode is split - CH5-8 are Wales (Flintshire), CH1-4 are England (Chester)
+    if (prefix === 'CH') {
+        const number = cleaned.match(/CH(\d+)/)?.[1];
+        if (number) {
+            const num = parseInt(number);
+            if (num >= 5 && num <= 8) return 'wales';
+        }
+        return 'england';
+    }
+
+    // SY postcode is split - SY15-25 are Wales, rest are England (Shrewsbury)
+    if (prefix === 'SY') {
+        const number = cleaned.match(/SY(\d+)/)?.[1];
+        if (number) {
+            const num = parseInt(number);
+            if (num >= 15 && num <= 25) return 'wales';
+        }
+        return 'england';
+    }
+    
+    return 'england'; // England + Northern Ireland use SDLT
+}
+
+/**
+ * Calculate England/NI Stamp Duty Land Tax (SDLT)
+ * @param {number} propertyPrice - Property price in GBP
+ * @returns {number} SDLT amount
+ */
+function calculateEnglandSDLT(propertyPrice) {
+    if (!propertyPrice || propertyPrice <= 0) return 0;
+    
+    let tax = 0;
+    
+    // SDLT bands (as of 2024)
+    if (propertyPrice <= 125000) {
+        tax = 0;
+    } else if (propertyPrice <= 250000) {
+        tax = (propertyPrice - 125000) * 0.02;
+    } else if (propertyPrice <= 925000) {
+        tax = (125000 * 0.02) + (propertyPrice - 250000) * 0.05;
+    } else if (propertyPrice <= 1500000) {
+        tax = (125000 * 0.02) + (675000 * 0.05) + (propertyPrice - 925000) * 0.10;
+    } else {
+        tax = (125000 * 0.02) + (675000 * 0.05) + (575000 * 0.10) + (propertyPrice - 1500000) * 0.12;
+    }
+    
+    return Math.round(tax);
+}
+
+/**
+ * Calculate Wales Land Transaction Tax (LTT)
+ * @param {number} propertyPrice - Property price in GBP
+ * @returns {number} LTT amount
+ */
+function calculateWalesLTT(propertyPrice) {
+    if (!propertyPrice || propertyPrice <= 0) return 0;
+    
+    let tax = 0;
+    
+    // Wales LTT bands (as of 2024)
+    if (propertyPrice <= 225000) {
+        tax = 0;
+    } else if (propertyPrice <= 400000) {
+        tax = (propertyPrice - 225000) * 0.06;
+    } else if (propertyPrice <= 750000) {
+        tax = (175000 * 0.06) + (propertyPrice - 400000) * 0.075;
+    } else if (propertyPrice <= 1500000) {
+        tax = (175000 * 0.06) + (350000 * 0.075) + (propertyPrice - 750000) * 0.10;
+    } else {
+        tax = (175000 * 0.06) + (350000 * 0.075) + (750000 * 0.10) + (propertyPrice - 1500000) * 0.12;
+    }
+    
+    return Math.round(tax);
+}
+
+/**
+ * Calculate Scotland Land and Buildings Transaction Tax (LBTT)
+ * @param {number} propertyPrice - Property price in GBP
+ * @returns {number} LBTT amount
+ */
+function calculateScotlandLBTT(propertyPrice) {
+    if (!propertyPrice || propertyPrice <= 0) return 0;
+    
+    let tax = 0;
+    
+    // Scotland LBTT bands (as of 2024)
+    if (propertyPrice <= 145000) {
+        tax = 0;
+    } else if (propertyPrice <= 250000) {
+        tax = (propertyPrice - 145000) * 0.02;
+    } else if (propertyPrice <= 325000) {
+        tax = (105000 * 0.02) + (propertyPrice - 250000) * 0.05;
+    } else if (propertyPrice <= 750000) {
+        tax = (105000 * 0.02) + (75000 * 0.05) + (propertyPrice - 325000) * 0.10;
+    } else {
+        tax = (105000 * 0.02) + (75000 * 0.05) + (425000 * 0.10) + (propertyPrice - 750000) * 0.12;
+    }
+    
+    return Math.round(tax);
+}
+
+/**
+ * Calculate property transaction tax based on location
+ * @param {number} propertyPrice - Property price in GBP
+ * @param {string|null} postcode - UK postcode to determine which tax applies
+ * @returns {{amount: number, taxName: string, taxNameFull: string, country: string}}
+ */
+function calculatePropertyTax(propertyPrice, postcode) {
+    const country = detectCountryFromPostcode(postcode);
+    
+    let amount, taxName, taxNameFull;
+    
+    switch (country) {
+        case 'scotland':
+            amount = calculateScotlandLBTT(propertyPrice);
+            taxName = 'LBTT';
+            taxNameFull = 'Land and Buildings Transaction Tax';
+            break;
+        case 'wales':
+            amount = calculateWalesLTT(propertyPrice);
+            taxName = 'LTT';
+            taxNameFull = 'Land Transaction Tax';
+            break;
+        default: // england (includes Northern Ireland)
+            amount = calculateEnglandSDLT(propertyPrice);
+            taxName = 'Stamp Duty';
+            taxNameFull = 'Stamp Duty Land Tax';
+    }
+    
+    return { amount, taxName, taxNameFull, country };
+}
+
+/**
  * Calculate UK Stamp Duty (England/NI) based on property price
+ * @deprecated Use calculatePropertyTax() for location-aware calculation
  * @param {number|null} propertyPrice - Property price in GBP
  * @returns {number|null} Stamp duty amount or null
  */
 function calculateStampDuty(propertyPrice) {
     if (!propertyPrice || propertyPrice <= 0) return null;
-    
-    let stampDuty = 0;
-    
-    if (propertyPrice <= 125000) {
-        stampDuty = 0;
-    } else if (propertyPrice <= 250000) {
-        stampDuty = (propertyPrice - 125000) * 0.02;
-    } else if (propertyPrice <= 925000) {
-        stampDuty = (125000) * 0.02 + (propertyPrice - 250000) * 0.05;
-    } else if (propertyPrice <= 1500000) {
-        stampDuty = (125000) * 0.02 + (675000) * 0.05 + (propertyPrice - 925000) * 0.10;
-    } else {
-        stampDuty = (125000) * 0.02 + (675000) * 0.05 + (575000) * 0.10 + (propertyPrice - 1500000) * 0.12;
-    }
-    
-    return Math.round(stampDuty);
+    return calculateEnglandSDLT(propertyPrice);
 }
 
 /**
- * Calculate Stamp Duty score
+ * Calculate property tax score (supports England SDLT, Wales LTT, Scotland LBTT)
  * @param {number|null} propertyPrice - Property price in GBP
- * @returns {{score: number|null, rating: string, description: string, amount: number|null, percentage: string|null}}
+ * @param {string|null} postcode - UK postcode to determine which tax applies
+ * @returns {{score: number|null, rating: string, description: string, amount: number|null, percentage: string|null, taxName: string, taxNameFull: string, country: string}}
  */
-function calculateStampDutyScore(propertyPrice) {
-    const stampDuty = calculateStampDuty(propertyPrice);
-    
-    if (stampDuty === null) {
+function calculatePropertyTaxScore(propertyPrice, postcode = null) {
+    if (!propertyPrice || propertyPrice <= 0) {
         return {
             score: null,
             rating: 'Unknown',
-            description: 'Stamp duty information not available',
+            description: 'Property tax information not available',
             amount: null,
-            percentage: null
+            percentage: null,
+            taxName: 'Stamp Duty',
+            taxNameFull: 'Stamp Duty Land Tax',
+            country: 'england'
         };
     }
     
+    const { amount, taxName, taxNameFull, country } = calculatePropertyTax(propertyPrice, postcode);
+    
     let score, rating, description;
     
-    if (stampDuty === 0) {
+    if (amount === 0) {
         score = 5;
         rating = 'Excellent';
-        description = 'No stamp duty payable';
-    } else if (stampDuty <= 10000) {
+        description = `No ${taxName} payable`;
+    } else if (amount <= 10000) {
         score = 4;
         rating = 'Good';
-        description = 'Low stamp duty cost';
-    } else if (stampDuty <= 15000) {
+        description = `Low ${taxName} cost`;
+    } else if (amount <= 15000) {
         score = 3;
         rating = 'Fair';
-        description = 'Moderate stamp duty cost';
-    } else if (stampDuty <= 20000) {
+        description = `Moderate ${taxName} cost`;
+    } else if (amount <= 20000) {
         score = 2;
         rating = 'Poor';
-        description = 'High stamp duty cost';
-    } else if (stampDuty <= 25000) {
+        description = `High ${taxName} cost`;
+    } else if (amount <= 25000) {
         score = 1;
         rating = 'Very Poor';
-        description = 'Very high stamp duty cost';
+        description = `Very high ${taxName} cost`;
     } else {
         score = 0;
         rating = 'Extremely Poor';
-        description = 'Extremely high stamp duty cost';
+        description = `Extremely high ${taxName} cost`;
     }
     
     return {
         score,
         rating,
         description,
-        amount: stampDuty,
-        percentage: ((stampDuty / propertyPrice) * 100).toFixed(2)
+        amount,
+        percentage: ((amount / propertyPrice) * 100).toFixed(2),
+        taxName,
+        taxNameFull,
+        country
+    };
+}
+
+/**
+ * Calculate Stamp Duty score (legacy function - use calculatePropertyTaxScore for new code)
+ * @param {number|null} propertyPrice - Property price in GBP
+ * @returns {{score: number|null, rating: string, description: string, amount: number|null, percentage: string|null}}
+ */
+function calculateStampDutyScore(propertyPrice) {
+    // Legacy wrapper - assumes England for backward compatibility
+    const result = calculatePropertyTaxScore(propertyPrice, null);
+    return {
+        score: result.score,
+        rating: result.rating,
+        description: result.description,
+        amount: result.amount,
+        percentage: result.percentage
     };
 }
 
@@ -2928,6 +3092,7 @@ async function scrapeRightmoveProperty(url) {
         const titleMatch = fullTitle.match(/(.+?) for sale/i);
         const title = titleMatch ? titleMatch[1].trim() : fullTitle.split('open-rightmove')[0].trim();
 
+
         // Inside scrapeRightmoveProperty, after const $ = cheerio.load(rightmoveResponse.data);
 
         // Extract property images
@@ -4066,9 +4231,52 @@ if (cost.pricePerSqM && !cost.pricePerSqM.includes('Unable')) {
     }
 }
 
-// Step 6d: Calculate Stamp Duty Score
-console.log('💷 Calculating stamp duty score...');
-let stampDutyAnalysis = { score: null, rating: 'Unknown', description: 'Not available', amount: null, percentage: null };
+// Step 6d: Calculate Property Tax Score (SDLT/LTT/LBTT based on location)
+console.log('💷 Calculating property tax score...');
+
+// Extract postcode from location string (e.g., "Knights Green, Flint, CH6")
+let postcode = null;
+if (property.location) {
+    const postcodeMatch = property.location.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?)(?:\s*\d[A-Z]{2})?\b/i);
+    if (postcodeMatch) {
+        postcode = postcodeMatch[1].toUpperCase();
+        console.log('📮 Extracted postcode from location:', postcode);
+    }
+}
+
+// Fallback: reverse geocode from coordinates to get postcode
+if (!postcode && property.coordinates) {
+    try {
+        const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${property.coordinates.lat},${property.coordinates.lng}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+        const geocodeResponse = await axios.get(geocodeUrl);
+        
+        if (geocodeResponse.data.results && geocodeResponse.data.results[0]) {
+            const components = geocodeResponse.data.results[0].address_components;
+            const postcodeComponent = components.find(c => c.types.includes('postal_code'));
+            if (postcodeComponent) {
+                postcode = postcodeComponent.short_name.split(' ')[0].toUpperCase();
+                console.log('📮 Extracted postcode from reverse geocoding:', postcode);
+            }
+        }
+    } catch (error) {
+        console.log('📮 Reverse geocoding failed:', error.message);
+    }
+}
+
+if (!postcode) {
+    console.log('📮 No postcode found, defaulting to England');
+}
+
+let stampDutyAnalysis = { 
+    score: null, 
+    rating: 'Unknown', 
+    description: 'Not available', 
+    amount: null, 
+    percentage: null,
+    taxName: 'Stamp Duty',
+    taxNameFull: 'Stamp Duty Land Tax',
+    country: 'england'
+};
 
 // Parse property price
 let propertyPriceNumber = null;
@@ -4076,7 +4284,8 @@ if (property.price) {
     const priceMatch = String(property.price).match(/[\d,]+/);
     if (priceMatch) {
         propertyPriceNumber = parseInt(priceMatch[0].replace(/,/g, ''));
-        stampDutyAnalysis = calculateStampDutyScore(propertyPriceNumber);
+        stampDutyAnalysis = calculatePropertyTaxScore(propertyPriceNumber, postcode);
+        console.log(`💷 ${stampDutyAnalysis.taxName} (${stampDutyAnalysis.country}): £${stampDutyAnalysis.amount}`);
     }
 }
 
@@ -4226,12 +4435,15 @@ try {
             rating: stampDutyAnalysis.score !== null ? getScoreRating(stampDutyAnalysis.score) : 'Unknown',
             details: stampDutyAnalysis.description,
             amount: stampDutyAnalysis.amount,
-            percentage: stampDutyAnalysis.percentage
+            percentage: stampDutyAnalysis.percentage,
+            taxName: stampDutyAnalysis.taxName || 'Stamp Duty',
+            taxNameFull: stampDutyAnalysis.taxNameFull || 'Stamp Duty Land Tax',
+            country: stampDutyAnalysis.country || 'england'
         },
         propertyCost: {
             score: propertyCostScore,
             rating: propertyCostRating,
-            details: propertyCostScore !== null ? `Combined score from council tax, price per sq m, and stamp duty` : 'Property cost information not available',
+            details: propertyCostScore !== null ? `Combined score from council tax, price per sq m, and ${stampDutyAnalysis.taxName || 'stamp duty'}` : 'Property cost information not available',
             councilTaxRating: councilTaxAnalysis.rating,
             pricePerSqMPercentile: pricePerSqMAnalysis.percentile,
             stampDutyAmount: stampDutyAnalysis.amount,
@@ -4294,6 +4506,9 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         const priceComponents = [];
         priceComponents.push(`The property is priced at ${cost.price}`);
         
+        // Use the correct tax name based on location
+        const taxName = stampDutyAnalysis.taxName || 'stamp duty';
+        
         if (stampDutyAnalysis && stampDutyAnalysis.amount && stampDutyAnalysis.amount !== '£0') {
             let dutyDescriptor = 'moderate cost';
             
@@ -4312,7 +4527,7 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
             const formattedAmount = String(stampDutyAnalysis.amount).startsWith('£') ? 
                 stampDutyAnalysis.amount : `£${stampDutyAnalysis.amount}`;
             
-            priceComponents.push(`with ${dutyDescriptor} stamp duty of ${formattedAmount}`);
+            priceComponents.push(`with ${dutyDescriptor} ${taxName} of ${formattedAmount}`);
         }
         
         summary += priceComponents.join(' ') + '. ';
