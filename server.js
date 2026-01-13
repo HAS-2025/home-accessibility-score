@@ -1,11 +1,398 @@
+// server.js - Home Accessibility Score
+// Cleaned up version with extracted constants and utility functions
 
-
-// server.js - Updated with Accessible Features scoring
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const cheerio = require('cheerio');
 require('dotenv').config();
+
+// ============================================
+// CONFIGURATION CONSTANTS
+// ============================================
+
+// API Timeouts (milliseconds)
+const API_TIMEOUT_SHORT = 5000;
+const API_TIMEOUT_STANDARD = 15000;
+const API_TIMEOUT_LONG = 30000;
+const ANALYSIS_TIMEOUT = 60000;
+
+// Rate Limiting
+const SCRAPE_DELAY_MIN = 2000;
+const SCRAPE_DELAY_RANDOM = 3000;
+
+// Walking Speeds (meters per minute)
+const ELDERLY_WALKING_SPEED_MPS = 57;
+const STANDARD_WALKING_SPEED_MPS = 80;
+
+// Search Radii (meters)
+const GP_SEARCH_RADIUS = 3000;
+const TRANSPORT_SEARCH_RADIUS = 2000;
+
+// Scoring Thresholds
+const MIN_DESCRIPTION_LENGTH = 50;
+const EPC_CONFIDENCE_THRESHOLD = 50;
+
+// ============================================
+// SCORING UTILITY FUNCTIONS
+// ============================================
+
+/**
+ * Calculate EPC score based on energy rating
+ * @param {string|null} epcRating - EPC rating letter (A-G) or null
+ * @returns {{score: number|null, rating: string, description: string}}
+ */
+function calculateEPCScore(epcRating) {
+    if (!epcRating) return { score: null, rating: 'Not available', description: 'Energy rating not available' };
+    
+    const rating = epcRating.toUpperCase();
+    
+    switch (rating) {
+        case 'A':
+            return {
+                score: 5,
+                rating: 'Excellent',
+                description: 'Energy rating A - Most efficient. This property has excellent energy efficiency with very low heating costs, ideal for maintaining comfortable temperatures year-round.'
+            };
+        case 'B':
+            return {
+                score: 5,
+                rating: 'Excellent',
+                description: 'Energy rating B - Very efficient. This property has excellent energy efficiency with low heating costs, helping maintain comfortable temperatures.'
+            };
+        case 'C':
+            return {
+                score: 4,
+                rating: 'Very Good',
+                description: 'Energy rating C - Above average efficiency. This property has very good energy efficiency with reasonable heating costs.'
+            };
+        case 'D':
+            return {
+                score: 3,
+                rating: 'Good',
+                description: 'Energy rating D - Average efficiency. This property has good energy efficiency with moderate heating costs.'
+            };
+        case 'E':
+            return {
+                score: 2,
+                rating: 'Fair',
+                description: 'Energy rating E - Below average efficiency. This property has fair energy efficiency and may have higher heating costs.'
+            };
+        case 'F':
+            return {
+                score: 1,
+                rating: 'Poor',
+                description: 'Energy rating F - Poor efficiency. This property has poor energy efficiency and is likely to have high heating costs.'
+            };
+        case 'G':
+            return {
+                score: 0,
+                rating: 'Very Poor',
+                description: 'Energy rating G - Very poor efficiency. This property has very poor energy efficiency and is likely to have very high heating costs.'
+            };
+        default:
+            return {
+                score: null,
+                rating: 'Unknown',
+                description: 'Energy rating not available'
+            };
+    }
+}
+
+/**
+ * Calculate council tax score based on band
+ * @param {string|null} councilTaxBand - Council tax band (A-H) or null
+ * @returns {{score: number|null, rating: string, description: string}}
+ */
+function calculateCouncilTaxScore(councilTaxBand) {
+    if (!councilTaxBand || councilTaxBand.includes('TBC')) {
+        return {
+            score: null,
+            rating: 'Unknown',
+            description: 'Council tax band not confirmed - ask agent for details'
+        };
+    }
+    
+    const band = councilTaxBand.replace('Band ', '').trim().toUpperCase();
+    
+    switch (band) {
+        case 'A':
+            return {
+                score: 5,
+                rating: 'Cheapest band',
+                description: 'Council tax Band A - the cheapest band, which helps keep ongoing costs low.'
+            };
+        case 'B':
+        case 'C':
+        case 'D':
+            return {
+                score: 4,
+                rating: 'Average band',
+                description: `Council tax Band ${band} - an average band with reasonable ongoing costs.`
+            };
+        case 'E':
+            return {
+                score: 3,
+                rating: 'Above average band',
+                description: 'Council tax Band E - an above average band with moderately higher costs.'
+            };
+        case 'F':
+        case 'G':
+            return {
+                score: 2,
+                rating: 'Expensive band',
+                description: `Council tax Band ${band} - an expensive band which will add significantly to ongoing costs.`
+            };
+        case 'H':
+            return {
+                score: 1,
+                rating: 'Most expensive band',
+                description: 'Council tax Band H - the most expensive band, which will substantially increase ongoing costs.'
+            };
+        default:
+            return {
+                score: null,
+                rating: 'Unknown',
+                description: 'Council tax band not available - ask agent for details'
+            };
+    }
+}
+
+/**
+ * Helper function for value-based ratings
+ * @param {number} score - Score from 0-5
+ * @returns {string} Rating description
+ */
+function getValueRating(score) {
+    if (score >= 5) return 'Excellent value';
+    if (score >= 4) return 'Good value';
+    if (score >= 3) return 'Average value';
+    if (score >= 2) return 'Above average cost';
+    if (score >= 1) return 'Premium pricing';
+    return 'Very expensive';
+}
+
+/**
+ * Calculate price per square meter score based on UK market percentiles
+ * @param {number|null} pricePerSqM - Price per square meter in GBP
+ * @returns {{score: number|null, rating: string, description: string, percentile: string|null}}
+ */
+function calculatePricePerSqMScore(pricePerSqM) {
+    if (!pricePerSqM || typeof pricePerSqM !== 'number') {
+        return {
+            score: null,
+            rating: 'Unknown',
+            description: 'Price per square meter not available',
+            percentile: null
+        };
+    }
+    
+    let score, percentile, description;
+    
+    if (pricePerSqM <= 1963) {
+        score = 5;
+        percentile = '10th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 90% of properties on the market - excellent value.`;
+    } else if (pricePerSqM <= 2184) {
+        score = 4;
+        percentile = '25th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 75% of properties on the market - good value.`;
+    } else if (pricePerSqM <= 2507) {
+        score = 3;
+        percentile = '50th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 50% of properties on the market - average market value.`;
+    } else if (pricePerSqM <= 3622) {
+        score = 2;
+        percentile = '50th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 50% of properties on the market - above average cost.`;
+    } else if (pricePerSqM <= 6015) {
+        score = 1;
+        percentile = '75th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 75% of properties on the market - premium pricing.`;
+    } else {
+        score = 0;
+        percentile = '90th';
+        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 90% of properties on the market - very expensive.`;
+    }
+    
+    return {
+        score,
+        rating: getValueRating(score),
+        description,
+        percentile
+    };
+}
+
+/**
+ * Calculate UK Stamp Duty (England/NI) based on property price
+ * @param {number|null} propertyPrice - Property price in GBP
+ * @returns {number|null} Stamp duty amount or null
+ */
+function calculateStampDuty(propertyPrice) {
+    if (!propertyPrice || propertyPrice <= 0) return null;
+    
+    let stampDuty = 0;
+    
+    if (propertyPrice <= 125000) {
+        stampDuty = 0;
+    } else if (propertyPrice <= 250000) {
+        stampDuty = (propertyPrice - 125000) * 0.02;
+    } else if (propertyPrice <= 925000) {
+        stampDuty = (125000) * 0.02 + (propertyPrice - 250000) * 0.05;
+    } else if (propertyPrice <= 1500000) {
+        stampDuty = (125000) * 0.02 + (675000) * 0.05 + (propertyPrice - 925000) * 0.10;
+    } else {
+        stampDuty = (125000) * 0.02 + (675000) * 0.05 + (575000) * 0.10 + (propertyPrice - 1500000) * 0.12;
+    }
+    
+    return Math.round(stampDuty);
+}
+
+/**
+ * Calculate Stamp Duty score
+ * @param {number|null} propertyPrice - Property price in GBP
+ * @returns {{score: number|null, rating: string, description: string, amount: number|null, percentage: string|null}}
+ */
+function calculateStampDutyScore(propertyPrice) {
+    const stampDuty = calculateStampDuty(propertyPrice);
+    
+    if (stampDuty === null) {
+        return {
+            score: null,
+            rating: 'Unknown',
+            description: 'Stamp duty information not available',
+            amount: null,
+            percentage: null
+        };
+    }
+    
+    let score, rating, description;
+    
+    if (stampDuty === 0) {
+        score = 5;
+        rating = 'Excellent';
+        description = 'No stamp duty payable';
+    } else if (stampDuty <= 10000) {
+        score = 4;
+        rating = 'Good';
+        description = 'Low stamp duty cost';
+    } else if (stampDuty <= 15000) {
+        score = 3;
+        rating = 'Fair';
+        description = 'Moderate stamp duty cost';
+    } else if (stampDuty <= 20000) {
+        score = 2;
+        rating = 'Poor';
+        description = 'High stamp duty cost';
+    } else if (stampDuty <= 25000) {
+        score = 1;
+        rating = 'Very Poor';
+        description = 'Very high stamp duty cost';
+    } else {
+        score = 0;
+        rating = 'Extremely Poor';
+        description = 'Extremely high stamp duty cost';
+    }
+    
+    return {
+        score,
+        rating,
+        description,
+        amount: stampDuty,
+        percentage: ((stampDuty / propertyPrice) * 100).toFixed(2)
+    };
+}
+
+/**
+ * Calculate room-based accommodation score
+ * @param {Object} property - Property object with description and title
+ * @returns {{score: number, roomsFound: string[], rawScore: number, maxPossible: number}}
+ */
+function calculateRoomScore(property) {
+    let score = 0;
+    let foundRooms = [];
+    
+    const description = (property.description || '').toLowerCase();
+    const title = (property.title || '').toLowerCase();
+    const combinedText = `${title} ${description}`;
+    
+    // Living room - must be separate from kitchen (1 point)
+    let hasSeparateLivingRoom = false;
+    if ((combinedText.includes('living room') || combinedText.includes('lounge') || combinedText.includes('reception')) 
+        && !combinedText.includes('open plan')) {
+        score += 1;
+        foundRooms.push('Living room (separate from kitchen)');
+        hasSeparateLivingRoom = true;
+    }
+
+    // Kitchen or kitchen diner (1 point)
+    let hasKitchen = combinedText.includes('kitchen');
+    if (!hasKitchen && hasSeparateLivingRoom) {
+        hasKitchen = true;
+    }
+    if (hasKitchen) {
+        score += 1;
+        foundRooms.push('Kitchen or kitchen diner');
+    }
+    
+    // Count bathrooms from description
+    let bathroomCount = 0;
+    const bathroomMatch = combinedText.match(/(\d+)\s*bathroom/);
+    if (bathroomMatch) {
+        bathroomCount = parseInt(bathroomMatch[1]);
+    } else if (combinedText.includes('bathroom') || combinedText.includes('toilet') || combinedText.includes('wc')) {
+        bathroomCount = 1;
+    }
+    
+    // Check for en-suite (adds to bathroom count)
+    if (combinedText.includes('en suite') || combinedText.includes('ensuite')) {
+        bathroomCount += 1;
+    }
+    
+    // Award points and list bathrooms
+    if (bathroomCount >= 1) {
+        score += 1;
+        foundRooms.push('Bathroom/toilet 1');
+    }
+    if (bathroomCount >= 2) {
+        score += 1;
+        foundRooms.push('Bathroom/toilet 2');
+    }
+    if (bathroomCount >= 3) {
+        foundRooms.push('Bathroom/toilet 3+');
+    }
+    
+    // Bedrooms from title
+    const bedroomMatch = title.match(/(\d+)\s*bedroom/);
+    if (bedroomMatch) {
+        const bedroomCount = parseInt(bedroomMatch[1]);
+        if (bedroomCount >= 1) {
+            score += 1;
+            foundRooms.push('Bedroom 1');
+        }
+        if (bedroomCount >= 2) {
+            score += 1;
+            foundRooms.push('Bedroom 2');
+        }
+        if (bedroomCount >= 3) {
+            foundRooms.push('Bedroom 3+');
+        }
+    }
+    
+    // Maximum score is 6, convert to 0-5 scale
+    const finalScore = Math.round((score * (5 / 6)) * 10) / 10;
+    
+    return {
+        score: finalScore,
+        roomsFound: foundRooms,
+        rawScore: score,
+        maxPossible: 6
+    };
+}
+
+// ============================================
+// END SCORING UTILITY FUNCTIONS
+// ============================================
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -141,98 +528,6 @@ const getEPCExtractor = () => {
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// COMMENTED OUT - Vision API causing timeout issues
-// Keeping for future reference if we want to revisit
-/*
-async function analyzeEntranceForSteps(images) {
-    if (!images || images.length === 0) {
-        return { entrancePhotosFound: false, hasSteps: null };
-    }
-    
-    const imagesToAnalyze = images.slice(0, 3); // Reduced from 5 to 3 images
-    
-    console.log(`🚪 Analyzing ${imagesToAnalyze.length} photos for entrance accessibility...`);
-    
-    const content = [
-        {
-            type: "text",
-            text: `Analyze these property photos to determine if the main entrance has steps.
-
-CRITICAL: Only report "NO STEPS" if you can clearly see:
-1. The main entrance door
-2. A continuous flat path from ground level to the door
-3. No visible steps, stairs, or elevation changes
-
-If ANY of these are true, report "STEPS PRESENT":
-- You can see steps/stairs leading to the door
-- There's any visible elevation change
-- The entrance is not clearly visible in the photos
-- You're uncertain for any reason
-
-RESPOND WITH ONLY:
-{
-  "entranceVisible": true/false,
-  "hasSteps": true/false/null,
-  "confidence": 0-100,
-  "reasoning": "Brief explanation"
-}
-
-Be CONSERVATIVE - when in doubt, assume steps are present.`
-        }
-    ];
-    
-    // Add images
-    imagesToAnalyze.forEach(imageUrl => {
-        content.push({
-            type: "image",
-            source: {
-                type: "url",
-                url: imageUrl
-            }
-        });
-    });
-    
-    try {
-        const response = await axios.post('https://api.anthropic.com/v1/messages', {
-            model: 'claude-sonnet-4-20250514',
-            max_tokens: 300,
-            messages: [{
-                role: 'user',
-                content: content
-            }]
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.CLAUDE_API_KEY,
-                'anthropic-version': '2023-06-01'
-            },
-            timeout: 30000  // Increased to 30 seconds
-        });
-        
-        const analysisText = response.data.content[0].text;
-        console.log('Vision API entrance analysis:', analysisText);
-        
-        const cleanText = analysisText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        const result = JSON.parse(cleanText);
-        
-        const levelAccess = result.hasSteps === false && result.confidence >= 80;
-        
-        console.log(`🚪 Analysis: hasSteps=${result.hasSteps}, confidence=${result.confidence}%, level access=${levelAccess}`);
-        
-        return {
-            entrancePhotosFound: result.entranceVisible,
-            hasSteps: result.hasSteps,
-            confidence: result.confidence,
-            levelAccess: levelAccess,
-            error: false
-        };
-        
-    } catch (error) {
-        console.error('Vision API error:', error.message);
-        return { entrancePhotosFound: false, hasSteps: null, error: true };
-    }
-}
-*/
 // REVISED: Accessible Features Detection with 8 Criteria
 async function calculateAccessibleFeaturesScore(property) {
     let score = 0;
@@ -3694,279 +3989,7 @@ async function analyzePropertyAccessibility(property) {
     }
 
     
-// Step 2: Calculate EPC Score
-function calculateEPCScore(epcRating) {
-    if (!epcRating) return { score: null, rating: 'Not available', description: 'Energy rating not available' };
-    
-    const rating = epcRating.toUpperCase();
-    
-    switch (rating) {
-        case 'A':
-            return {
-                score: 5,
-                rating: 'Excellent',
-                description: `Energy rating A - Most efficient. This property has excellent energy efficiency with very low heating costs, ideal for maintaining comfortable temperatures year-round.`
-            };
-        
-        case 'B':
-            return {
-                score: 5,
-                rating: 'Excellent',
-                description: `Energy rating B - Very efficient. This property has excellent energy efficiency with low heating costs, helping maintain comfortable temperatures.`
-            };
-        
-        case 'C':
-            return {
-                score: 4,
-                rating: 'Very Good',
-                description: `Energy rating C - Above average efficiency. This property has very good energy efficiency with reasonable heating costs.`
-            };
-            
-        case 'D':
-            return {
-                score: 3,
-                rating: 'Good',
-                description: `Energy rating D - Average efficiency. This property has good energy efficiency with moderate heating costs.`
-            };
-            
-        case 'E':
-            return {
-                score: 2,
-                rating: 'Fair',
-                description: `Energy rating E - Below average efficiency. This property has fair energy efficiency and may have higher heating costs.`
-            };
-        
-        case 'F':
-            return {
-                score: 1,
-                rating: 'Poor',
-                description: `Energy rating F - Poor efficiency. This property has poor energy efficiency and is likely to have high heating costs.`
-            };
-        
-        case 'G':
-            return {
-                score: 0,
-                rating: 'Very Poor',
-                description: `Energy rating G - Very poor efficiency. This property has very poor energy efficiency and is likely to have very high heating costs.`
-            };
-            
-        default:
-            return {
-                score: null,
-                rating: 'Unknown',
-                description: 'Energy rating not available'
-            };
-    }
-}
-
-function calculateCouncilTaxScore(councilTaxBand) {
-    console.log('💷 DEBUG: councilTaxBand received:', councilTaxBand);
-    console.log('💷 DEBUG: councilTaxBand type:', typeof councilTaxBand);
-    
-    if (!councilTaxBand || councilTaxBand.includes('TBC')) {
-        // ... rest of function
-        return {
-            score: null, // null means "ignore this in scoring"
-            rating: 'Unknown',
-            description: 'Council tax band not confirmed - ask agent for details'
-        };
-    }
-    
-    const band = councilTaxBand.replace('Band ', '').trim().toUpperCase();
-    
-    switch (band) {
-        case 'A':
-            return {
-                score: 5,
-                rating: 'Cheapest band',
-                description: 'Council tax Band A - the cheapest band, which helps keep ongoing costs low.'
-            };
-        
-        case 'B':
-        case 'C':
-        case 'D':
-            return {
-                score: 4,
-                rating: 'Average band',
-                description: `Council tax Band ${band} - an average band with reasonable ongoing costs.`
-            };
-        
-        case 'E':
-            return {
-                score: 3,
-                rating: 'Above average band',
-                description: 'Council tax Band E - an above average band with moderately higher costs.'
-            };
-        
-        case 'F':
-        case 'G':
-            return {
-                score: 2,
-                rating: 'Expensive band',
-                description: `Council tax Band ${band} - an expensive band which will add significantly to ongoing costs.`
-            };
-        
-        case 'H':
-            return {
-                score: 1,
-                rating: 'Most expensive band',
-                description: 'Council tax Band H - the most expensive band, which will substantially increase ongoing costs.'
-            };
-        
-        default:
-            return {
-                score: null,
-                rating: 'Unknown',
-                description: 'Council tax band not available - ask agent for details'
-            };
-    }
-}
-
-/// Calculate Price per Sq M Score based on percentile thresholds
-function calculatePricePerSqMScore(pricePerSqM) {
-    if (!pricePerSqM || typeof pricePerSqM !== 'number') {
-        return {
-            score: null,
-            rating: 'Unknown',
-            description: 'Price per square meter not available',
-            percentile: null
-        };
-    }
-    
-    let score, percentile, description;
-    
-    // £1,963 or below = 10th percentile (cheaper than 90% of properties)
-    if (pricePerSqM <= 1963) {
-        score = 5;
-        percentile = '10th';
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 90% of properties on the market - excellent value.`;
-    } 
-    // £1,964 - £2,184 = Above 10th, at/below 25th (cheaper than 75% of properties)
-    else if (pricePerSqM <= 2184) {
-        score = 4;
-        percentile = '25th';
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 75% of properties on the market - good value.`;
-    } 
-    // £2,185 - £2,507 = Above 25th, at/below 50th (cheaper than 50% of properties)
-    else if (pricePerSqM <= 2507) {
-        score = 3;
-        percentile = '50th';
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is cheaper than 50% of properties on the market - average market value.`;
-    } 
-    // £2,508 - £3,622 = Above 50th, at/below 75th (more expensive than 50% of properties)
-    else if (pricePerSqM <= 3622) {
-        score = 2;
-        percentile = '50th';  // Last threshold passed was 50th
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 50% of properties on the market - above average cost.`;
-    } 
-    // £3,623 - £6,015 = Above 75th, at/below 90th (more expensive than 75% of properties)
-    else if (pricePerSqM <= 6015) {
-        score = 1;
-        percentile = '75th';  // Last threshold passed was 75th
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 75% of properties on the market - premium pricing.`;
-    } 
-    // Above £6,015 = Above 90th percentile (more expensive than 90% of properties)
-    else {
-        score = 0;
-        percentile = '90th';  // Passed 90th threshold
-        description = `At £${pricePerSqM.toLocaleString()} per sq m, this property is more expensive than 90% of properties on the market - very expensive.`;
-    }
-    
-    return {
-        score: score,
-        rating: getValueRating(score),
-        description: description,
-        percentile: percentile
-    };
-}
-
-/**
- * Calculate UK Stamp Duty based on property price
- */
-function calculateStampDuty(propertyPrice) {
-    if (!propertyPrice || propertyPrice <= 0) return null;
-    
-    let stampDuty = 0;
-    
-    if (propertyPrice <= 125000) {
-        stampDuty = 0;
-    } else if (propertyPrice <= 250000) {
-        stampDuty = (propertyPrice - 125000) * 0.02;
-    } else if (propertyPrice <= 925000) {
-        stampDuty = (125000) * 0.02 + (propertyPrice - 250000) * 0.05;
-    } else if (propertyPrice <= 1500000) {
-        stampDuty = (125000) * 0.02 + (675000) * 0.05 + (propertyPrice - 925000) * 0.10;
-    } else {
-        stampDuty = (125000) * 0.02 + (675000) * 0.05 + (575000) * 0.10 + (propertyPrice - 1500000) * 0.12;
-    }
-    
-    return Math.round(stampDuty);
-}
-
-/**
- * Calculate Stamp Duty Score
- */
-function calculateStampDutyScore(propertyPrice) {
-    const stampDuty = calculateStampDuty(propertyPrice);
-    
-    if (stampDuty === null) {
-        return {
-            score: null,
-            rating: 'Unknown',
-            description: 'Stamp duty information not available',
-            amount: null,
-            percentage: null
-        };
-    }
-    
-    let score, rating, description;
-    
-    if (stampDuty === 0) {
-        score = 5;
-        rating = 'Excellent';
-        description = 'No stamp duty payable';
-    } else if (stampDuty <= 10000) {
-        score = 4;
-        rating = 'Good';
-        description = 'Low stamp duty cost';
-    } else if (stampDuty <= 15000) {
-        score = 3;
-        rating = 'Fair';
-        description = 'Moderate stamp duty cost';
-    } else if (stampDuty <= 20000) {
-        score = 2;
-        rating = 'Poor';
-        description = 'High stamp duty cost';
-    } else if (stampDuty <= 25000) {
-        score = 1;
-        rating = 'Very Poor';
-        description = 'Very high stamp duty cost';
-    } else {
-        score = 0;
-        rating = 'Extremely Poor';
-        description = 'Extremely high stamp duty cost';
-    }
-    
-    return {
-        score,
-        rating,
-        description,
-        amount: stampDuty,
-        percentage: ((stampDuty / propertyPrice) * 100).toFixed(2)
-    };
-}
-
-// Helper function for value-based ratings
-function getValueRating(score) {
-    if (score >= 5) return 'Excellent value';
-    if (score >= 4) return 'Good value';
-    if (score >= 3) return 'Average value';
-    if (score >= 2) return 'Above average cost';
-    if (score >= 1) return 'Premium pricing';
-    return 'Very expensive';
-}
-
-// Get EPC rating from property data
+    // Step 2: Get EPC rating from property data
 let epcRating = null;
 if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
     epcRating = property.epc.rating;
@@ -4076,95 +4099,6 @@ if (availableScores.length > 0) {
     propertyCostScore = availableScores.reduce((a, b) => a + b, 0) / availableScores.length;
     propertyCostRating = getScoreRating(propertyCostScore);
     console.log(`💷 Property Cost: ${availableScores.length} score(s) available, averaged to ${propertyCostScore.toFixed(1)}`);
-}
-
-// Calculate room-based score
-function calculateRoomScore(property) {
-    let score = 0;
-    let foundRooms = [];
-    
-    const description = (property.description || '').toLowerCase();
-    const title = (property.title || '').toLowerCase();
-    const combinedText = `${title} ${description}`;
-    
-    // Living room - must be separate from kitchen (1 point)
-    let hasSeparateLivingRoom = false;
-    if ((combinedText.includes('living room') || combinedText.includes('lounge') || combinedText.includes('reception')) 
-        && !combinedText.includes('open plan')) {
-        score += 1;
-        foundRooms.push('Living room (separate from kitchen)');
-        hasSeparateLivingRoom = true;
-    }
-
-    // Kitchen or kitchen diner (1 point)
-    let hasKitchen = combinedText.includes('kitchen');
-
-    // If no explicit kitchen mention but we found a separate living room, assume separate kitchen exists
-    if (!hasKitchen && hasSeparateLivingRoom) {
-        hasKitchen = true;
-    }
-
-    if (hasKitchen) {
-        score += 1;
-        foundRooms.push('Kitchen or kitchen diner');
-    }
-    
-    // Count bathrooms from description
-    let bathroomCount = 0;
-    
-    // Try to find explicit bathroom count
-    const bathroomMatch = combinedText.match(/(\d+)\s*bathroom/);
-    if (bathroomMatch) {
-        bathroomCount = parseInt(bathroomMatch[1]);
-    } else if (combinedText.includes('bathroom') || combinedText.includes('toilet') || combinedText.includes('wc')) {
-        bathroomCount = 1;
-    }
-    
-    // Check for en-suite (adds to bathroom count)
-    if (combinedText.includes('en suite') || combinedText.includes('ensuite')) {
-        bathroomCount += 1;
-    }
-    
-    // Award points and list bathrooms
-    if (bathroomCount >= 1) {
-        score += 1;
-        foundRooms.push('Bathroom/toilet 1');
-    }
-    if (bathroomCount >= 2) {
-        score += 1;
-        foundRooms.push('Bathroom/toilet 2');
-    }
-    if (bathroomCount >= 3) {
-        foundRooms.push('Bathroom/toilet 3+');
-    }
-    
-    // Bedrooms from title
-    const bedroomMatch = title.match(/(\d+)\s*bedroom/);
-    if (bedroomMatch) {
-        const bedroomCount = parseInt(bedroomMatch[1]);
-        if (bedroomCount >= 1) {
-            score += 1;
-            foundRooms.push('Bedroom 1');
-        }
-        if (bedroomCount >= 2) {
-            score += 1;
-            foundRooms.push('Bedroom 2');
-        }
-        if (bedroomCount >= 3) {
-            foundRooms.push('Bedroom 3+');
-        }
-    }
-    
-    
-    // Maximum score is 6, convert to 0-5 scale (each room worth 5/6 = 0.833...)
-    const finalScore = Math.round((score * (5 / 6)) * 10) / 10; // Round to 1 decimal
-    
-    return {
-        score: finalScore,
-        roomsFound: foundRooms,
-        rawScore: score,
-        maxPossible: 6
-    };
 }
 
 
