@@ -7,6 +7,17 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 require('dotenv').config();
 
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+const { createClient } = require('@supabase/supabase-js');
+
+// Supabase client
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+);
+
+
 // ============================================
 // CONFIGURATION CONSTANTS
 // ============================================
@@ -563,8 +574,156 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use((req, res, next) => {
+    if (req.originalUrl === '/api/stripe-webhook') {
+        next();
+    } else {
+        express.json()(req, res, next);
+    }
+});
 app.use(express.static('.'));
+
+// =============================================
+// STRIPE PAYMENT ENDPOINTS
+// =============================================
+
+// Create checkout session
+app.post('/api/create-checkout', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+        return res.status(401).json({ error: 'Must be logged in' });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    const { plan } = req.body;
+    
+    const priceId = plan === 'annual' 
+        ? process.env.STRIPE_PRICE_ANNUAL 
+        : process.env.STRIPE_PRICE_MONTHLY;
+    
+    try {
+        // Get or create Stripe customer
+        let { data: dbUser } = await supabase
+            .from('users')
+            .select('stripe_customer_id')
+            .eq('email', user.email)
+            .single();
+        
+        let customerId = dbUser?.stripe_customer_id;
+        
+        if (!customerId) {
+            const customer = await stripe.customers.create({
+                email: user.email
+            });
+            customerId = customer.id;
+            
+            // Save customer ID
+            await supabase
+                .from('users')
+                .update({ stripe_customer_id: customerId })
+                .eq('email', user.email);
+        }
+        
+        const session = await stripe.checkout.sessions.create({
+            mode: 'subscription',
+            customer: customerId,  // Links to existing customer - email locked
+            line_items: [{
+                price: priceId,
+                quantity: 1
+            }],
+            success_url: `${req.headers.origin || 'http://localhost:3001'}/?payment=success`,
+            cancel_url: `${req.headers.origin || 'http://localhost:3001'}/?payment=cancelled`
+        });
+        
+        console.log('💳 Checkout session created for:', user.email);
+        res.json({ url: session.url });
+    } catch (error) {
+        console.log('❌ Stripe error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Stripe webhook - handles successful payments
+app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    const sig = req.headers['stripe-signature'];
+    let event;
+    
+    try {
+        event = stripe.webhooks.constructEvent(
+            req.body,
+            sig,
+            process.env.STRIPE_WEBHOOK_SECRET
+        );
+    } catch (err) {
+        console.log('❌ Webhook signature failed:', err.message);
+        return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+    
+    // Handle successful subscription
+    if (event.type === 'checkout.session.completed') {
+        const session = event.data.object;
+        
+        console.log('💳 Payment successful for:', session.customer_email);
+        
+        // Update user subscription status
+        const { error } = await supabase
+            .from('users')
+            .update({ 
+                subscription_status: 'active',
+                subscription_tier: session.amount_total > 5000 ? 'annual' : 'monthly',
+                stripe_customer_id: session.customer
+            })
+            .eq('email', session.customer_email);
+        
+        if (error) {
+            console.log('❌ Error updating user:', error.message);
+        } else {
+            console.log('✅ User subscription activated:', session.customer_email);
+        }
+    }
+    
+    // Handle subscription cancelled
+    if (event.type === 'customer.subscription.deleted') {
+        const subscription = event.data.object;
+        
+        const { error } = await supabase
+            .from('users')
+            .update({ subscription_status: 'cancelled' })
+            .eq('stripe_customer_id', subscription.customer);
+        
+        if (error) {
+            console.log('❌ Error cancelling subscription:', error.message);
+        } else {
+            console.log('✅ Subscription cancelled for customer:', subscription.customer);
+        }
+    }
+    
+    res.json({ received: true });
+});
+
+// Customer portal (manage subscription)
+app.post('/api/customer-portal', async (req, res) => {
+    const { customerId } = req.body;
+    
+    try {
+        const session = await stripe.billingPortal.sessions.create({
+            customer: customerId,
+            return_url: `${req.headers.origin || 'http://localhost:3001'}/`
+        });
+        
+        res.json({ url: session.url });
+    } catch (error) {
+        console.log('❌ Portal error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // Store for caching results
 const cache = new Map();
@@ -4827,6 +4986,142 @@ app.post('/api/analyze', async (req, res) => {
     }
 });
 
+// =============================================
+// AUTHENTICATION ENDPOINTS
+// =============================================
+
+// Send magic link
+app.post('/auth/magic-link', async (req, res) => {
+    const { email } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const { data, error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+            emailRedirectTo: `${req.headers.origin || 'http://localhost:3001'}/auth/callback`
+        }
+    });
+    
+    if (error) {
+        console.log('❌ Magic link error:', error.message);
+        return res.status(400).json({ error: error.message });
+    }
+    
+    console.log('📧 Magic link sent to:', email);
+    res.json({ message: 'Check your email for the login link' });
+});
+
+// Handle auth callback (exchange code for session)
+app.get('/auth/callback', async (req, res) => {
+    const { code } = req.query;
+    
+    if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        
+        if (error) {
+            console.log('❌ Auth callback error:', error.message);
+            return res.redirect('/?error=auth_failed');
+        }
+        
+        console.log('✅ User authenticated:', data.user.email);
+        
+        // Check if user exists in our users table, if not create them
+        const { data: existingUser } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', data.user.email)
+            .single();
+        
+        if (!existingUser) {
+            await supabase.from('users').insert({
+                email: data.user.email,
+                user_type: 'individual'
+            });
+            console.log('👤 New user created:', data.user.email);
+        }
+        
+        // Redirect to app with success
+        res.redirect('/?auth=success');
+    } else {
+        res.redirect('/?error=no_code');
+    }
+});
+
+// Get current user
+app.get('/auth/user', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No authorization header' });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    // Get user details from our table
+    const { data: userData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('email', user.email)
+        .single();
+    
+    res.json({ user: userData });
+});
+
+// Create user after OAuth callback
+app.post('/auth/create-user', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader) {
+        return res.status(401).json({ error: 'No authorization header' });
+    }
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+    
+    // Check if user exists, if not create them
+    const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    if (!existingUser) {
+        const { data: newUser, error: insertError } = await supabase
+            .from('users')
+            .insert({ email: user.email, user_type: 'individual' })
+            .select()
+            .single();
+        
+        if (insertError) {
+            console.log('❌ Error creating user:', insertError.message);
+            return res.status(500).json({ error: insertError.message });
+        }
+        
+        console.log('👤 New user created:', user.email);
+        return res.json({ user: newUser, isNew: true });
+    }
+    
+    console.log('👤 Existing user logged in:', user.email);
+    res.json({ user: existingUser, isNew: false });
+});
+
+// Logout
+app.post('/auth/logout', async (req, res) => {
+    res.json({ message: 'Logged out successfully' });
+});
+
 // 🔑 API KEY VALIDATION at startup
 async function validateAPIKey() {
     if (!process.env.CLAUDE_API_KEY) {
@@ -4932,6 +5227,16 @@ app.listen(PORT, '0.0.0.0', async () => {
     console.log(`📊 Health check: http://localhost:${PORT}/health`);
     console.log('🎯 Updated with Accessible Features scoring system');
     console.log('');
+
+    // Test Supabase connection
+    supabase.from('users').select('count', { count: 'exact', head: true })
+        .then(({ count, error }) => {
+            if (error) {
+                console.log('❌ Supabase connection failed:', error.message);
+            } else {
+                console.log('✅ Supabase connected - users table has', count, 'rows');
+            }
+        });
     
     // Validate API key on startup
     const isValid = await validateAPIKey();
