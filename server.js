@@ -668,19 +668,18 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     
     // Handle successful subscription
     if (event.type === 'checkout.session.completed') {
-        const session = event.data.object;
-        
-        console.log('💳 Payment successful for:', session.customer_email);
-        
-        // Update user subscription status
-        const { error } = await supabase
-            .from('users')
-            .update({ 
-                subscription_status: 'active',
-                subscription_tier: session.amount_total > 5000 ? 'annual' : 'monthly',
-                stripe_customer_id: session.customer
-            })
-            .eq('email', session.customer_email);
+    const session = event.data.object;
+    
+    console.log('💳 Payment successful for customer:', session.customer);
+    
+    // Update user subscription status - match on stripe_customer_id
+    const { error } = await supabase
+        .from('users')
+        .update({ 
+            subscription_status: 'active',
+            subscription_tier: session.amount_total > 5000 ? 'annual' : 'monthly'
+        })
+        .eq('stripe_customer_id', session.customer);
         
         if (error) {
             console.log('❌ Error updating user:', error.message);
