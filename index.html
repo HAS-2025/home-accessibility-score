@@ -1266,6 +1266,208 @@
             margin: 1rem 0;
         }
 
+            /* ========== AUTH STYLES ========== */
+            .auth-container {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                z-index: 1000;
+            }
+
+            .auth-btn {
+                background: #2563eb;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            .auth-btn:hover {
+                background: #1d4ed8;
+            }
+
+            .user-menu {
+                position: relative;
+            }
+
+            .user-email {
+                font-weight: 600;
+                color: #1f2937;
+                padding: 12px 16px;
+                cursor: pointer;
+                border-radius: 8px;
+                background: white;
+                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                display: inline-block;
+            }
+
+            .user-menu-dropdown {
+                visibility: hidden;
+                opacity: 0;
+                position: absolute;
+                top: calc(100% - 5px);
+                right: 0;
+                background: white;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                padding: 8px;
+                min-width: 250px;
+                z-index: 1001;
+                transition: opacity 0.2s, visibility 0.2s;
+                padding-top: 15px;
+            }
+
+            .user-menu:hover .user-menu-dropdown {
+                visibility: visible;
+                opacity: 1;
+            }
+
+            .user-menu-item {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 12px 15px;
+                border-radius: 8px;
+                cursor: pointer;
+                color: #4b5563;
+                transition: background 0.2s;
+                font-size: 14px;
+                font-weight: 500;
+            }
+
+            .user-menu-item:hover {
+                background: #f3f4f6;
+                color: #1f2937;
+            }
+
+            .login-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 2000;
+            }
+
+            .login-box {
+                background: white;
+                padding: 30px;
+                border-radius: 16px;
+                width: 90%;
+                max-width: 400px;
+            }
+
+            .login-box h2 {
+                margin: 0 0 20px 0;
+                color: #1f2937;
+            }
+
+            .login-box input {
+                width: 100%;
+                padding: 12px;
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                font-size: 16px;
+                margin-bottom: 15px;
+                box-sizing: border-box;
+            }
+
+            .login-box .btn-primary {
+                width: 100%;
+                padding: 12px;
+                background: #2563eb;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+            }
+
+            .login-box .btn-primary:hover {
+                background: #1d4ed8;
+            }
+
+            .login-box .btn-close {
+                width: 100%;
+                padding: 12px;
+                background: #f3f4f6;
+                color: #4b5563;
+                border: none;
+                border-radius: 8px;
+                font-size: 14px;
+                cursor: pointer;
+                margin-top: 10px;
+            }
+
+            .subscription-badge {
+                display: inline-block;
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: 600;
+                margin-left: 8px;
+            }
+
+            .badge-free {
+                background: #e5e7eb;
+                color: #6b7280;
+            }
+
+            .badge-pro {
+                background: #dbeafe;
+                color: #2563eb;
+            }
+
+            .hidden {
+                display: none !important;
+            }
+            /* ========== END AUTH STYLES ========== */
+
+            /* Save Property Button */
+            .save-property-btn {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                transition: all 0.2s;
+                border: none;
+                margin-top: 15px;
+            }
+
+            .save-property-btn.save {
+                background: #fef3c7;
+                color: #92400e;
+            }
+
+            .save-property-btn.save:hover {
+                background: #fde68a;
+            }
+
+            .save-property-btn.saved {
+                background: #d1fae5;
+                color: #065f46;
+            }
+
+            .save-property-btn.saved:hover {
+                background: #a7f3d0;
+            }
+
+            .save-property-btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -1286,10 +1488,48 @@
             .overall-score {
                 font-size: 3rem;
             }
+
         }
     </style>
 </head>
 <body>
+    <!-- Auth Container -->
+    <div class="auth-container" id="authContainer">
+        <!-- Shown when logged out -->
+        <button class="auth-btn" id="loginBtn" onclick="showLoginModal()">Sign In</button>
+        
+        <!-- Shown when logged in -->
+        <div class="user-menu hidden" id="userMenu">
+            <div class="user-email" id="userEmail">user@example.com</div>
+            <div class="user-menu-dropdown">
+                <div class="user-menu-item" onclick="showSavedProperties()">
+                    ⭐ Saved Properties <span id="savedCount">(0)</span>
+                </div>
+                <div class="user-menu-item" onclick="showSearchHistory()">
+                    🕐 Search History
+                </div>
+                <div class="user-menu-item" onclick="manageSubscription()" id="subscriptionItem">
+                    💳 Upgrade to Pro
+                </div>
+                <div class="user-menu-item" onclick="logout()" style="color: #ef4444;">
+                    🚪 Sign Out
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="login-modal hidden" id="loginModal">
+        <div class="login-box">
+            <h2>Sign In</h2>
+            <p style="color: #6b7280; margin-bottom: 20px;">Enter your email to receive a magic link</p>
+            <input type="email" id="loginEmail" placeholder="your@email.com" />
+            <button class="btn-primary" onclick="sendMagicLink()">Send Magic Link</button>
+            <button class="btn-close" onclick="hideLoginModal()">Cancel</button>
+            <p id="loginMessage" style="margin-top: 15px; text-align: center; color: #059669;"></p>
+        </div>
+    </div>
+    
     <div class="container">
         <div class="header">
             <h1>🏠 Home Accessibility Score</h1>
@@ -1522,7 +1762,7 @@
             }
         }
 
-        function displayResults(data) {
+        async function displayResults(data) {
             console.log('Frontend received mapUrl:', data.mapUrl);
             console.log('🖼️ Property images:', data.property.images);
             console.log('🖼️ Number of images:', data.property.images?.length);
@@ -1546,7 +1786,7 @@
                 propertyImage.src = property.images[0];
                 propertyImage.style.display = 'block';
                 propertyImage.onerror = function() {
-                    this.style.display = 'none'; // Hide if image fails to load
+                    this.style.display = 'none';
                 };
             } else {
                 document.getElementById('propertyImage').style.display = 'none';
@@ -1559,7 +1799,6 @@
                 mapImage.src = mapUrl;
                 mapImage.style.display = 'block';
                 
-                // Update legend with distances
                 updateMapLegend(analysis);
             } else {
                 console.error('No mapUrl received!');
@@ -1573,6 +1812,24 @@
             displayDimensions(analysis.dimensions, analysis.roomAccommodation);
             displayCostAnalysis(analysis.cost, analysis.propertyCost);
             document.getElementById('summaryText').textContent = analysis.summary;
+            
+            // Add save button
+            currentPropertyId = data.propertyId;
+            
+            // Remove existing save button if present
+            const existingBtn = document.getElementById('savePropertyBtn');
+            if (existingBtn) existingBtn.remove();
+            
+            if (currentPropertyId) {
+                const isSaved = await checkIfPropertySaved(currentPropertyId);
+                const saveBtn = document.createElement('button');
+                saveBtn.id = 'savePropertyBtn';
+                saveBtn.className = `save-property-btn ${isSaved ? 'saved' : 'save'}`;
+                saveBtn.innerHTML = isSaved ? '⭐ Saved' : '☆ Save Property';
+                saveBtn.onclick = toggleSaveProperty;
+                
+                document.querySelector('.property-text-section')?.prepend(saveBtn);
+            }
         }
 
         function getScoreRating(score) {
@@ -2529,6 +2786,265 @@ function displayCostAnalysis(cost, propertyCost) {
             });
         }
     }
+    </script>
+    <script>
+    // =============================================
+    // AUTH & USER MANAGEMENT
+    // =============================================
+
+    let currentUser = null;
+
+    // Check auth on page load
+    async function checkAuth() {
+        const token = localStorage.getItem('auth_token');
+        
+        if (!token) {
+            showLoggedOutState();
+            return null;
+        }
+        
+        try {
+            const response = await fetch('/auth/user', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                currentUser = data.user;
+                showLoggedInState(data.user);
+                return data.user;
+            } else {
+                localStorage.removeItem('auth_token');
+                showLoggedOutState();
+                return null;
+            }
+        } catch (error) {
+            console.log('Auth check failed:', error);
+            showLoggedOutState();
+            return null;
+        }
+    }
+
+    function showLoggedOutState() {
+        document.getElementById('loginBtn').classList.remove('hidden');
+        document.getElementById('userMenu').classList.add('hidden');
+    }
+
+    function showLoggedInState(user) {
+        document.getElementById('loginBtn').classList.add('hidden');
+        document.getElementById('userMenu').classList.remove('hidden');
+        document.getElementById('userEmail').innerHTML = user.email + 
+            (user.subscription_status === 'active' 
+                ? '<span class="subscription-badge badge-pro">PRO</span>' 
+                : '<span class="subscription-badge badge-free">FREE</span>');
+        
+        // Update subscription menu item
+        const subItem = document.getElementById('subscriptionItem');
+        if (user.subscription_status === 'active') {
+            subItem.innerHTML = '💳 Manage Subscription';
+        } else {
+            subItem.innerHTML = '💳 Upgrade to Pro';
+        }
+        
+        // Load saved count
+        loadSavedCount();
+    }
+
+    function showLoginModal() {
+        document.getElementById('loginModal').classList.remove('hidden');
+        document.getElementById('loginEmail').focus();
+    }
+
+    function hideLoginModal() {
+        document.getElementById('loginModal').classList.add('hidden');
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginMessage').textContent = '';
+    }
+
+    async function sendMagicLink() {
+        const email = document.getElementById('loginEmail').value;
+        if (!email) {
+            document.getElementById('loginMessage').textContent = 'Please enter your email';
+            document.getElementById('loginMessage').style.color = '#ef4444';
+            return;
+        }
+        
+        try {
+            const response = await fetch('/auth/magic-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                document.getElementById('loginMessage').textContent = '✓ Check your email for the login link!';
+                document.getElementById('loginMessage').style.color = '#059669';
+            } else {
+                document.getElementById('loginMessage').textContent = data.error || 'Failed to send link';
+                document.getElementById('loginMessage').style.color = '#ef4444';
+            }
+        } catch (error) {
+            document.getElementById('loginMessage').textContent = 'Failed to send link';
+            document.getElementById('loginMessage').style.color = '#ef4444';
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('auth_token');
+        currentUser = null;
+        showLoggedOutState();
+    }
+
+    async function loadSavedCount() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        
+        try {
+            const response = await fetch('/api/properties/saved', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            document.getElementById('savedCount').textContent = `(${data.saved?.length || 0})`;
+        } catch (error) {
+            console.log('Failed to load saved count');
+        }
+    }
+
+    async function manageSubscription() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return showLoginModal();
+        
+        if (currentUser?.subscription_status === 'active') {
+            // TODO: Open customer portal
+            alert('Subscription management coming soon!');
+        } else {
+            // Show upgrade options
+            showUpgradeModal();
+        }
+    }
+
+    function showUpgradeModal() {
+        // For now, redirect to monthly checkout
+        const token = localStorage.getItem('auth_token');
+        fetch('/api/create-checkout', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ plan: 'monthly' })
+        }).then(r => r.json()).then(data => {
+            if (data.url) window.location.href = data.url;
+        });
+    }
+
+    function showSavedProperties() {
+        alert('Saved properties panel coming soon!');
+    }
+
+    function showSearchHistory() {
+        alert('Search history panel coming soon!');
+    }
+
+    // Save/unsave property
+    let currentPropertyId = null;
+
+    async function saveProperty() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            showLoginModal();
+            return;
+        }
+        
+        if (!currentPropertyId) {
+            alert('No property to save');
+            return;
+        }
+        
+        const btn = document.getElementById('savePropertyBtn');
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch('/api/properties/save', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ propertyId: currentPropertyId })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                btn.classList.remove('save');
+                btn.classList.add('saved');
+                btn.innerHTML = '⭐ Saved';
+                loadSavedCount();
+            } else {
+                alert(data.error || 'Failed to save');
+            }
+        } catch (error) {
+            alert('Failed to save property');
+        }
+        
+        btn.disabled = false;
+    }
+
+    async function unsaveProperty() {
+        const token = localStorage.getItem('auth_token');
+        if (!token || !currentPropertyId) return;
+        
+        const btn = document.getElementById('savePropertyBtn');
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch(`/api/properties/save/${currentPropertyId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.ok) {
+                btn.classList.remove('saved');
+                btn.classList.add('save');
+                btn.innerHTML = '☆ Save Property';
+                loadSavedCount();
+            }
+        } catch (error) {
+            alert('Failed to remove property');
+        }
+        
+        btn.disabled = false;
+    }
+
+    function toggleSaveProperty() {
+        const btn = document.getElementById('savePropertyBtn');
+        if (btn.classList.contains('saved')) {
+            unsaveProperty();
+        } else {
+            saveProperty();
+        }
+    }
+
+    async function checkIfPropertySaved(propertyId) {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return false;
+        
+        try {
+            const response = await fetch('/api/properties/saved', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            return data.saved?.some(item => item.properties?.id === propertyId);
+        } catch {
+            return false;
+        }
+    }
+
+    // Run on page load
+    document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
 </body>
 </html>
