@@ -570,7 +570,7 @@ function calculateRoomScore(property) {
 // ============================================
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 
 // Middleware
 app.use(cors());
@@ -638,8 +638,8 @@ app.post('/api/create-checkout', async (req, res) => {
                 price: priceId,
                 quantity: 1
             }],
-            success_url: `${req.headers.origin || 'http://localhost:3001'}/?payment=success`,
-            cancel_url: `${req.headers.origin || 'http://localhost:3001'}/?payment=cancelled`
+            success_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=success`,
+            cancel_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=cancelled`
         });
         
         console.log('💳 Checkout session created for:', user.email);
@@ -671,6 +671,24 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     const session = event.data.object;
     
     console.log('💳 Payment successful for customer:', session.customer);
+
+    // Check if this is a team subscription
+    if (session.metadata?.team_id) {
+        const { error } = await supabase
+            .from('teams')
+            .update({ 
+                subscription_status: 'active',
+                subscription_tier: 'team'
+            })
+            .eq('id', session.metadata.team_id);
+        
+        if (error) {
+            console.log('❌ Error updating team:', error.message);
+        } else {
+            console.log('✅ Team subscription activated:', session.metadata.team_id);
+        }
+        return res.json({ received: true });
+    }
     
     // Update user subscription status - match on stripe_customer_id
     const { error } = await supabase
@@ -714,7 +732,7 @@ app.post('/api/customer-portal', async (req, res) => {
     try {
         const session = await stripe.billingPortal.sessions.create({
             customer: customerId,
-            return_url: `${req.headers.origin || 'http://localhost:3001'}/`
+            return_url: `${req.headers.origin || 'http://localhost:3002'}/`
         });
         
         res.json({ url: session.url });
@@ -722,6 +740,211 @@ app.post('/api/customer-portal', async (req, res) => {
         console.log('❌ Portal error:', error.message);
         res.status(500).json({ error: error.message });
     }
+});
+
+// Team checkout
+app.post('/api/create-team-checkout', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    // Get user's team
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    const { data: membership } = await supabase
+        .from('team_members')
+        .select('team_id, role, teams(*)')
+        .eq('user_id', dbUser.id)
+        .single();
+    
+    if (!membership || membership.role !== 'owner') {
+        return res.status(403).json({ error: 'Only team owner can subscribe' });
+    }
+    
+    // Check seat limit (5 seats)
+    const { count } = await supabase
+        .from('team_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('team_id', membership.team_id);
+    
+    if (count >= 5) {
+        return res.status(400).json({ error: 'Team seat limit reached (5 members)' });
+    }
+    
+    try {
+        // Get or create Stripe customer for team
+        let customerId = membership.teams.stripe_customer_id;
+        
+        if (!customerId) {
+            const customer = await stripe.customers.create({
+                email: user.email,
+                metadata: { team_id: membership.team_id }
+            });
+            customerId = customer.id;
+            
+            await supabase
+                .from('teams')
+                .update({ stripe_customer_id: customerId })
+                .eq('id', membership.team_id);
+        }
+        
+        const session = await stripe.checkout.sessions.create({
+            mode: 'subscription',
+            customer: customerId,
+            line_items: [{
+                price: process.env.STRIPE_PRICE_TEAM,
+                quantity: 1
+            }],
+            success_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=success`,
+            cancel_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=cancelled`,
+            metadata: { team_id: membership.team_id }
+        });
+        
+        console.log('💳 Team checkout for:', membership.teams.name);
+        res.json({ url: session.url });
+    } catch (error) {
+        console.log('❌ Stripe error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// =============================================
+// SAVED PROPERTIES ENDPOINTS
+// =============================================
+
+// Save a property
+app.post('/api/properties/save', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { propertyId } = req.body;
+    if (!propertyId) return res.status(400).json({ error: 'Property ID required' });
+    
+    // Get user
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    // Check saved limit (max 10)
+    const { count } = await supabase
+        .from('saved_properties')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', dbUser.id);
+    
+    if (count >= 10) {
+        return res.status(400).json({ error: 'Maximum 10 saved properties. Remove one to add another.' });
+    }
+    
+    // Save property
+    const { error } = await supabase
+        .from('saved_properties')
+        .insert({
+            user_id: dbUser.id,
+            property_id: propertyId
+        });
+    
+    if (error) {
+        if (error.code === '23505') {
+            return res.status(400).json({ error: 'Property already saved' });
+        }
+        return res.status(500).json({ error: error.message });
+    }
+    
+    console.log('⭐ Property saved for:', user.email);
+    res.json({ message: 'Property saved' });
+});
+
+// Unsave a property
+app.delete('/api/properties/save/:propertyId', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { propertyId } = req.params;
+    
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    await supabase
+        .from('saved_properties')
+        .delete()
+        .eq('user_id', dbUser.id)
+        .eq('property_id', propertyId);
+    
+    console.log('⭐ Property unsaved for:', user.email);
+    res.json({ message: 'Property removed from saved' });
+});
+
+// Get saved properties
+app.get('/api/properties/saved', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    const { data: saved } = await supabase
+        .from('saved_properties')
+        .select('saved_at, properties(*)')
+        .eq('user_id', dbUser.id)
+        .order('saved_at', { ascending: false });
+    
+    res.json({ saved: saved || [] });
+});
+
+// =============================================
+// SEARCH HISTORY ENDPOINTS
+// =============================================
+
+// Get search history
+app.get('/api/properties/history', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    const { data: history } = await supabase
+        .from('search_history')
+        .select('searched_at, properties(*)')
+        .eq('user_id', dbUser.id)
+        .order('searched_at', { ascending: false })
+        .limit(50);
+    
+    res.json({ history: history || [] });
 });
 
 // Store for caching results
@@ -4975,6 +5198,63 @@ app.post('/api/analyze', async (req, res) => {
 
         console.log('Generated mapUrl:', result.mapUrl);
 
+        // Save property to database
+        let savedProperty = null;
+        try {
+            // Extract data from result
+            const priceMatch = result.property.price?.match(/[\d,]+/);
+            const priceNumber = priceMatch ? parseInt(priceMatch[0].replace(/,/g, '')) : null;
+            const bedroomMatch = result.property.title?.match(/(\d+)\s*bed/i);
+            const postcodeMatch = result.property.location?.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?)(?:\s*\d[A-Z]{2})?\b/i);
+            
+            const { data } = await supabase
+                .from('properties')
+                .upsert({
+                    rightmove_url: url,
+                    address: result.property.location,
+                    postcode: postcodeMatch ? postcodeMatch[1].toUpperCase() : null,
+                    price: priceNumber,
+                    bedrooms: bedroomMatch ? parseInt(bedroomMatch[1]) : null,
+                    property_type: result.property.title,
+                    overall_score: result.analysis.overall,
+                    scores_json: result.analysis,
+                    analysed_at: new Date().toISOString()
+                }, { onConflict: 'rightmove_url' })
+                .select()
+                .single();
+            
+            savedProperty = data;
+            
+            // Log search history if user is logged in
+            const authHeader = req.headers.authorization;
+            if (authHeader && savedProperty) {
+                const token = authHeader.replace('Bearer ', '');
+                const { data: { user } } = await supabase.auth.getUser(token);
+                
+                if (user) {
+                    const { data: dbUser } = await supabase
+                        .from('users')
+                        .select('id')
+                        .eq('email', user.email)
+                        .single();
+                    
+                    if (dbUser) {
+                        await supabase
+                            .from('search_history')
+                            .insert({
+                                user_id: dbUser.id,
+                                property_id: savedProperty.id
+                            });
+                    }
+                }
+            }
+        } catch (dbError) {
+            console.log('⚠️ Database save error:', dbError.message);
+        }
+        
+        // Add property ID to result for saving
+        result.propertyId = savedProperty?.id;
+
         res.json(result);
 
     } catch (error) {
@@ -5000,7 +5280,7 @@ app.post('/auth/magic-link', async (req, res) => {
     const { data, error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
-            emailRedirectTo: `${req.headers.origin || 'http://localhost:3001'}/auth/callback`
+            emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/auth/callback`
         }
     });
     
@@ -5119,6 +5399,237 @@ app.post('/auth/create-user', async (req, res) => {
 // Logout
 app.post('/auth/logout', async (req, res) => {
     res.json({ message: 'Logged out successfully' });
+});
+
+// =============================================
+// TEAM ENDPOINTS (Estate Agents)
+// =============================================
+
+// Create a team
+app.post('/api/teams', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Team name required' });
+    
+    // Get user from our table
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    if (!dbUser) return res.status(404).json({ error: 'User not found' });
+    
+    // Update user to agent type
+    await supabase
+        .from('users')
+        .update({ user_type: 'agent' })
+        .eq('id', dbUser.id);
+    
+    // Create team
+    const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .insert({
+            name: name,
+            owner_id: dbUser.id,
+            owner_email: user.email
+        })
+        .select()
+        .single();
+    
+    if (teamError) {
+        console.log('❌ Error creating team:', teamError.message);
+        return res.status(500).json({ error: teamError.message });
+    }
+    
+    // Add owner as team member
+    await supabase
+        .from('team_members')
+        .insert({
+            team_id: team.id,
+            user_id: dbUser.id,
+            role: 'owner',
+            email: user.email
+        });
+    
+    console.log('🏢 Team created:', name);
+    res.json({ team });
+});
+
+// Get my team
+app.get('/api/teams/me', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    if (!dbUser) return res.status(404).json({ error: 'User not found' });
+    
+    // Find team membership
+    const { data: membership } = await supabase
+        .from('team_members')
+        .select('team_id, role, teams(*)')
+        .eq('user_id', dbUser.id)
+        .single();
+    
+    if (!membership) return res.json({ team: null });
+    
+    // Get team members
+    const { data: members } = await supabase
+        .from('team_members')
+        .select('role, joined_at, users(id, email, name)')
+        .eq('team_id', membership.team_id);
+    
+    res.json({ 
+        team: membership.teams,
+        role: membership.role,
+        members: members
+    });
+});
+
+// Invite to team
+app.post('/api/teams/invite', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email required' });
+    
+    // Get inviter's user and team
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    const { data: membership } = await supabase
+        .from('team_members')
+        .select('team_id, role, teams(name)')
+        .eq('user_id', dbUser.id)
+        .single();
+    
+    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+        return res.status(403).json({ error: 'Not authorized to invite' });
+    }
+    
+    // Check if invitee already has account
+    let { data: invitee } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .single();
+    
+    // If no account, create one
+    if (!invitee) {
+        const { data: newUser } = await supabase
+            .from('users')
+            .insert({ email: email, user_type: 'agent' })
+            .select()
+            .single();
+        invitee = newUser;
+    }
+    
+    // Check if already a member
+    const { data: existingMember } = await supabase
+        .from('team_members')
+        .select('id')
+        .eq('team_id', membership.team_id)
+        .eq('user_id', invitee.id)
+        .single();
+    
+    if (existingMember) {
+        return res.status(400).json({ error: 'Already a team member' });
+    }
+    
+    // Add to team
+    await supabase
+        .from('team_members')
+        .insert({
+            team_id: membership.team_id,
+            user_id: invitee.id,
+            role: 'member',
+            email: email
+        });
+    
+    // Send magic link to invitee
+    await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+            emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/auth/callback`
+        }
+    });
+    
+    console.log('📧 Team invite sent to:', email);
+    res.json({ message: `Invite sent to ${email}` });
+});
+
+// Remove team member
+app.delete('/api/teams/members/:userId', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { userId } = req.params;
+    
+    // Get requester's team membership
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    const { data: membership } = await supabase
+        .from('team_members')
+        .select('team_id, role')
+        .eq('user_id', dbUser.id)
+        .single();
+    
+    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+        return res.status(403).json({ error: 'Not authorized to remove members' });
+    }
+    
+    // Can't remove owner
+    const { data: targetMember } = await supabase
+        .from('team_members')
+        .select('role')
+        .eq('team_id', membership.team_id)
+        .eq('user_id', userId)
+        .single();
+    
+    if (targetMember?.role === 'owner') {
+        return res.status(400).json({ error: 'Cannot remove team owner' });
+    }
+    
+    // Remove member
+    await supabase
+        .from('team_members')
+        .delete()
+        .eq('team_id', membership.team_id)
+        .eq('user_id', userId);
+    
+    console.log('👤 Team member removed:', userId);
+    res.json({ message: 'Member removed' });
 });
 
 // 🔑 API KEY VALIDATION at startup
