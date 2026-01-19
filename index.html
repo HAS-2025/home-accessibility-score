@@ -1343,6 +1343,258 @@
                 color: #1f2937;
             }
 
+            /* Saved Properties Panel */
+            .saved-panel {
+                position: fixed;
+                top: 0;
+                right: -420px;
+                width: 400px;
+                max-width: 90vw;
+                height: 100vh;
+                background: white;
+                box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+                z-index: 2000;
+                transition: right 0.3s ease;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .saved-panel.open {
+                right: 0;
+            }
+
+            .saved-panel-header {
+                padding: 20px;
+                border-bottom: 1px solid #e5e7eb;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+
+            .saved-panel-header h2 {
+                margin: 0;
+                font-size: 1.25rem;
+            }
+
+            .saved-panel-close {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
+                cursor: pointer;
+                font-size: 1.25rem;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .saved-panel-close:hover {
+                background: rgba(255,255,255,0.3);
+            }
+
+            .saved-panel-content {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px;
+            }
+
+            .saved-property-card {
+                background: #f9fafb;
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 12px;
+                border: 1px solid #e5e7eb;
+                transition: all 0.2s;
+            }
+
+            .saved-property-card:hover {
+                border-color: #667eea;
+                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+            }
+
+            .saved-property-address {
+                font-weight: 600;
+                color: #1f2937;
+                font-size: 0.95rem;
+                margin-bottom: 8px;
+                line-height: 1.4;
+            }
+
+            .saved-property-meta {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+
+            .saved-property-score {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-weight: 600;
+                color: #667eea;
+            }
+
+            .saved-property-date {
+                font-size: 0.8rem;
+                color: #6b7280;
+            }
+
+            .saved-property-price {
+                font-size: 1.1rem;
+                font-weight: 700;
+                color: #059669;
+                margin-bottom: 12px;
+            }
+
+            .saved-property-actions {
+                display: flex;
+                gap: 8px;
+            }
+
+            .saved-btn-view {
+                flex: 1;
+                padding: 10px 16px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: 500;
+            }
+
+            .saved-btn-view:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            }
+
+            .saved-btn-remove {
+                padding: 10px 14px;
+                background: #fee2e2;
+                color: #dc2626;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9rem;
+            }
+
+            .saved-btn-remove:hover {
+                background: #fecaca;
+            }
+
+            .saved-empty {
+                text-align: center;
+                padding: 40px 20px;
+                color: #6b7280;
+            }
+
+            .saved-empty-icon {
+                font-size: 3rem;
+                margin-bottom: 16px;
+            }
+
+            .saved-empty h3 {
+                color: #374151;
+                margin-bottom: 8px;
+            }
+
+            .saved-panel-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0,0,0,0.3);
+                z-index: 1999;
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.3s, visibility 0.3s;
+            }
+
+            .saved-panel-overlay.open {
+                opacity: 1;
+                visibility: visible;
+            }
+
+            .saved-loading {
+                text-align: center;
+                padding: 40px 20px;
+                color: #6b7280;
+            }
+
+            .saved-loading .spinner {
+                width: 40px;
+                height: 40px;
+                margin: 0 auto 16px;
+            }
+
+            /* Search History Panel - reuses saved panel styles */
+            .history-panel {
+                position: fixed;
+                top: 0;
+                right: -420px;
+                width: 400px;
+                max-width: 90vw;
+                height: 100vh;
+                background: white;
+                box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+                z-index: 2000;
+                transition: right 0.3s ease;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .history-panel.open {
+                right: 0;
+            }
+
+            .history-panel-header {
+                padding: 20px;
+                border-bottom: 1px solid #e5e7eb;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+            }
+
+            .history-panel-header h2 {
+                margin: 0;
+                font-size: 1.25rem;
+            }
+
+            .history-property-card {
+                background: #f9fafb;
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 12px;
+                border: 1px solid #e5e7eb;
+                transition: all 0.2s;
+            }
+
+            .history-property-card:hover {
+                border-color: #667eea;
+                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+            }
+
+            .history-property-address {
+                font-weight: 600;
+                color: #1f2937;
+                font-size: 0.95rem;
+                margin-bottom: 4px;
+            }
+
+            .history-property-date {
+                font-size: 0.8rem;
+                color: #6b7280;
+                margin-bottom: 12px;
+            }
+
             .login-modal {
                 position: fixed;
                 top: 0;
@@ -1527,6 +1779,32 @@
             <button class="btn-primary" onclick="sendMagicLink()">Send Magic Link</button>
             <button class="btn-close" onclick="hideLoginModal()">Cancel</button>
             <p id="loginMessage" style="margin-top: 15px; text-align: center; color: #059669;"></p>
+        </div>
+    </div>
+
+    <!-- Saved Properties Panel Overlay -->
+    <div class="saved-panel-overlay" id="savedPanelOverlay" onclick="closeSavedPanel()"></div>
+
+    <!-- Saved Properties Panel -->
+    <div class="saved-panel" id="savedPanel">
+        <div class="saved-panel-header">
+            <h2>⭐ Saved Properties</h2>
+            <button class="saved-panel-close" onclick="closeSavedPanel()">×</button>
+        </div>
+        <div class="saved-panel-content" id="savedPanelContent">
+        </div>
+    </div>
+
+    <!-- History Panel Overlay -->
+    <div class="saved-panel-overlay" id="historyPanelOverlay" onclick="closeHistoryPanel()"></div>
+
+    <!-- Search History Panel -->
+    <div class="history-panel" id="historyPanel">
+        <div class="history-panel-header">
+            <h2>🕐 Search History</h2>
+            <button class="saved-panel-close" onclick="closeHistoryPanel()">×</button>
+        </div>
+        <div class="saved-panel-content" id="historyPanelContent">
         </div>
     </div>
     
@@ -1734,10 +2012,12 @@
             document.querySelector('.analyze-btn').disabled = true;
 
             try {
+                const token = localStorage.getItem('auth_token');
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        ...(token && { 'Authorization': `Bearer ${token}` })
                     },
                     body: JSON.stringify({ url: url })
                 });
@@ -1814,8 +2094,28 @@
             document.getElementById('summaryText').textContent = analysis.summary;
             
             // Add save button
-            currentPropertyId = data.propertyId;
+            // Extract Rightmove ID from URL
+            const urlInput = document.getElementById('propertyUrl').value;
+            const rmMatch = urlInput.match(/properties\/(\d+)/);
+            currentPropertyId = rmMatch ? rmMatch[1] : data.propertyId;
+
+            currentPropertyData = {
+                address: property.location || 'Unknown location',
+                title: property.title || '',
+                price: property.price || null,
+                overallScore: analysis.overall || null,
+                url: document.getElementById('propertyUrl').value || null
+            };
             
+            currentPropertyData = {
+            address: property.location || 'Unknown location',
+            title: property.title || '',
+            price: property.price || null,
+            overallScore: analysis.overall || null,
+            url: document.getElementById('propertyUrl').value || null
+        };
+        console.log('Property data to save:', currentPropertyData);
+
             // Remove existing save button if present
             const existingBtn = document.getElementById('savePropertyBtn');
             if (existingBtn) existingBtn.remove();
@@ -2941,15 +3241,178 @@ function displayCostAnalysis(cost, propertyCost) {
     }
 
     function showSavedProperties() {
-        alert('Saved properties panel coming soon!');
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        showLoginModal();
+        return;
     }
+    document.getElementById('savedPanel').classList.add('open');
+    document.getElementById('savedPanelOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    loadSavedPropertiesPanel();
+}
+
+function closeSavedPanel() {
+    document.getElementById('savedPanel').classList.remove('open');
+    document.getElementById('savedPanelOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+async function loadSavedPropertiesPanel() {
+    const content = document.getElementById('savedPanelContent');
+    content.innerHTML = '<div class="saved-loading"><div class="spinner"></div><p>Loading...</p></div>';
+    
+    const token = localStorage.getItem('auth_token');
+    try {
+        const response = await fetch('/api/properties/saved', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        if (!data.saved || data.saved.length === 0) {
+            content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">⭐</div><h3>No saved properties</h3><p>Properties you save will appear here.</p></div>';
+            return;
+        }
+        
+        let html = `<p style="color: #6b7280; margin-bottom: 16px; font-size: 0.9rem;">${data.saved.length} of 10 saved</p>`;
+        
+        data.saved.forEach(item => {
+            const property = item.properties;
+            if (!property) return;
+            
+            const savedDate = new Date(item.saved_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+            const score = property.overall_score ? property.overall_score.toFixed(1) : '—';
+            
+            html += `
+                <div class="saved-property-card">
+                    <div class="saved-property-address">${property.address || 'Unknown address'}</div>
+                    ${property.title ? `<div style="color: #6b7280; font-size: 0.85rem; margin-bottom: 8px;">${property.title}</div>` : ''}
+                    <div class="saved-property-meta">
+                        <div class="saved-property-score">⭐ ${score}/5</div>
+                        <div class="saved-property-date">Saved ${savedDate}</div>
+                    </div>
+                    ${property.price ? `<div class="saved-property-price">${property.price}</div>` : ''}
+                    <div class="saved-property-actions">
+                        <button class="saved-btn-view" onclick="viewSavedProperty('${property.rightmove_id || item.property_id}')">View Analysis</button>
+                        <button class="saved-btn-remove" onclick="removeSavedProperty('${property.rightmove_id}')">🗑️</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">⚠️</div><h3>Failed to load</h3></div>';
+    }
+}
+
+function viewSavedProperty(propertyId) {
+    closeSavedPanel();
+    document.getElementById('propertyUrl').value = `https://www.rightmove.co.uk/properties/${propertyId}`;
+    analyzeProperty();
+}
+
+async function removeSavedProperty(propertyId) {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    
+    try {
+        await fetch(`/api/properties/save/${propertyId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        loadSavedPropertiesPanel();
+        loadSavedCount();
+        
+        if (currentPropertyId === propertyId) {
+            const saveBtn = document.getElementById('savePropertyBtn');
+            if (saveBtn) {
+                saveBtn.classList.remove('saved');
+                saveBtn.classList.add('save');
+                saveBtn.innerHTML = '☆ Save Property';
+            }
+        }
+    } catch (error) {
+        alert('Failed to remove property');
+    }
+}
 
     function showSearchHistory() {
-        alert('Search history panel coming soon!');
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            showLoginModal();
+            return;
+        }
+        document.getElementById('historyPanel').classList.add('open');
+        document.getElementById('historyPanelOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        loadSearchHistoryPanel();
+    }
+
+    function closeHistoryPanel() {
+        document.getElementById('historyPanel').classList.remove('open');
+        document.getElementById('historyPanelOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    async function loadSearchHistoryPanel() {
+        const content = document.getElementById('historyPanelContent');
+        content.innerHTML = '<div class="saved-loading"><div class="spinner"></div><p>Loading...</p></div>';
+        
+        const token = localStorage.getItem('auth_token');
+        try {
+            const response = await fetch('/api/properties/history', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            if (!data.history || data.history.length === 0) {
+                content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">🕐</div><h3>No search history</h3><p>Properties you analyze will appear here.</p></div>';
+                return;
+            }
+            
+            let html = `<p style="color: #6b7280; margin-bottom: 16px; font-size: 0.9rem;">Last ${data.history.length} searches</p>`;
+            
+            data.history.forEach(item => {
+                const property = item.properties;
+                if (!property) return;
+                
+                const searchDate = new Date(item.searched_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const score = property.overall_score ? property.overall_score.toFixed(1) : '—';
+                
+                html += `
+                    <div class="saved-property-card">
+                        <div class="saved-property-address">${property.address || 'Unknown address'}</div>
+                        <div style="color: #6b7280; font-size: 0.85rem; margin-bottom: 8px;">${property.title || ''}</div>
+                        <div class="saved-property-meta">
+                            <div class="saved-property-score">⭐ ${score}/5</div>
+                            <div class="saved-property-date">Searched ${searchDate}</div>
+                        </div>
+                        ${property.price ? `<div class="saved-property-price">£${Number(property.price).toLocaleString()}</div>` : ''}
+                        <div class="saved-property-actions">
+                            <button class="saved-btn-view" onclick="viewHistoryProperty('${property.rightmove_id || item.property_id}')">
+                                View Analysis
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            content.innerHTML = html;
+        } catch (error) {
+            content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">⚠️</div><h3>Failed to load</h3></div>';
+        }
+    }
+
+    function viewHistoryProperty(propertyId) {
+        closeHistoryPanel();
+        document.getElementById('propertyUrl').value = `https://www.rightmove.co.uk/properties/${propertyId}`;
+        analyzeProperty();
     }
 
     // Save/unsave property
     let currentPropertyId = null;
+    let currentPropertyData = null;
 
     async function saveProperty() {
         const token = localStorage.getItem('auth_token');
@@ -2973,7 +3436,7 @@ function displayCostAnalysis(cost, propertyCost) {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ propertyId: currentPropertyId })
+                body: JSON.stringify({ propertyId: currentPropertyId, propertyData: currentPropertyData })
             });
             
             const data = await response.json();
@@ -3037,8 +3500,8 @@ function displayCostAnalysis(cost, propertyCost) {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            return data.saved?.some(item => item.properties?.id === propertyId);
-        } catch {
+            return data.saved?.some(item => item.property_id === propertyId);
+        } catch (error) {
             return false;
         }
     }

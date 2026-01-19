@@ -828,7 +828,7 @@ app.post('/api/properties/save', async (req, res) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
     
-    const { propertyId } = req.body;
+    const { propertyId, propertyData } = req.body;
     if (!propertyId) return res.status(400).json({ error: 'Property ID required' });
     
     // Get user
@@ -846,6 +846,29 @@ app.post('/api/properties/save', async (req, res) => {
     
     if (count >= 10) {
         return res.status(400).json({ error: 'Maximum 10 saved properties. Remove one to add another.' });
+    }
+
+    console.log('Received propertyData:', propertyData);
+
+    // Store property data if provided
+    if (propertyData) {
+        const { error: upsertError } = await supabase
+            .from('properties')
+            .upsert({
+                rightmove_id: propertyId,
+                address: propertyData.address || null,
+                title: propertyData.title || null,
+                price: propertyData.price || null,
+                overall_score: propertyData.overallScore || null,
+                url: propertyData.url || null,
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'rightmove_id' });
+        
+        if (upsertError) {
+            console.log('⚠️ Error storing property data:', upsertError.message);
+        } else {
+            console.log('✅ Property data stored for:', propertyId);
+        }
     }
     
     // Save property
@@ -909,13 +932,31 @@ app.get('/api/properties/saved', async (req, res) => {
         .eq('email', user.email)
         .single();
     
+    // Get saved properties
     const { data: saved } = await supabase
         .from('saved_properties')
-        .select('saved_at, properties(*)')
+        .select('saved_at, property_id')
         .eq('user_id', dbUser.id)
         .order('saved_at', { ascending: false });
     
-    res.json({ saved: saved || [] });
+    if (!saved || saved.length === 0) return res.json({ saved: [] });
+    
+    // Get property details from properties table
+    const propertyIds = saved.map(s => s.property_id);
+    
+    const { data: properties } = await supabase
+        .from('properties')
+        .select('*')
+        .in('rightmove_id', propertyIds);
+    
+    // Merge data
+    const result = saved.map(s => ({
+        saved_at: s.saved_at,
+        property_id: s.property_id,
+        properties: properties?.find(p => p.rightmove_id === s.property_id) || { rightmove_id: s.property_id, address: 'Property data not available' }
+    }));
+    
+    res.json({ saved: result });
 });
 
 // =============================================
@@ -937,14 +978,32 @@ app.get('/api/properties/history', async (req, res) => {
         .eq('email', user.email)
         .single();
     
+    // Get search history
     const { data: history } = await supabase
         .from('search_history')
-        .select('searched_at, properties(*)')
+        .select('searched_at, property_id')
         .eq('user_id', dbUser.id)
         .order('searched_at', { ascending: false })
         .limit(50);
     
-    res.json({ history: history || [] });
+    if (!history || history.length === 0) return res.json({ history: [] });
+    
+    // Get property details
+    const propertyIds = history.map(h => h.property_id);
+    
+    const { data: properties } = await supabase
+        .from('properties')
+        .select('*')
+        .in('rightmove_id', propertyIds);
+    
+    // Merge data
+    const result = history.map(h => ({
+        searched_at: h.searched_at,
+        property_id: h.property_id,
+        properties: properties?.find(p => p.rightmove_id === h.property_id) || { rightmove_id: h.property_id, address: 'Property data not available' }
+    }));
+
+    res.json({ history: result });
 });
 
 // Store for caching results
@@ -5207,11 +5266,18 @@ app.post('/api/analyze', async (req, res) => {
             const bedroomMatch = result.property.title?.match(/(\d+)\s*bed/i);
             const postcodeMatch = result.property.location?.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?)(?:\s*\d[A-Z]{2})?\b/i);
             
+            // Extract Rightmove ID
+            // Extract Rightmove ID
+            const rmMatch = url.match(/properties\/(\d+)/);
+            const rightmoveId = rmMatch ? rmMatch[1] : null;
+
             const { data } = await supabase
                 .from('properties')
                 .upsert({
+                    rightmove_id: rightmoveId,
                     rightmove_url: url,
                     address: result.property.location,
+                    title: result.property.title,
                     postcode: postcodeMatch ? postcodeMatch[1].toUpperCase() : null,
                     price: priceNumber,
                     bedrooms: bedroomMatch ? parseInt(bedroomMatch[1]) : null,
@@ -5227,9 +5293,12 @@ app.post('/api/analyze', async (req, res) => {
             
             // Log search history if user is logged in
             const authHeader = req.headers.authorization;
-            if (authHeader && savedProperty) {
+            console.log('🔍 Auth header present:', !!authHeader);
+
+            if (authHeader) {
                 const token = authHeader.replace('Bearer ', '');
                 const { data: { user } } = await supabase.auth.getUser(token);
+                console.log('🔍 User from token:', user?.email);
                 
                 if (user) {
                     const { data: dbUser } = await supabase
@@ -5237,14 +5306,28 @@ app.post('/api/analyze', async (req, res) => {
                         .select('id')
                         .eq('email', user.email)
                         .single();
+                    console.log('🔍 DB user found:', !!dbUser);
                     
                     if (dbUser) {
-                        await supabase
-                            .from('search_history')
-                            .insert({
-                                user_id: dbUser.id,
-                                property_id: savedProperty.id
-                            });
+                        // Extract Rightmove ID from URL
+                        const rmMatch = url.match(/properties\/(\d+)/);
+                        const rightmoveId = rmMatch ? rmMatch[1] : null;
+                        console.log('🔍 Rightmove ID extracted:', rightmoveId);
+                        
+                        if (rightmoveId) {
+                            const { error: historyError } = await supabase
+                                .from('search_history')
+                                .insert({
+                                    user_id: dbUser.id,
+                                    property_id: rightmoveId
+                                });
+                            
+                            if (historyError) {
+                                console.log('❌ Search history insert error:', historyError.message);
+                            } else {
+                                console.log('📝 Search recorded for:', user.email);
+                            }
+                        }
                     }
                 }
             }
