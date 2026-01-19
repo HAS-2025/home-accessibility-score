@@ -5613,6 +5613,16 @@ app.post('/api/teams/invite', async (req, res) => {
         return res.status(403).json({ error: 'Not authorized to invite' });
     }
     
+    // Check team member limit (max 5)
+    const { count } = await supabase
+        .from('team_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('team_id', membership.team_id);
+
+    if (count >= 5) {
+        return res.status(400).json({ error: 'Team is full (maximum 5 members)' });
+    }
+    
     // Check if invitee already has account
     let { data: invitee } = await supabase
         .from('users')

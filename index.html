@@ -1595,6 +1595,109 @@
                 margin-bottom: 12px;
             }
 
+            /* Team Panel */
+            .team-header {
+                background: #f0fdf4;
+                border: 1px solid #bbf7d0;
+                border-radius: 12px;
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+
+            .team-name {
+                font-size: 1.25rem;
+                font-weight: 700;
+                color: #166534;
+                margin-bottom: 4px;
+            }
+
+            .team-status {
+                font-size: 0.85rem;
+                color: #15803d;
+            }
+
+            .team-section-title {
+                font-weight: 600;
+                color: #374151;
+                margin: 20px 0 12px 0;
+                font-size: 0.9rem;
+            }
+
+            .team-member-card {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                background: #f9fafb;
+                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 8px;
+                border: 1px solid #e5e7eb;
+            }
+
+            .team-member-info {
+                flex: 1;
+            }
+
+            .team-member-email {
+                font-weight: 500;
+                color: #1f2937;
+                font-size: 0.9rem;
+            }
+
+            .team-member-role {
+                font-size: 0.75rem;
+                color: #6b7280;
+                text-transform: capitalize;
+            }
+
+            .team-member-remove {
+                background: #fee2e2;
+                color: #dc2626;
+                border: none;
+                padding: 6px 10px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 0.8rem;
+            }
+
+            .team-member-remove:hover {
+                background: #fecaca;
+            }
+
+            .team-invite-form {
+                display: flex;
+                gap: 8px;
+                margin-top: 12px;
+            }
+
+            .team-invite-input {
+                flex: 1;
+                padding: 10px 12px;
+                border: 1px solid #d1d5db;
+                border-radius: 8px;
+                font-size: 0.9rem;
+            }
+
+            .team-invite-btn {
+                background: linear-gradient(135deg, #059669 0%, #047857 100%);
+                color: white;
+                border: none;
+                padding: 10px 16px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 500;
+                font-size: 0.9rem;
+            }
+
+            .team-invite-btn:hover {
+                opacity: 0.9;
+            }
+
+            .team-invite-btn:disabled {
+                background: #9ca3af;
+                cursor: not-allowed;
+            }
+
             .login-modal {
                 position: fixed;
                 top: 0;
@@ -1760,6 +1863,9 @@
                 <div class="user-menu-item" onclick="showSearchHistory()">
                     🕐 Search History
                 </div>
+                <div class="user-menu-item" id="teamMenuItem" style="display: none;" onclick="showTeamPanel()">
+                    🏢 My Team
+                </div>
                 <div class="user-menu-item" onclick="manageSubscription()" id="subscriptionItem">
                     💳 Upgrade to Pro
                 </div>
@@ -1805,6 +1911,19 @@
             <button class="saved-panel-close" onclick="closeHistoryPanel()">×</button>
         </div>
         <div class="saved-panel-content" id="historyPanelContent">
+        </div>
+    </div>
+
+    <!-- Team Panel Overlay -->
+    <div class="saved-panel-overlay" id="teamPanelOverlay" onclick="closeTeamPanel()"></div>
+
+    <!-- Team Panel -->
+    <div class="saved-panel" id="teamPanel">
+        <div class="saved-panel-header" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+            <h2>🏢 My Team</h2>
+            <button class="saved-panel-close" onclick="closeTeamPanel()">×</button>
+        </div>
+        <div class="saved-panel-content" id="teamPanelContent">
         </div>
     </div>
     
@@ -3148,6 +3267,9 @@ function displayCostAnalysis(cost, propertyCost) {
         
         // Load saved count
         loadSavedCount();
+        
+        // Check team membership
+        checkTeamMembership();
     }
 
     function showLoginModal() {
@@ -3408,6 +3530,176 @@ async function removeSavedProperty(propertyId) {
         closeHistoryPanel();
         document.getElementById('propertyUrl').value = `https://www.rightmove.co.uk/properties/${propertyId}`;
         analyzeProperty();
+    }
+
+    // =============================================
+    // TEAM MANAGEMENT
+    // =============================================
+
+    let currentTeam = null;
+    let currentTeamRole = null;
+
+    async function checkTeamMembership() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        
+        try {
+            const response = await fetch('/api/teams/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            if (data.team) {
+                currentTeam = data.team;
+                currentTeamRole = data.role;
+                document.getElementById('teamMenuItem').style.display = 'flex';
+            }
+        } catch (error) {
+            console.log('Team check failed:', error);
+        }
+    }
+
+    function showTeamPanel() {
+        document.getElementById('teamPanel').classList.add('open');
+        document.getElementById('teamPanelOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        loadTeamPanel();
+    }
+
+    function closeTeamPanel() {
+        document.getElementById('teamPanel').classList.remove('open');
+        document.getElementById('teamPanelOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    async function loadTeamPanel() {
+        const content = document.getElementById('teamPanelContent');
+        content.innerHTML = '<div class="saved-loading"><div class="spinner"></div><p>Loading...</p></div>';
+        
+        const token = localStorage.getItem('auth_token');
+        try {
+            const response = await fetch('/api/teams/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            if (!data.team) {
+                content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">🏢</div><h3>No team</h3><p>You are not part of a team.</p></div>';
+                return;
+            }
+            
+            const team = data.team;
+            const members = data.members || [];
+            const isAdmin = ['owner', 'admin'].includes(data.role);
+            
+            let html = `
+                <div class="team-header">
+                    <div class="team-name">${team.name}</div>
+                    <div class="team-status">
+                        ${team.subscription_status === 'active' ? '✅ Active subscription' : '⚠️ No active subscription'}
+                    </div>
+                </div>
+                
+                <div class="team-section-title">Team Members (${members.length})</div>
+            `;
+            
+            members.forEach(member => {
+                const email = member.users?.email || member.email || 'Unknown';
+                const canRemove = isAdmin && member.role !== 'owner';
+                
+                html += `
+                    <div class="team-member-card">
+                        <div class="team-member-info">
+                            <div class="team-member-email">${email}</div>
+                            <div class="team-member-role">${member.role}</div>
+                        </div>
+                        ${canRemove ? `<button class="team-member-remove" onclick="removeTeamMember('${member.users?.id}')">Remove</button>` : ''}
+                    </div>
+                `;
+            });
+            
+            if (isAdmin) {
+                html += `
+                    <div class="team-section-title">Invite New Member</div>
+                    <div class="team-invite-form">
+                        <input type="email" id="inviteEmail" class="team-invite-input" placeholder="colleague@email.com" />
+                        <button class="team-invite-btn" onclick="inviteTeamMember()">Invite</button>
+                    </div>
+                    <p id="inviteMessage" style="margin-top: 8px; font-size: 0.85rem;"></p>
+                `;
+            }
+            
+            content.innerHTML = html;
+            
+        } catch (error) {
+            content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">⚠️</div><h3>Failed to load</h3></div>';
+        }
+    }
+
+    async function inviteTeamMember() {
+        const email = document.getElementById('inviteEmail').value.trim();
+        const messageEl = document.getElementById('inviteMessage');
+        
+        if (!email) {
+            messageEl.textContent = 'Please enter an email';
+            messageEl.style.color = '#dc2626';
+            return;
+        }
+        
+        const btn = document.querySelector('.team-invite-btn');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+        
+        const token = localStorage.getItem('auth_token');
+        try {
+            const response = await fetch('/api/teams/invite', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ email })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                messageEl.textContent = '✓ Invite sent!';
+                messageEl.style.color = '#059669';
+                document.getElementById('inviteEmail').value = '';
+                loadTeamPanel(); // Refresh list
+            } else {
+                messageEl.textContent = data.error || 'Failed to invite';
+                messageEl.style.color = '#dc2626';
+            }
+        } catch (error) {
+            messageEl.textContent = 'Failed to send invite';
+            messageEl.style.color = '#dc2626';
+        }
+        
+        btn.disabled = false;
+        btn.textContent = 'Invite';
+    }
+
+    async function removeTeamMember(userId) {
+        if (!confirm('Remove this team member?')) return;
+        
+        const token = localStorage.getItem('auth_token');
+        try {
+            const response = await fetch(`/api/teams/members/${userId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (response.ok) {
+                loadTeamPanel(); // Refresh
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to remove member');
+            }
+        } catch (error) {
+            alert('Failed to remove member');
+        }
     }
 
     // Save/unsave property
