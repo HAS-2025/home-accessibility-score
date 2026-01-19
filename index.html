@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home Accessibility Score</title>
     <style>
+        /* ========== BASE STYLES ========== */
         * {
             margin: 0;
             padding: 0;
@@ -12,8 +13,8 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8a 100%);
             min-height: 100vh;
             color: #333;
         }
@@ -24,6 +25,7 @@
             padding: 2rem;
         }
 
+        /* ========== HEADER ========== */
         .header {
             text-align: center;
             color: white;
@@ -31,6 +33,7 @@
         }
 
         .header h1 {
+            font-family: 'Fraunces', serif;
             font-size: 3rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
@@ -41,6 +44,7 @@
             opacity: 0.9;
         }
 
+        /* ========== INPUT SECTION ========== */
         .input-section {
             background: white;
             border-radius: 20px;
@@ -66,11 +70,11 @@
 
         input[type="url"]:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #1e3a5f;
         }
 
         .analyze-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #e8985e;
             color: white;
             border: none;
             padding: 1rem 2rem;
@@ -84,7 +88,8 @@
 
         .analyze-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 25px rgba(232, 152, 94, 0.4);
+            background: #f4b183;
         }
 
         .analyze-btn:disabled {
@@ -93,6 +98,7 @@
             transform: none;
         }
 
+        /* ========== LOADING ========== */
         .loading {
             display: none;
             text-align: center;
@@ -111,7 +117,7 @@
             width: 50px;
             height: 50px;
             border: 5px solid #f3f3f3;
-            border-top: 5px solid #667eea;
+            border-top: 5px solid #1e3a5f;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 1rem;
@@ -122,6 +128,7 @@
             100% { transform: rotate(360deg); }
         }
 
+        /* ========== RESULTS LAYOUT ========== */
         .results {
             display: none;
         }
@@ -130,140 +137,180 @@
             display: block;
         }
 
-        /* Property header - two column layout */
-        .property-header-container {
+        /* Two-column layout */
+        .results-layout {
             display: grid;
-            grid-template-columns: 1fr 400px;
-            gap: 2rem;
-            margin-bottom: 2rem;
+            grid-template-columns: 1fr 380px;
+            gap: 32px;
+            align-items: start;
+            margin-bottom: 24px;
         }
 
-        .property-info {
-            background: white;
-            border-radius: 20px;
-            padding: 0; /* Changed from 2rem since text-section has its own padding */
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            text-align: center;
-            margin-bottom: 0;
+        .results-main {
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            overflow: hidden; /* ADD THIS - ensures image respects border-radius */
+            gap: 24px;
         }
 
-        .property-text-section {
-            padding: 1.5rem 1.5rem 0.5rem 1.5rem;  /* Reduced bottom padding */
+        .results-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
         }
 
-        .property-main-image {
+        /* 2. MINI SCORE BREAKDOWN - add this new section */
+        .score-breakdown {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .breakdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .breakdown-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.85);
+        }
+
+        .breakdown-icon {
+            font-size: 1rem;
+        }
+
+        .breakdown-score {
+            font-family: 'Fraunces', serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        /* Color coding for mini scores */
+        .breakdown-score.excellent { color: #86efac; }
+        .breakdown-score.very-good { color: #86efac; }
+        .breakdown-score.good { color: #fde68a; }
+        .breakdown-score.fair { color: #fcd34d; }
+        .breakdown-score.poor { color: #fca5a5; }
+        .breakdown-score.na { color: rgba(255,255,255,0.5); }
+
+        /* Stack score cards vertically in main column */
+        .results-main .detailed-scores {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* ========== PROPERTY CARD ========== */
+        .property-card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .property-card .property-text-section {
+            padding: 24px;
+            text-align: center;
+        }
+
+        .property-card .property-main-image {
             width: 100%;
-            height: auto;
-            max-height: 400px;  /* Increased from 300px */
-            object-fit: contain;  /* Changed from cover to contain */
-            background: white;  /* White background for letterboxing */
-            padding: 1.5rem;  /* White padding around image */
-            box-sizing: border-box;
-            margin: 0;
+            max-height: 350px;
+            object-fit: contain;
+            background: white;
+            padding: 1rem;
         }
 
-        /* Keep existing .map-card styles but ensure proper sizing */
-        .map-card {
-            height: fit-content;
-        }
-
-        .map-image {
-            width: 100%;
-            height: auto;
-            max-width: 400px;
-        }
-
-        /* Responsive: stack on mobile */
-        @media (max-width: 1024px) {
-            .property-header-container {
-                grid-template-columns: 1fr;
-            }
-            
-            .map-image {
-                max-width: 100%;
-            }
-        }
-        
         .property-location {
             font-size: 1.5rem;
             font-weight: 700;
-            color: #667eea;
-            margin-bottom: 1rem;
+            color: #1e3a5f;
+            margin-bottom: 0.5rem;
         }
-        
-        .property-info .property-title {
-            font-size: 1.8rem;
-            font-weight: 700;
+
+        .property-title {
+            font-size: 1.4rem;
+            font-weight: 600;
             color: #333;
             margin-bottom: 0.5rem;
         }
-        
-        .property-info .property-price {
+
+        .property-price {
+            font-family: 'Fraunces', serif;
             font-size: 1.5rem;
             font-weight: 700;
-            color: #667eea;
+            color: #1e3a5f;
         }
 
+        /* ========== SCORE OVERVIEW (Sidebar) ========== */
         .score-overview {
-            background: white;
+            background: linear-gradient(135deg, #1e3a5f, #0f2744);
             border-radius: 20px;
-            padding: 3rem 2rem;
+            padding: 28px;
             text-align: center;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            color: white;
         }
 
         .overall-score {
+            font-family: 'Fraunces', serif;
             font-size: 4rem;
             font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 1rem;
+            color: white;
+            margin-bottom: 0.5rem;
         }
 
         .score-label {
-            font-size: 1.5rem;
-            color: #666;
-            margin-bottom: 2rem;
+            font-size: 1.1rem;
+            color: rgba(255,255,255,0.85);
+            margin-bottom: 1rem;
+        }
+
+        /* Star Rating */
+        .star-rating {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
         }
 
         .star {
-            color: #ddd;
-            margin: 0 0.2rem;
+            color: rgba(232, 152, 94, 0.3);
+            margin: 0 0.1rem;
         }
-        
-        .star-rating {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-        }
-        
+
         .star.filled {
-            color: #ffd700;
+            color: #e8985e;
         }
-        
+
         .partial-star {
             position: relative;
             display: inline-block;
-            margin: 0 0.2rem;
+            margin: 0 0.1rem;
         }
-        
+
         .star-fill {
             position: absolute;
             top: 0;
             left: 0;
-            color: #ffd700;
+            color: #e8985e;
             overflow: hidden;
         }
-        
+
         .star-empty {
-            color: #ddd;
+            color: rgba(232, 152, 94, 0.3);
         }
+
+        /* ========== SCORE CARDS ========== */
         .detailed-scores {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -283,15 +330,40 @@
             transform: translateY(-5px);
         }
 
+        /* Blue tab header */
         .score-header {
+            background: #1e3a5f;
+            color: white;
+            padding: 16px 20px;
+            margin: -2rem -2rem 1.5rem -2rem;
+            border-radius: 20px 20px 0 0;
             display: flex;
             align-items: center;
-            margin-bottom: 1rem;
+            gap: 10px;
+        }
+
+        .score-header .score-icon {
+            font-size: 1.25rem;
+        }
+
+        .score-header .score-title {
+            color: white;
+            font-weight: 600;
+            font-size: 1.1rem;
+            flex: 1;
+        }
+
+        .score-header .tooltip .info-icon {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .score-header .tooltip .tooltiptext {
+            color: #333;
         }
 
         .score-icon {
             font-size: 1.5rem;
-            margin-right: 0.5rem;
         }
 
         .score-title {
@@ -301,17 +373,18 @@
         }
 
         .score-value {
+            font-family: 'Fraunces', serif;
             font-size: 2rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
         }
 
-        .score-value.excellent { color: #3b82f6; } /* Blue */
-        .score-value.very-good { color: #047857; } /* Darker green */
-        .score-value.good { color: #86efac; } /* Light green */
-        .score-value.fair { color: #f59e0b; } /* Yellow */
-        .score-value.poor { color: #f97316; } /* Orange */
-        .score-value.very-poor { color: #ef4444; } /* Red */
+        .score-value.excellent { color: #1d7a5f; }
+        .score-value.very-good { color: #2d8a6e; }
+        .score-value.good { color: #4a9b7f; }
+        .score-value.fair { color: #d4a03c; }
+        .score-value.poor { color: #c0392b; }
+        .score-value.very-poor { color: #ef4444; }
 
         .score-description {
             color: #666;
@@ -327,54 +400,98 @@
             color: #555;
         }
 
-        .transport-info {
-            margin-top: 1rem;
-        }
-        
-        .transport-stop {
-            background: #f0f9ff;
-            border-left: 4px solid #3b82f6;
-            padding: 1rem;
-            margin: 0.5rem 0;
-            border-radius: 0 8px 8px 0;
-        }
-        
-        .stop-name {
+        /* Score badges */
+        .score-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
             font-weight: 600;
-            color: #1e40af;
-        }
-        
-        .stop-address {
-            font-size: 0.9rem;
-            color: #6b7280;
-            margin-top: 0.3rem;
-            line-height: 1.4;
-        }
-        
-        .stop-distance {
-            color: #059669;
-            font-weight: 500;
-            font-size: 0.9rem;
-        }
-        
-        .transport-type-header {
-            font-weight: 600;
-            color: #374151;
-            margin: 1rem 0 0.5rem 0;
-            font-size: 0.9rem;
-        }
-        
-        .no-transport-found {
-            color: #6b7280;
-            font-style: italic;
-            text-align: center;
-            padding: 1rem;
-            background: #f9fafb;
-            border-radius: 8px;
-            border: 2px dashed #d1d5db;
+            display: inline-block;
         }
 
-        /* Tooltip Styles */
+        .score-badge.excellent { background: #e8f5f0; color: #1d7a5f; }
+        .score-badge.very-good { background: #e8f5f0; color: #2d8a6e; }
+        .score-badge.good { background: #edf7f3; color: #4a9b7f; }
+        .score-badge.fair { background: #fdf6e8; color: #d4a03c; }
+        .score-badge.poor { background: #fdf0ef; color: #c0392b; }
+
+        /* ========== MAP CARD ========== */
+        .map-card {
+            background: white;
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .map-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .map-image {
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .map-legend {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .legend-marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.7rem;
+        }
+
+        .marker-property { background: #ef4444; }
+        .marker-gp { background: #3b82f6; }
+        .marker-bus { background: #10b981; }
+        .marker-train { background: #f97316; }
+
+        /* ========== SUMMARY SECTION ========== */
+        .summary-section {
+            background: white;
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            /* Now outside the grid, so naturally full width */
+        }
+
+        .summary-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .summary-text {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: #555;
+        }
+
+        /* ========== TOOLTIP ========== */
         .tooltip {
             position: relative;
             display: inline-flex;
@@ -394,7 +511,6 @@
             font-weight: bold;
             cursor: help;
             transition: all 0.2s ease;
-            user-select: none;
         }
 
         .info-icon:hover {
@@ -440,7 +556,6 @@
             border-color: #333 transparent transparent transparent;
         }
 
-        /* Desktop: Show on hover */
         @media (hover: hover) {
             .tooltip:hover .tooltiptext {
                 visibility: visible;
@@ -448,33 +563,14 @@
             }
         }
 
-        /* Mobile: Show on click/tap */
         @media (hover: none) {
             .tooltip.active .tooltiptext {
                 visibility: visible;
                 opacity: 1;
             }
-            
-            .tooltip .tooltiptext {
-                width: 280px;
-                margin-left: -140px;
-                font-size: 12px;
-                padding: 12px;
-            }
         }
 
-        /* Small mobile screens */
-        @media (max-width: 480px) {
-            .tooltip .tooltiptext {
-                width: 250px;
-                margin-left: -125px;
-                font-size: 11px;
-                padding: 10px;
-                left: 50%;
-                right: auto;
-            }
-        }
-
+        /* ========== GP DETAILS ========== */
         .gp-details {
             margin-top: 1rem;
         }
@@ -491,7 +587,7 @@
             font-weight: 600;
             color: #1e40af;
         }
-        
+
         .gp-address {
             font-size: 0.9rem;
             color: #6b7280;
@@ -516,647 +612,56 @@
             font-size: 0.8rem;
             margin: 0.25rem 0;
         }
-        
-        /* Dimension sections - consistent with other score cards */
-        .dimension-section {
-            margin-bottom: 18px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid #f0f0f0;
-        }
-        
-        .dimension-section:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        
-        .section-label {
-            font-size: 14px;
-            font-weight: 600;
-            color: #666;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        /* Total size display - prominent but compact */
-        .size-display {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .primary-size {
-            font-size: 22px;
-            font-weight: 700;
-            color: #333;
-            line-height: 1.2;
-        }
-        
-        .secondary-size {
-            font-size: 14px;
-            font-weight: 500;
-            color: #666;
-            background: #f5f5f5;
-            padding: 3px 8px;
-            border-radius: 4px;
-        }
-        
-        /* Room list - clean vertical layout */
-        .room-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .room-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 0;
-            border-bottom: 1px solid #f8f8f8;
-        }
-        
-        .room-item:last-child {
-            border-bottom: none;
-        }
-        
-        .room-icon {
-            font-size: 16px;
-            width: 20px;
-            display: flex;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        .room-text {
-            font-size: 14px;
-            color: #333;
-            font-weight: 500;
-            text-transform: capitalize;
-            flex: 1;
-        }
-        
-        /* Individual room dimensions */
-        .room-dimensions-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        
-        .room-dimension-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            font-size: 13px;
-        }
-        
-        .room-name {
-            font-weight: 500;
-            color: #333;
-            text-transform: capitalize;
-        }
-        
-        .room-size {
-            color: #666;
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 12px;
-        }
-        
-        /* Feature list */
-        .feature-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        
-        .feature-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            background: #e3f2fd;
-            color: #1565c0;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 500;
-            border: 1px solid #bbdefb;
-        }
-        
-        .feature-icon {
-            font-size: 12px;
-        }
-        
-        /* No data state */
-        .no-data {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            color: #666;
-            font-style: italic;
-            justify-content: center;
-            text-align: center;
-        }
-        
-        .no-data-icon {
-            font-size: 18px;
-            opacity: 0.7;
-        }
-        
-        .no-data-text {
-            font-size: 14px;
-        }
-        
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .size-display {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 6px;
-            }
-            
-            .primary-size {
-                font-size: 20px;
-            }
-            
-            .secondary-size {
-                font-size: 13px;
-            }
-            
-            .room-dimension-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 4px;
-            }
-            
-            .room-size {
-                align-self: flex-end;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .primary-size {
-                font-size: 18px;
-            }
-            
-            .room-item {
-                padding: 6px 0;
-            }
-            
-            .room-text {
-                font-size: 13px;
-            }
+
+        /* ========== TRANSPORT ========== */
+        .transport-info {
+            margin-top: 1rem;
         }
 
-        /* ADD THESE STYLES TO YOUR EXISTING DIMENSIONS CSS */
-
-        /* Enhanced room dimension items with icons */
-        .room-dimension-item .room-name {
-            display: flex;
-            align-items: center;
-        }
-        
-        .room-dimension-item .room-icon {
-            font-size: 14px;
-            width: 18px;
-            display: flex;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        /* Mixed layout for rooms with and without dimensions */
-        .room-dimensions-list .room-item {
-            background: #f0f0f0;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border-bottom: none;
-            margin-bottom: 8px;
-        }
-        
-        .room-dimensions-list .room-item:last-child {
-            margin-bottom: 0;
-        }
-        
-        /* Enhanced size display */
-        .size-display {
-            min-height: 40px;
-            align-items: center;
-        }
-        
-        /* Improved primary size styling */
-        .primary-size {
-            display: flex;
-            align-items: baseline;
-            gap: 4px;
-        }
-        
-        /* Better responsive handling for room dimensions */
-        @media (max-width: 768px) {
-            .room-dimension-item .room-name {
-                margin-bottom: 4px;
-            }
-            
-            .room-dimension-item .room-size {
-                font-size: 11px;
-            }
-        }
-        
-        /* Ensure consistent spacing in mixed lists */
-        .room-dimensions-list > *:last-child {
-            margin-bottom: 0;
-        }
-        
-        /* Better visual hierarchy for rooms with dimensions */
-        .room-dimension-item {
-            border-left: 3px solid #007bff;
-            transition: all 0.2s ease;
-        }
-        
-        .room-dimension-item:hover {
-            background: #e9ecef;
-            border-left-color: #0056b3;
-        }
-
-        /* Better handling of cost items */
-        .cost-item {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            flex: 1;
-        }
-        
-        .cost-label {
-            font-weight: 600;
-            font-size: 13px;
-            color: #555;
-        }
-        
-        .cost-value {
-            font-weight: 500;
-            font-size: 14px;
-            color: #333;
-        }
-
-        /* REPLACE THE GRADIENT CSS WITH THIS - MATCHING EXISTING SECTIONS */
-
-        /* Use existing transport-section class styling */
-        .total-size-section {
-            margin-bottom: 16px;
-        }
-        
-        .room-breakdown-section {
-            /* Uses existing transport-section styling */
-        }
-        
-        /* Section headers - matching existing style */
-        .section-header {
-            /* Should use existing styling from your transport sections */
-        }
-        
-        /* Size display content */
-        .size-display-content {
-            display: flex;
-            align-items: baseline;
-            gap: 12px;
-            flex-wrap: wrap;
-            padding: 8px 0;
-        }
-        
-        .primary-size-text {
-            font-size: 24px;
-            font-weight: 700;
-            color: white;
-            line-height: 1;
-        }
-        
-        .secondary-size-badge {
-            font-size: 14px;
-            font-weight: 500;
-            color: rgba(255, 255, 255, 0.9);
-            background: rgba(255, 255, 255, 0.2);
-            padding: 2px 8px;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
-        }
-        
-        /* Room content styling */
-        .room-content {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        
-        /* Simple room lines */
-        .room-item-line {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 0;
-        }
-        
-        .room-icon-small {
-            font-size: 14px;
-            width: 18px;
-            display: flex;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        .room-text-white {
-            font-size: 14px;
-            color: white;
-            font-weight: 500;
-            text-transform: capitalize;
-        }
-        
-        /* Room dimension lines */
-        .room-dimension-line {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 6px 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            margin-bottom: 4px;
-        }
-        
-        .room-dimension-line:last-child {
-            margin-bottom: 0;
-        }
-        
-        .room-name-with-icon {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .room-name-text {
-            font-weight: 500;
-            color: white;
-            text-transform: capitalize;
-            font-size: 13px;
-        }
-        
-        .room-dimension-text {
-            color: rgba(255, 255, 255, 0.9);
-            font-family: 'Monaco', 'Consolas', monospace;
-            font-size: 11px;
-            font-weight: 500;
-        }
-        
-        /* No data styling */
-        .no-room-data {
-            color: rgba(255, 255, 255, 0.7);
-            font-style: italic;
-            font-size: 13px;
-            padding: 8px 0;
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .size-display-content {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 6px;
-            }
-            
-            .primary-size-text {
-                font-size: 20px;
-            }
-            
-            .room-dimension-line {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 4px;
-            }
-            
-            .room-dimension-text {
-                align-self: flex-end;
-            }
-        }
-
-        /* ADD THIS CSS TO MATCH YOUR TRANSPORT SECTIONS */
-
-        /* Gray background wrapper like transport sections */
-        .dimension-transport-wrapper {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 1rem;
-            margin: 1rem 0;
-        }
-        
-        /* Main transport-style section for dimensions */
-        .dimension-transport-section {
+        .transport-stop {
             background: #f0f9ff;
             border-left: 4px solid #3b82f6;
             padding: 1rem;
             margin: 0.5rem 0;
             border-radius: 0 8px 8px 0;
         }
-        
-        /* Section headers matching transport style */
-        .dimension-section-header {
+
+        .stop-name {
             font-weight: 600;
             color: #1e40af;
+        }
+
+        .stop-address {
             font-size: 0.9rem;
-            margin-bottom: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        /* Size display */
-        .dimension-size-display {
-            display: flex;
-            align-items: baseline;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .dimension-primary-size {
-            font-size: 24px;
-            font-weight: 700;
-            color: #1e40af;
-            line-height: 1;
-        }
-        
-        .dimension-secondary-size {
-            font-size: 14px;
-            font-weight: 500;
             color: #6b7280;
-            background: #e5e7eb;
-            padding: 2px 8px;
-            border-radius: 12px;
+            margin-top: 0.3rem;
+            line-height: 1.4;
         }
-        
-        /* Room content */
-        .dimension-room-content {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        
-        /* Simple room lines */
-        .dimension-room-line {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 4px 0;
-        }
-        
-        .dimension-room-icon {
-            font-size: 14px;
-            width: 18px;
-            display: flex;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        .dimension-room-text {
-            font-size: 14px;
-            color: #374151;
+
+        .stop-distance {
+            color: #059669;
             font-weight: 500;
-            text-transform: capitalize;
+            font-size: 0.9rem;
         }
-        
-        /* Detailed room with dimensions */
-        .dimension-detailed-room {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start; /* Changed from center */
-            padding: 8px 12px;
-            background: rgba(59, 130, 246, 0.05);
-            border-radius: 6px;
-            margin-bottom: 6px; /* Increased spacing */
-            min-height: 40px; /* Give minimum height */
+
+        .transport-type-header {
+            font-weight: 600;
+            color: #374151;
+            margin: 1rem 0 0.5rem 0;
+            font-size: 0.9rem;
         }
-        
-        .dimension-detailed-room {
-        display: flex;
-        flex-direction: column; /* Changed from row to column */
-        align-items: flex-start;
-        padding: 8px 12px;
-        background: rgba(59, 130, 246, 0.05);
-        border-radius: 6px;
-        margin-bottom: 6px;
-        gap: 4px; /* Add gap between room name and dimensions */
-        }
-        
-        .dimension-room-name {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-weight: 500;
-        color: #1e40af;
-        text-transform: capitalize;
-        font-size: 13px;
-        width: 100%; /* Take full width */
-        }
-        
-        .dimension-room-measure {
-        color: #6b7280;
-        font-family: 'Monaco', 'Consolas', monospace;
-        font-size: 12px;
-        font-weight: 500;
-        text-align: right;
-        align-self: flex-end; /* Align to right */
-        margin-top: 2px;
-        }
-        
-        /* No data styling */
-        .dimension-no-data {
+
+        .no-transport-found {
             color: #6b7280;
             font-style: italic;
-            font-size: 13px;
-            padding: 8px 0;
             text-align: center;
-        }
-        
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .dimension-size-display {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 6px;
-            }
-            
-            .dimension-primary-size {
-                font-size: 20px;
-            }
-            
-            .dimension-detailed-room {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 4px;
-            }
-            
-            .dimension-room-measure {
-                align-self: flex-end;
-            }
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 2px dashed #d1d5db;
         }
 
-        
-        .map-card {
-            background: white;
-            border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-
-        .map-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .map-image {
-            width: 100%;
-            border-radius: 12px;
-            margin-bottom: 1rem;
-        }
-
-        .map-legend {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
-            font-size: 0.85rem;
-        }
-
-        .legend-item {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .legend-marker {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 0.7rem;
-        }
-
-        .marker-property { background: #ef4444; }
-        .marker-gp { background: #3b82f6; }
-        .marker-bus { background: #10b981; }
-        .marker-train { background: #f97316; }
-
-           
-        
+        /* ========== ACCESSIBLE FEATURES ========== */
         .accessible-features-list {
             margin-top: 0.5rem;
         }
@@ -1172,40 +677,6 @@
             border-left: 3px solid #10b981;
         }
 
-        .accessibility-criteria {
-            background: #f0f9ff;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
-        }
-
-        .accessibility-criteria h4 {
-            color: #1e40af;
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .accessibility-criteria ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        .accessibility-criteria li {
-            font-size: 0.8rem;
-            color: #374151;
-            padding: 0.2rem 0;
-            padding-left: 1rem;
-            position: relative;
-        }
-
-        .accessibility-criteria li:before {
-            content: "•";
-            color: #3b82f6;
-            font-weight: bold;
-            position: absolute;
-            left: 0;
-        }
-
         .no-features-found {
             color: #6b7280;
             font-style: italic;
@@ -1216,47 +687,117 @@
             border: 2px dashed #d1d5db;
         }
 
-        .summary-section {
-            background: white;
-            border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-
-        .summary-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #333;
-            margin-bottom: 1rem;
-        }
-
-        /* NEW: Property info in summary */
-        .property-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 1.5rem;
+        /* ========== DIMENSIONS ========== */
+        .dimension-transport-wrapper {
+            background: #f8fafc;
             border-radius: 12px;
-            margin-bottom: 1.5rem;
+            padding: 1rem;
+            margin: 1rem 0;
         }
 
-        .property-title {
-            font-size: 1.3rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
+        .dimension-transport-section {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 0 8px 8px 0;
         }
 
-        .property-price {
-            font-size: 1.1rem;
-            opacity: 0.9;
+        .dimension-section-header {
             font-weight: 600;
+            color: #1e40af;
+            font-size: 0.9rem;
+            margin-bottom: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .summary-text {
-            font-size: 1.1rem;
-            line-height: 1.7;
-            color: #555;
+        .dimension-size-display {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
+        .dimension-primary-size {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1e40af;
+            line-height: 1;
+        }
+
+        .dimension-secondary-size {
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            background: #e5e7eb;
+            padding: 2px 8px;
+            border-radius: 12px;
+        }
+
+        .dimension-room-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+        }
+
+        .dimension-room-icon {
+            font-size: 14px;
+            width: 18px;
+            display: flex;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .dimension-room-text {
+            font-size: 14px;
+            color: #374151;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .dimension-detailed-room {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 8px 12px;
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 6px;
+            margin-bottom: 6px;
+            gap: 4px;
+        }
+
+        .dimension-room-name {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+            color: #1e40af;
+            text-transform: capitalize;
+            font-size: 13px;
+            width: 100%;
+        }
+
+        .dimension-room-measure {
+            color: #6b7280;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: right;
+            align-self: flex-end;
+            margin-top: 2px;
+        }
+
+        .dimension-no-data {
+            color: #6b7280;
+            font-style: italic;
+            font-size: 13px;
+            padding: 8px 0;
+            text-align: center;
+        }
+
+        /* ========== ERROR ========== */
         .error {
             background: #fee2e2;
             border: 1px solid #fecaca;
@@ -1266,562 +807,515 @@
             margin: 1rem 0;
         }
 
-            /* ========== AUTH STYLES ========== */
-            .auth-container {
-                position: absolute;
-                top: 20px;
-                right: 20px;
-                z-index: 1000;
-            }
-
-            .auth-btn {
-                background: #2563eb;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 8px;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 500;
-            }
-
-            .auth-btn:hover {
-                background: #1d4ed8;
-            }
-
-            .user-menu {
-                position: relative;
-            }
-
-            .user-email {
-                font-weight: 600;
-                color: #1f2937;
-                padding: 12px 16px;
-                cursor: pointer;
-                border-radius: 8px;
-                background: white;
-                box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                display: inline-block;
-            }
-
-            .user-menu-dropdown {
-                visibility: hidden;
-                opacity: 0;
-                position: absolute;
-                top: calc(100% - 5px);
-                right: 0;
-                background: white;
-                border-radius: 12px;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                padding: 8px;
-                min-width: 250px;
-                z-index: 1001;
-                transition: opacity 0.2s, visibility 0.2s;
-                padding-top: 15px;
-            }
-
-            .user-menu:hover .user-menu-dropdown {
-                visibility: visible;
-                opacity: 1;
-            }
-
-            .user-menu-item {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-                padding: 12px 15px;
-                border-radius: 8px;
-                cursor: pointer;
-                color: #4b5563;
-                transition: background 0.2s;
-                font-size: 14px;
-                font-weight: 500;
-            }
-
-            .user-menu-item:hover {
-                background: #f3f4f6;
-                color: #1f2937;
-            }
-
-            /* Saved Properties Panel */
-            .saved-panel {
-                position: fixed;
-                top: 0;
-                right: -420px;
-                width: 400px;
-                max-width: 90vw;
-                height: 100vh;
-                background: white;
-                box-shadow: -4px 0 20px rgba(0,0,0,0.15);
-                z-index: 2000;
-                transition: right 0.3s ease;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .saved-panel.open {
-                right: 0;
-            }
-
-            .saved-panel-header {
-                padding: 20px;
-                border-bottom: 1px solid #e5e7eb;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-            }
-
-            .saved-panel-header h2 {
-                margin: 0;
-                font-size: 1.25rem;
-            }
-
-            .saved-panel-close {
-                background: rgba(255,255,255,0.2);
-                border: none;
-                color: white;
-                width: 36px;
-                height: 36px;
-                border-radius: 50%;
-                cursor: pointer;
-                font-size: 1.25rem;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-
-            .saved-panel-close:hover {
-                background: rgba(255,255,255,0.3);
-            }
-
-            .saved-panel-content {
-                flex: 1;
-                overflow-y: auto;
-                padding: 16px;
-            }
-
-            .saved-property-card {
-                background: #f9fafb;
-                border-radius: 12px;
-                padding: 16px;
-                margin-bottom: 12px;
-                border: 1px solid #e5e7eb;
-                transition: all 0.2s;
-            }
-
-            .saved-property-card:hover {
-                border-color: #667eea;
-                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
-            }
-
-            .saved-property-address {
-                font-weight: 600;
-                color: #1f2937;
-                font-size: 0.95rem;
-                margin-bottom: 8px;
-                line-height: 1.4;
-            }
-
-            .saved-property-meta {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 12px;
-            }
-
-            .saved-property-score {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                font-weight: 600;
-                color: #667eea;
-            }
-
-            .saved-property-date {
-                font-size: 0.8rem;
-                color: #6b7280;
-            }
-
-            .saved-property-price {
-                font-size: 1.1rem;
-                font-weight: 700;
-                color: #059669;
-                margin-bottom: 12px;
-            }
-
-            .saved-property-actions {
-                display: flex;
-                gap: 8px;
-            }
-
-            .saved-btn-view {
-                flex: 1;
-                padding: 10px 16px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                font-size: 0.9rem;
-                font-weight: 500;
-            }
-
-            .saved-btn-view:hover {
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-            }
-
-            .saved-btn-remove {
-                padding: 10px 14px;
-                background: #fee2e2;
-                color: #dc2626;
-                border: none;
-                border-radius: 8px;
-                cursor: pointer;
-                font-size: 0.9rem;
-            }
-
-            .saved-btn-remove:hover {
-                background: #fecaca;
-            }
-
-            .saved-empty {
-                text-align: center;
-                padding: 40px 20px;
-                color: #6b7280;
-            }
-
-            .saved-empty-icon {
-                font-size: 3rem;
-                margin-bottom: 16px;
-            }
-
-            .saved-empty h3 {
-                color: #374151;
-                margin-bottom: 8px;
-            }
-
-            .saved-panel-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.3);
-                z-index: 1999;
-                opacity: 0;
-                visibility: hidden;
-                transition: opacity 0.3s, visibility 0.3s;
-            }
-
-            .saved-panel-overlay.open {
-                opacity: 1;
-                visibility: visible;
-            }
-
-            .saved-loading {
-                text-align: center;
-                padding: 40px 20px;
-                color: #6b7280;
-            }
-
-            .saved-loading .spinner {
-                width: 40px;
-                height: 40px;
-                margin: 0 auto 16px;
-            }
-
-            /* Search History Panel - reuses saved panel styles */
-            .history-panel {
-                position: fixed;
-                top: 0;
-                right: -420px;
-                width: 400px;
-                max-width: 90vw;
-                height: 100vh;
-                background: white;
-                box-shadow: -4px 0 20px rgba(0,0,0,0.15);
-                z-index: 2000;
-                transition: right 0.3s ease;
-                display: flex;
-                flex-direction: column;
-            }
-
-            .history-panel.open {
-                right: 0;
-            }
-
-            .history-panel-header {
-                padding: 20px;
-                border-bottom: 1px solid #e5e7eb;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-            }
-
-            .history-panel-header h2 {
-                margin: 0;
-                font-size: 1.25rem;
-            }
-
-            .history-property-card {
-                background: #f9fafb;
-                border-radius: 12px;
-                padding: 16px;
-                margin-bottom: 12px;
-                border: 1px solid #e5e7eb;
-                transition: all 0.2s;
-            }
-
-            .history-property-card:hover {
-                border-color: #667eea;
-                box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
-            }
-
-            .history-property-address {
-                font-weight: 600;
-                color: #1f2937;
-                font-size: 0.95rem;
-                margin-bottom: 4px;
-            }
-
-            .history-property-date {
-                font-size: 0.8rem;
-                color: #6b7280;
-                margin-bottom: 12px;
-            }
-
-            /* Team Panel */
-            .team-header {
-                background: #f0fdf4;
-                border: 1px solid #bbf7d0;
-                border-radius: 12px;
-                padding: 16px;
-                margin-bottom: 16px;
-            }
-
-            .team-name {
-                font-size: 1.25rem;
-                font-weight: 700;
-                color: #166534;
-                margin-bottom: 4px;
-            }
-
-            .team-status {
-                font-size: 0.85rem;
-                color: #15803d;
-            }
-
-            .team-section-title {
-                font-weight: 600;
-                color: #374151;
-                margin: 20px 0 12px 0;
-                font-size: 0.9rem;
-            }
-
-            .team-member-card {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                background: #f9fafb;
-                border-radius: 8px;
-                padding: 12px;
-                margin-bottom: 8px;
-                border: 1px solid #e5e7eb;
-            }
-
-            .team-member-info {
-                flex: 1;
-            }
-
-            .team-member-email {
-                font-weight: 500;
-                color: #1f2937;
-                font-size: 0.9rem;
-            }
-
-            .team-member-role {
-                font-size: 0.75rem;
-                color: #6b7280;
-                text-transform: capitalize;
-            }
-
-            .team-member-remove {
-                background: #fee2e2;
-                color: #dc2626;
-                border: none;
-                padding: 6px 10px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 0.8rem;
-            }
-
-            .team-member-remove:hover {
-                background: #fecaca;
-            }
-
-            .team-invite-form {
-                display: flex;
-                gap: 8px;
-                margin-top: 12px;
-            }
-
-            .team-invite-input {
-                flex: 1;
-                padding: 10px 12px;
-                border: 1px solid #d1d5db;
-                border-radius: 8px;
-                font-size: 0.9rem;
-            }
-
-            .team-invite-btn {
-                background: linear-gradient(135deg, #059669 0%, #047857 100%);
-                color: white;
-                border: none;
-                padding: 10px 16px;
-                border-radius: 8px;
-                cursor: pointer;
-                font-weight: 500;
-                font-size: 0.9rem;
-            }
-
-            .team-invite-btn:hover {
-                opacity: 0.9;
-            }
-
-            .team-invite-btn:disabled {
-                background: #9ca3af;
-                cursor: not-allowed;
-            }
-
-            .login-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 2000;
-            }
-
-            .login-box {
-                background: white;
-                padding: 30px;
-                border-radius: 16px;
-                width: 90%;
-                max-width: 400px;
-            }
-
-            .login-box h2 {
-                margin: 0 0 20px 0;
-                color: #1f2937;
-            }
-
-            .login-box input {
-                width: 100%;
-                padding: 12px;
-                border: 1px solid #d1d5db;
-                border-radius: 8px;
-                font-size: 16px;
-                margin-bottom: 15px;
-                box-sizing: border-box;
-            }
-
-            .login-box .btn-primary {
-                width: 100%;
-                padding: 12px;
-                background: #2563eb;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                font-size: 16px;
-                cursor: pointer;
-            }
-
-            .login-box .btn-primary:hover {
-                background: #1d4ed8;
-            }
-
-            .login-box .btn-close {
-                width: 100%;
-                padding: 12px;
-                background: #f3f4f6;
-                color: #4b5563;
-                border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                cursor: pointer;
-                margin-top: 10px;
-            }
-
-            .subscription-badge {
-                display: inline-block;
-                padding: 3px 8px;
-                border-radius: 4px;
-                font-size: 11px;
-                font-weight: 600;
-                margin-left: 8px;
-            }
-
-            .badge-free {
-                background: #e5e7eb;
-                color: #6b7280;
-            }
-
-            .badge-pro {
-                background: #dbeafe;
-                color: #2563eb;
-            }
-
-            .hidden {
-                display: none !important;
-            }
-            /* ========== END AUTH STYLES ========== */
-
-            /* Save Property Button */
-            .save-property-btn {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                padding: 12px 20px;
-                border-radius: 8px;
-                font-size: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                transition: all 0.2s;
-                border: none;
-                margin-top: 15px;
-            }
-
-            .save-property-btn.save {
-                background: #fef3c7;
-                color: #92400e;
-            }
-
-            .save-property-btn.save:hover {
-                background: #fde68a;
-            }
-
-            .save-property-btn.saved {
-                background: #d1fae5;
-                color: #065f46;
-            }
-
-            .save-property-btn.saved:hover {
-                background: #a7f3d0;
-            }
-
-            .save-property-btn:disabled {
-                opacity: 0.5;
-                cursor: not-allowed;
-            }
+        /* ========== AUTH STYLES ========== */
+        .auth-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+
+        .auth-btn {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .auth-btn:hover {
+            background: #1d4ed8;
+        }
+
+        .user-menu {
+            position: relative;
+        }
+
+        .user-email {
+            font-weight: 600;
+            color: #1f2937;
+            padding: 12px 16px;
+            cursor: pointer;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: inline-block;
+        }
+
+        .user-menu-dropdown {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            top: calc(100% - 5px);
+            right: 0;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 8px;
+            min-width: 250px;
+            z-index: 1001;
+            transition: opacity 0.2s, visibility 0.2s;
+            padding-top: 15px;
+        }
+
+        .user-menu:hover .user-menu-dropdown {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .user-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #4b5563;
+            transition: background 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .user-menu-item:hover {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        /* ========== PANELS (Saved, History, Team) ========== */
+        .saved-panel,
+        .history-panel {
+            position: fixed;
+            top: 0;
+            right: -420px;
+            width: 400px;
+            max-width: 90vw;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+            z-index: 2000;
+            transition: right 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .saved-panel.open,
+        .history-panel.open {
+            right: 0;
+        }
+
+        .saved-panel-header,
+        .history-panel-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8a 100%);
+            color: white;
+        }
+
+        .saved-panel-header h2,
+        .history-panel-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .saved-panel-close {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .saved-panel-close:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .saved-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .saved-property-card,
+        .history-property-card {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s;
+        }
+
+        .saved-property-card:hover,
+        .history-property-card:hover {
+            border-color: #1e3a5f;
+            box-shadow: 0 2px 8px rgba(30, 58, 95, 0.15);
+        }
+
+        .saved-property-address,
+        .history-property-address {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 0.95rem;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .saved-property-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .saved-property-score {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            color: #1e3a5f;
+        }
+
+        .saved-property-date,
+        .history-property-date {
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+
+        .saved-property-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #059669;
+            margin-bottom: 12px;
+        }
+
+        .saved-property-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .saved-btn-view {
+            flex: 1;
+            padding: 10px 16px;
+            background: #e8985e;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .saved-btn-view:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(232, 152, 94, 0.3);
+        }
+
+        .saved-btn-remove {
+            padding: 10px 14px;
+            background: #fee2e2;
+            color: #dc2626;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .saved-btn-remove:hover {
+            background: #fecaca;
+        }
+
+        .saved-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+
+        .saved-empty-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .saved-empty h3 {
+            color: #374151;
+            margin-bottom: 8px;
+        }
+
+        .saved-panel-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 1999;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        .saved-panel-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .saved-loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+        }
+
+        .saved-loading .spinner {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 16px;
+        }
+
+        /* Team Panel */
+        .team-header {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .team-name {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #166534;
+            margin-bottom: 4px;
+        }
+
+        .team-status {
+            font-size: 0.85rem;
+            color: #15803d;
+        }
+
+        .team-section-title {
+            font-weight: 600;
+            color: #374151;
+            margin: 20px 0 12px 0;
+            font-size: 0.9rem;
+        }
+
+        .team-member-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .team-member-info {
+            flex: 1;
+        }
+
+        .team-member-email {
+            font-weight: 500;
+            color: #1f2937;
+            font-size: 0.9rem;
+        }
+
+        .team-member-role {
+            font-size: 0.75rem;
+            color: #6b7280;
+            text-transform: capitalize;
+        }
+
+        .team-member-remove {
+            background: #fee2e2;
+            color: #dc2626;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .team-member-remove:hover {
+            background: #fecaca;
+        }
+
+        .team-invite-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .team-invite-input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .team-invite-btn {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .team-invite-btn:hover {
+            opacity: 0.9;
+        }
+
+        .team-invite-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* Login Modal */
+        .login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .login-box h2 {
+            margin: 0 0 20px 0;
+            color: #1f2937;
+        }
+
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+
+        .login-box .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .login-box .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .login-box .btn-close {
+            width: 100%;
+            padding: 12px;
+            background: #f3f4f6;
+            color: #4b5563;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .subscription-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .badge-free {
+            background: #e5e7eb;
+            color: #6b7280;
+        }
+
+        .badge-pro {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Save Property Button */
+        .save-property-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            margin-top: 15px;
+        }
+
+        .save-property-btn.save {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .save-property-btn.save:hover {
+            background: #fde68a;
+        }
+
+        .save-property-btn.saved {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .save-property-btn.saved:hover {
+            background: #a7f3d0;
+        }
+
+        .save-property-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 1024px) {
+            .results-layout {
+                grid-template-columns: 1fr;
+            }
+        }
 
         @media (max-width: 768px) {
             .container {
@@ -1843,7 +1337,25 @@
             .overall-score {
                 font-size: 3rem;
             }
+            
+            .dimension-size-display {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+            
+            .dimension-primary-size {
+                font-size: 20px;
+            }
+        }
 
+        @media (max-width: 480px) {
+            .tooltip .tooltiptext {
+                width: 250px;
+                margin-left: -125px;
+                font-size: 11px;
+                padding: 10px;
+            }
         }
     </style>
 </head>
@@ -1952,165 +1464,219 @@
         </div>
 
         <div class="results" id="results">
-            <!-- NEW: Property info + Map side by side -->
-            <div class="property-header-container">
-                <div class="property-info">
-                    <div class="property-text-section">
-                        <div class="property-location" id="propertyLocation"></div>
-                        <div class="property-title" id="propertyTitle"></div>
-                        <div class="property-price" id="propertyPrice"></div>
-                    </div>
-                    <img id="propertyImage" class="property-main-image" style="display: none;" alt="Property image">
-                </div>
-                
-                <div class="map-card">
-                    <div class="map-title">
-                        <span>📍</span>
-                        <span>Location & Amenities</span>
-                    </div>
-                    <img id="mapImage" class="map-image" alt="Property location map" style="display: none;">
-                    <div class="map-legend">
-                        <div class="legend-item">
-                            <div class="legend-marker marker-property">H</div>
-                            <span>Property</span>
+            <div class="results-layout">
+                <!-- Left Column - Main Content -->
+                <div class="results-main">
+                    <!-- Property Card -->
+                    <div class="property-card">
+                        <div class="property-text-section">
+                            <div class="property-location" id="propertyLocation"></div>
+                            <div class="property-title" id="propertyTitle"></div>
+                            <div class="property-price" id="propertyPrice"></div>
+                            <button id="savePropertyBtn" class="save-property-btn save" onclick="toggleSaveProperty()">☆ Save Property</button>
                         </div>
-                        <div class="legend-item">
-                            <div class="legend-marker marker-gp">GP</div>
-                            <span>Nearest GP</span>
+                        <img id="propertyImage" class="property-main-image" style="display: none;" alt="Property image">
+                    </div>
+
+                    <!-- Score cards (stacked) -->
+                    <div class="detailed-scores">
+                        <div class="score-card">
+                            <div class="score-header">
+                                <span class="score-icon">🏥</span>
+                                <span class="score-title">GP Proximity</span>
+                                <span class="tooltip">
+                                    <span class="info-icon">i</span>
+                                    <span class="tooltiptext">
+                                        <strong>GP Proximity Scoring (0-5)</strong><br><br>
+                                        • 5 (Excellent): ≤5 mins<br>
+                                        • 4 (Very Good): ≤10 mins<br>
+                                        • 3 (Good): ≤15 mins<br>
+                                        • 2 (Fair): ≤20 mins<br>
+                                        • 1 (Poor): ≤25 mins<br>
+                                        • 0 (Very Poor): >25 mins<br><br>
+                                        Walking times include 40% adjustment for mobility considerations.
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="score-value" id="gpScore"></div>
+                            <div class="score-description" id="gpDescription"></div>
+                            <div class="score-details" id="gpDetails"></div>
                         </div>
-                        <div class="legend-item">
-                            <div class="legend-marker marker-bus">B</div>
-                            <span>Bus Stop</span>
+
+                        <div class="score-card">
+                            <div class="score-header">
+                                <span class="score-icon">⚡</span>
+                                <span class="score-title">Energy Efficiency</span>
+                                <span class="tooltip">
+                                    <span class="info-icon">i</span>
+                                    <span class="tooltiptext">
+                                        <strong>Energy Efficiency Scoring</strong><br><br>
+                                        Based on the internationally used EPC scale from A to G:<br>
+                                        • A/B = Excellent (most efficient)<br>
+                                        • C = Good<br>
+                                        • D = Average<br>
+                                        • E = Below Average<br>
+                                        • F/G = Poor (least efficient)<br><br>
+                                        Energy efficiency affects running costs and environmental impact.
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="score-value" id="epcScore"></div>
+                            <div class="score-description" id="epcDescription"></div>
+                            <div class="score-details" id="epcDetails"></div>
                         </div>
-                        <div class="legend-item">
-                            <div class="legend-marker marker-train">T</div>
-                            <span>Train Station</span>
+
+                        <div class="score-card">
+                            <div class="score-header">
+                                <span class="score-icon">🏠</span>
+                                <span class="score-title">Accessible Features</span>
+                                <span class="tooltip">
+                                    <span class="info-icon">i</span>
+                                    <span class="tooltiptext">
+                                        <strong>Accessible Features (8 criteria)</strong><br><br>
+                                        Scored out of 8 features, converted to 0-5 scale:<br>
+                                        1. Step-free internal access OR lift*<br>
+                                        2. Downstairs bedroom<br>
+                                        3. Downstairs bathroom/WC<br>
+                                        4. Ground floor entry<br>
+                                        5. Off-street/private parking<br>
+                                        6. Garden access<br>
+                                        7. Balcony/terrace/patio<br>
+                                        8. External level/ramp access<br><br>
+                                        *Multi-level properties score for having a lift/stairlift. Single-level properties automatically score for step-free access.
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="score-value" id="accessibleFeaturesScore"></div>
+                            <div class="score-description" id="accessibleFeaturesDescription"></div>
+                            <div class="score-details" id="accessibleFeaturesDetails"></div>
+                        </div>
+
+                        <div class="score-card">
+                            <div class="score-header">
+                                <span class="score-icon">🚌</span>
+                                <span class="score-title">Public Transport</span>
+                                <span class="tooltip">
+                                    <span class="info-icon">i</span>
+                                    <span class="tooltiptext">
+                                        <strong>Public Transport Scoring (0-5)</strong><br><br>
+                                        Based on nearest bus stop walking time:<br>
+                                        • 5 (Excellent): ≤5 mins<br>
+                                        • 4 (Very Good): ≤10 mins<br>
+                                        • 3 (Good): ≤15 mins<br>
+                                        • 2 (Fair): ≤20 mins<br>
+                                        • 1 (Poor): ≤25 mins<br>
+                                        • 0 (Very Poor): >25 mins<br><br>
+                                        Train station information shown for reference only.
+                                    </span>
+                                </span>
+                            </div>
+                            <div class="score-value" id="publicTransportScore"></div>
+                            <div class="score-description" id="publicTransportDescription"></div>
+                            <div class="score-details" id="publicTransportDetails"></div>
+                        </div>
+
+                        <div id="dimensionsCard" class="score-card" style="display: none;"></div>
+                        <div id="costCard" class="score-card" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- Right Column - Sidebar -->
+                <aside class="results-sidebar">
+                    <!-- Overall Score -->
+                    <div class="score-overview">
+                        <div class="overall-score" id="overallScore"></div>
+                        <div class="score-label">
+                            Overall Accessibility Score
+                            <span class="tooltip">
+                                <span class="info-icon" style="font-size: 14px;">i</span>
+                                <span class="tooltiptext">
+                                    <strong>How Overall Score Works</strong><br><br>
+                                    Features are combined to produce an overall score ranging from 0 to 5.<br><br>
+                                    Only information within the property listing is used for scoring. Where information is missing, it is advised to ASK AGENT.<br><br>
+                                    Where information is unavailable, that feature will not score and will not affect the overall score. This ensures properties aren't penalised for missing data.
+                                </span>
+                            </span>
+                        </div>
+                        <div class="star-rating" id="starRating"></div>
+                        
+                        <!-- Mini Score Breakdown -->
+                        <div class="score-breakdown" id="scoreBreakdown">
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">
+                                    <span class="breakdown-icon">🏥</span>
+                                    GP Proximity
+                                </span>
+                                <span class="breakdown-score" id="miniGpScore">-</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">
+                                    <span class="breakdown-icon">⚡</span>
+                                    Energy
+                                </span>
+                                <span class="breakdown-score" id="miniEpcScore">-</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">
+                                    <span class="breakdown-icon">🏠</span>
+                                    Accessibility
+                                </span>
+                                <span class="breakdown-score" id="miniAccessScore">-</span>
+                            </div>
+                            <div class="breakdown-item">
+                                <span class="breakdown-label">
+                                    <span class="breakdown-icon">🚌</span>
+                                    Transport
+                                </span>
+                                <span class="breakdown-score" id="miniTransportScore">-</span>
+                            </div>
+                            <div class="breakdown-item" id="miniRoomsRow" style="display: none;">
+                                <span class="breakdown-label">
+                                    <span class="breakdown-icon">🛏️</span>
+                                    Rooms
+                                </span>
+                                <span class="breakdown-score" id="miniRoomsScore">-</span>
+                            </div>
+                            <div class="breakdown-item" id="miniCostsRow" style="display: none;">
+                                <span class="breakdown-label">
+                                    <span class="breakdown-icon">💷</span>
+                                    Costs
+                                </span>
+                                <span class="breakdown-score" id="miniCostsScore">-</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-            <!-- Score overview (keep as is) -->
-            <div class="score-overview">
-                <div class="overall-score" id="overallScore"></div>
-                <div class="score-label">
-                    Overall Accessibility Score
-                    <span class="tooltip">
-                        <span class="info-icon" style="font-size: 14px;">i</span>
-                        <span class="tooltiptext">
-                            <strong>How Overall Score Works</strong><br><br>
-                            Features are combined to produce an overall score ranging from 0 to 5.<br><br>
-                            Only information within the property listing is used for scoring. Where information is missing, it is advised to ASK AGENT.<br><br>
-                            Where information is unavailable, that feature will not score and will not affect the overall score. This ensures properties aren't penalised for missing data.
-                        </span>
-                    </span>
-                </div>
-                <div class="star-rating" id="starRating"></div>
-            </div>
 
-
-
-            <!-- Score cards (scrollable) -->
-            <div class="detailed-scores">
-                <div class="score-card">
-                    <div class="score-header">
-                        <span class="score-icon">🏥</span>
-                        <span class="score-title">GP Proximity</span>
-                        <span class="tooltip">
-                            <span class="info-icon">i</span>
-                            <span class="tooltiptext">
-                                <strong>GP Proximity Scoring (0-5)</strong><br><br>
-                                • 5 (Excellent): ≤5 mins<br>
-                                • 4 (Very Good): ≤10 mins<br>
-                                • 3 (Good): ≤15 mins<br>
-                                • 2 (Fair): ≤20 mins<br>
-                                • 1 (Poor): ≤25 mins<br>
-                                • 0 (Very Poor): >25 mins<br><br>
-                                Walking times include 40% adjustment for mobility considerations.
-                            </span>
-                        </span>
+                    <!-- Map -->
+                    <div class="map-card">
+                        <div class="map-title">
+                            <span>📍</span>
+                            <span>Location & Amenities</span>
+                        </div>
+                        <img id="mapImage" class="map-image" alt="Property location map" style="display: none;">
+                        <div class="map-legend">
+                            <div class="legend-item">
+                                <div class="legend-marker marker-property">H</div>
+                                <span>Property</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker marker-gp">GP</div>
+                                <span>Nearest GP</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker marker-bus">B</div>
+                                <span>Bus Stop</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-marker marker-train">T</div>
+                                <span>Train Station</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="score-value" id="gpScore"></div>
-                    <div class="score-description" id="gpDescription"></div>
-                    <div class="score-details" id="gpDetails"></div>
-                </div>
-
-                <div class="score-card">
-                    <div class="score-header">
-                        <span class="score-icon">⚡</span>
-                        <span class="score-title">Energy Efficiency</span>
-                        <span class="tooltip">
-                            <span class="info-icon">i</span>
-                            <span class="tooltiptext">
-                                <strong>Energy Efficiency Scoring</strong><br><br>
-                                Based on the internationally used EPC scale from A to G:<br>
-                                • A/B = Excellent (most efficient)<br>
-                                • C = Good<br>
-                                • D = Average<br>
-                                • E = Below Average<br>
-                                • F/G = Poor (least efficient)<br><br>
-                                Energy efficiency affects running costs and environmental impact.
-                            </span>
-                        </span>
-                    </div>
-                    <div class="score-value" id="epcScore"></div>
-                    <div class="score-description" id="epcDescription"></div>
-                    <div class="score-details" id="epcDetails"></div>
-                </div>
-
-                <div class="score-card">
-                    <div class="score-header">
-                        <span class="score-icon">🏠</span>
-                        <span class="score-title">Accessible Features</span>
-                        <span class="tooltip">
-                            <span class="info-icon">i</span>
-                            <span class="tooltiptext">
-                                <strong>Accessible Features (8 criteria)</strong><br><br>
-                                Scored out of 8 features, converted to 0-5 scale:<br>
-                                1. Step-free internal access OR lift*<br>
-                                2. Downstairs bedroom<br>
-                                3. Downstairs bathroom/WC<br>
-                                4. Ground floor entry<br>
-                                5. Off-street/private parking<br>
-                                6. Garden access<br>
-                                7. Balcony/terrace/patio<br>
-                                8. External level/ramp access<br><br>
-                                *Multi-level properties score for having a lift/stairlift. Single-level properties automatically score for step-free access.
-                            </span>
-                        </span>
-                    </div>
-                    <div class="score-value" id="accessibleFeaturesScore"></div>
-                    <div class="score-description" id="accessibleFeaturesDescription"></div>
-                    <div class="score-details" id="accessibleFeaturesDetails"></div>
-                </div>
-
-                <div class="score-card">
-                    <div class="score-header">
-                        <span class="score-icon">🚌</span>
-                        <span class="score-title">Public Transport</span>
-                        <span class="tooltip">
-                            <span class="info-icon">i</span>
-                            <span class="tooltiptext">
-                                <strong>Public Transport Scoring (0-5)</strong><br><br>
-                                Based on nearest bus stop walking time:<br>
-                                • 5 (Excellent): ≤5 mins<br>
-                                • 4 (Very Good): ≤10 mins<br>
-                                • 3 (Good): ≤15 mins<br>
-                                • 2 (Fair): ≤20 mins<br>
-                                • 1 (Poor): ≤25 mins<br>
-                                • 0 (Very Poor): >25 mins<br><br>
-                                Train station information shown for reference only.
-                            </span>
-                        </span>
-                    </div>
-                    <div class="score-value" id="publicTransportScore"></div>
-                    <div class="score-description" id="publicTransportDescription"></div>
-                    <div class="score-details" id="publicTransportDetails"></div>
-                </div>
-
-                <div id="dimensionsCard" class="score-card" style="display: none;"></div>
-                <div id="costCard" class="score-card" style="display: none;"></div>
+                </aside>
             </div>
             
+            <!-- Summary - Full width at bottom -->
             <div class="summary-section">
                 <div class="summary-title">📋 Summary & Recommendations</div>
                 <div class="summary-text" id="summaryText"></div>
@@ -2248,6 +1814,77 @@
                 saveBtn.onclick = toggleSaveProperty;
                 
                 document.querySelector('.property-text-section')?.prepend(saveBtn);
+            }
+            
+            updateMiniScores(analysis);
+        }
+
+        function updateMiniScores(analysis) {
+            function getScoreClass(score) {
+                if (score === null || score === undefined || score === '-') return 'na';
+                const num = parseFloat(score);
+                if (num >= 4.5) return 'excellent';
+                if (num >= 3.5) return 'very-good';
+                if (num >= 2.5) return 'good';
+                if (num >= 1.5) return 'fair';
+                return 'poor';
+            }
+            
+            function formatScore(score) {
+                if (score === null || score === undefined) return '-';
+                return typeof score === 'number' ? score.toFixed(1) : score;
+            }
+            
+            // GP Score
+            const gpScore = analysis.gpProximity?.score;
+            const miniGp = document.getElementById('miniGpScore');
+            if (miniGp) {
+                miniGp.textContent = formatScore(gpScore);
+                miniGp.className = 'breakdown-score ' + getScoreClass(gpScore);
+            }
+            
+            // EPC Score
+            const epcScore = analysis.epcRating?.score;
+            const miniEpc = document.getElementById('miniEpcScore');
+            if (miniEpc) {
+                miniEpc.textContent = formatScore(epcScore);
+                miniEpc.className = 'breakdown-score ' + getScoreClass(epcScore);
+            }
+            
+            // Accessibility Score
+            const accessScore = analysis.accessibleFeatures?.score;
+            const miniAccess = document.getElementById('miniAccessScore');
+            if (miniAccess) {
+                miniAccess.textContent = formatScore(accessScore);
+                miniAccess.className = 'breakdown-score ' + getScoreClass(accessScore);
+            }
+            
+            // Transport Score
+            const transportScore = analysis.publicTransport?.score;
+            const miniTransport = document.getElementById('miniTransportScore');
+            if (miniTransport) {
+                miniTransport.textContent = formatScore(transportScore);
+                miniTransport.className = 'breakdown-score ' + getScoreClass(transportScore);
+            }
+            
+            // Rooms Score (if exists)
+            const roomsScore = analysis.roomAccommodation?.score;
+            const miniRoomsRow = document.getElementById('miniRoomsRow');
+            const miniRooms = document.getElementById('miniRoomsScore');
+            if (miniRoomsRow && miniRooms && roomsScore !== null && roomsScore !== undefined) {
+                miniRoomsRow.style.display = 'flex';
+                miniRooms.textContent = formatScore(roomsScore);
+                miniRooms.className = 'breakdown-score ' + getScoreClass(roomsScore);
+            }
+            
+            // Costs Score (if exists)
+            const costsScore = analysis.cost?.score;
+            const miniCostsRow = document.getElementById('miniCostsRow');
+            const miniCosts = document.getElementById('miniCostsScore');
+            if (miniCostsRow && miniCosts && costsScore !== null && costsScore !== undefined) {
+                miniCostsRow.style.display = 'flex';
+                miniCosts.textContent = formatScore(costsScore);
+                miniCosts.className = 'breakdown-score ' + getScoreClass(costsScore);
             }
         }
 
