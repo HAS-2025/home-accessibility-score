@@ -14,7 +14,7 @@
 
         body {
             font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a8a 100%);
+            background: #f5f3ef;
             min-height: 100vh;
             color: #333;
         }
@@ -158,40 +158,41 @@
             gap: 24px;
         }
 
-        /* 2. MINI SCORE BREAKDOWN - add this new section */
+        /* Mini Score Breakdown */
         .score-breakdown {
-            margin-top: 1.5rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid rgba(255,255,255,0.2);
+            margin-top: 0;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.15);
         }
 
         .breakdown-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .breakdown-item:last-child {
-            border-bottom: none;
+            padding: 10px 0;
         }
 
         .breakdown-label {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             font-size: 0.9rem;
-            color: rgba(255,255,255,0.85);
+            color: rgba(255,255,255,0.9);
         }
 
-        .breakdown-icon {
+        .breakdown-icon-box {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 1rem;
         }
 
         .breakdown-score {
             font-family: 'Fraunces', serif;
-            font-size: 1.1rem;
+            font-size: 1.25rem;
             font-weight: 700;
             color: white;
         }
@@ -216,41 +217,91 @@
             background: white;
             border-radius: 20px;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e5e2dc;
         }
 
-        .property-card .property-text-section {
-            padding: 24px;
-            text-align: center;
+        .property-image-section {
+            position: relative;
+            background: #f0ede8;
+            min-height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .property-card .property-main-image {
+        .property-main-image {
             width: 100%;
-            max-height: 350px;
-            object-fit: contain;
-            background: white;
-            padding: 1rem;
+            max-height: 400px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .property-image-placeholder {
+            text-align: center;
+            color: #9ca3af;
+        }
+
+        .placeholder-icon {
+            font-size: 4rem;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .placeholder-text {
+            font-size: 1rem;
+            font-style: italic;
+        }
+
+        .property-card .save-property-btn {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 10;
+        }
+
+        .property-text-section {
+            padding: 24px;
         }
 
         .property-location {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
             color: #1e3a5f;
-            margin-bottom: 0.5rem;
+            margin-bottom: 8px;
         }
 
-        .property-title {
-            font-size: 1.4rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 0.5rem;
+        .property-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-bottom: 16px;
+            font-size: 0.95rem;
+            color: #6b7280;
+        }
+
+        .property-detail-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .property-price-row {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
         }
 
         .property-price {
             font-family: 'Fraunces', serif;
-            font-size: 1.5rem;
+            font-size: 1.75rem;
             font-weight: 700;
             color: #1e3a5f;
+        }
+
+        .property-tenure {
+            font-size: 1rem;
+            color: #9ca3af;
         }
 
         /* ========== SCORE OVERVIEW (Sidebar) ========== */
@@ -258,23 +309,81 @@
             background: linear-gradient(135deg, #1e3a5f, #0f2744);
             border-radius: 20px;
             padding: 28px;
-            text-align: center;
             box-shadow: 0 10px 40px rgba(0,0,0,0.15);
             color: white;
+            position: relative;
         }
 
-        .overall-score {
+        .score-overview-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 20px;
+        }
+
+        .score-overview-main {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .score-overview .score-overview-tooltip {
+            position: absolute;
+            top: 28px;
+            right: 28px;
+            margin-left: 0;
+        }
+
+        .score-circle {
+            width: 100px;
+            height: 100px;
+            border: 4px solid #e8985e;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .score-circle-number {
             font-family: 'Fraunces', serif;
-            font-size: 4rem;
+            font-size: 2.5rem;
             font-weight: 700;
             color: white;
-            margin-bottom: 0.5rem;
+            line-height: 1;
         }
 
-        .score-label {
-            font-size: 1.1rem;
-            color: rgba(255,255,255,0.85);
-            margin-bottom: 1rem;
+        .score-circle-subtitle {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 2px;
+        }
+
+        .score-overview-text {
+            flex: 1;
+        }
+
+        .score-rating-text {
+            font-family: 'Fraunces', serif;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .score-rating-subtitle {
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+        }
+
+        /* Star Rating in score overview */
+        .score-overview .star-rating {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
         }
 
         /* Star Rating */
@@ -310,6 +419,77 @@
             color: rgba(232, 152, 94, 0.3);
         }
 
+        /* EPC Display */
+        .epc-display {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 16px;
+        }
+
+        .epc-letter-box {
+            width: 80px;
+            height: 80px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .epc-letter {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .epc-info {
+            flex: 1;
+        }
+
+        .epc-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .epc-description {
+            font-size: 0.9rem;
+            color: #6b7280;
+            line-height: 1.5;
+        }
+
+        .epc-scale {
+            display: flex;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .epc-scale-bar {
+            flex: 1;
+            height: 8px;
+            border-radius: 4px;
+            opacity: 0.4;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+
+        .epc-scale-bar.active {
+            opacity: 1;
+            transform: scaleY(1.5);
+        }
+
+        .epc-scale-bar.epc-a { background: #00845a; }
+        .epc-scale-bar.epc-b { background: #2ba84a; }
+        .epc-scale-bar.epc-c { background: #8cc63f; }
+        .epc-scale-bar.epc-d { background: #ffce18; }
+        .epc-scale-bar.epc-e { background: #f6a600; }
+        .epc-scale-bar.epc-f { background: #f06400; }
+        .epc-scale-bar.epc-g { background: #e40000; }
+
+        /* ========== UPDATED SCORE CARD STYLES ========== */
+        /* Find and REPLACE the existing .score-card and .score-header CSS section with this */
+
         /* ========== SCORE CARDS ========== */
         .detailed-scores {
             display: grid;
@@ -321,55 +501,112 @@
         .score-card {
             background: white;
             border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            transition: transform 0.3s;
+            border: 1px solid #e5e2dc;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .score-card:hover {
-            transform: translateY(-5px);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         }
 
-        /* Blue tab header */
+        /* Blue header with score on right */
         .score-header {
             background: #1e3a5f;
-            color: white;
-            padding: 16px 20px;
-            margin: -2rem -2rem 1.5rem -2rem;
-            border-radius: 20px 20px 0 0;
+            padding: 18px 24px;
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: space-between;
+            gap: 16px;
         }
 
-        .score-header .score-icon {
-            font-size: 1.25rem;
+        .score-header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
 
-        .score-header .score-title {
-            color: white;
-            font-weight: 600;
+        .score-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+        }
+
+        .score-title-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .score-title {
             font-size: 1.1rem;
-            flex: 1;
+            font-weight: 600;
+            color: white;
+            margin: 0;
         }
 
-        .score-header .tooltip .info-icon {
+        .score-subtitle {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 2px;
+        }
+
+        .score-header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .score-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .score-badge.excellent { background: #dcfce7; color: #166534; }
+        .score-badge.very-good { background: #dcfce7; color: #166534; }
+        .score-badge.good { background: #fef9c3; color: #854d0e; }
+        .score-badge.fair { background: #fed7aa; color: #9a3412; }
+        .score-badge.poor { background: #fecaca; color: #991b1b; }
+        .score-badge.na { background: rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); }
+
+        .score-number {
+            font-family: 'Fraunces', serif;
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .score-header .tooltip {
+            margin-left: 0;
+        }
+
+        .score-header .info-icon {
             background: rgba(255,255,255,0.2);
             color: white;
+            width: 22px;
+            height: 22px;
+        }
+
+        .score-header .info-icon:hover {
+            background: rgba(255,255,255,0.3);
         }
 
         .score-header .tooltip .tooltiptext {
             color: #333;
         }
 
-        .score-icon {
-            font-size: 1.5rem;
-        }
-
-        .score-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: #333;
+        .score-body {
+            padding: 24px;
         }
 
         .score-value {
@@ -387,7 +624,8 @@
         .score-value.very-poor { color: #ef4444; }
 
         .score-description {
-            color: #666;
+            color: #4b5563;
+            font-size: 0.95rem;
             line-height: 1.6;
             margin-bottom: 1rem;
         }
@@ -400,20 +638,219 @@
             color: #555;
         }
 
-        /* Score badges */
-        .score-badge {
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            display: inline-block;
+        .score-summary {
+            font-size: 0.95rem;
+            color: #4b5563;
+            line-height: 1.5;
+            margin: 0 0 16px 0;
         }
 
-        .score-badge.excellent { background: #e8f5f0; color: #1d7a5f; }
-        .score-badge.very-good { background: #e8f5f0; color: #2d8a6e; }
-        .score-badge.good { background: #edf7f3; color: #4a9b7f; }
-        .score-badge.fair { background: #fdf6e8; color: #d4a03c; }
-        .score-badge.poor { background: #fdf0ef; color: #c0392b; }
+        /* GP Info Card styling */
+        .gp-info-card {
+            display: flex;
+            gap: 16px;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .gp-icon-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            flex-shrink: 0;
+        }
+
+        .gp-info-content {
+            flex: 1;
+        }
+
+        .gp-info-content .gp-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 1rem;
+            margin-bottom: 4px;
+        }
+
+        .gp-info-content .gp-address {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .gp-stats {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .gp-stat {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            color: #4b5563;
+        }
+
+        .gp-stat strong {
+            color: #1f2937;
+        }
+
+        /* Warning box */
+        .route-warning-box {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            background: #fef3c7;
+            border-radius: 10px;
+            border-left: 4px solid #f59e0b;
+            margin-top: 16px;
+        }
+
+        .route-warning-box .warning-icon {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+
+        .route-warning-box .warning-text {
+            font-size: 0.85rem;
+            color: #92400e;
+            line-height: 1.5;
+        }
+
+        /* Transport section styling */
+        .transport-section {
+            margin-bottom: 20px;
+        }
+
+        .transport-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .transport-section-header {
+            font-weight: 600;
+            color: #1e3a5f;
+            font-size: 0.9rem;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .transport-stop-card {
+            display: flex;
+            gap: 14px;
+            padding: 14px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 10px;
+        }
+
+        .transport-stop-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .transport-icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .transport-icon-circle.bus {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .transport-icon-circle.train {
+            background: #ffedd5;
+            color: #ea580c;
+        }
+
+        .transport-stop-content {
+            flex: 1;
+        }
+
+        .transport-stop-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+
+        .transport-stop-distance {
+            font-size: 0.85rem;
+            color: #059669;
+            font-weight: 500;
+        }
+
+        /* Features grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            background: #f8fafc;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .feature-check {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .feature-check.yes {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .feature-check.no {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .feature-check.unknown {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .feature-text {
+            font-size: 0.9rem;
+            color: #374151;
+        }
+
+        @media (max-width: 600px) {
+            .features-grid {
+                grid-template-columns: 1fr;
+            }
+        }
 
         /* ========== MAP CARD ========== */
         .map-card {
@@ -1469,111 +1906,163 @@
                 <div class="results-main">
                     <!-- Property Card -->
                     <div class="property-card">
+                        <div class="property-image-section">
+                            <button id="savePropertyBtn" class="save-property-btn save" onclick="toggleSaveProperty()">☆ Save Property</button>
+                            <img id="propertyImage" class="property-main-image" style="display: none;" alt="Property image">
+                            <div class="property-image-placeholder" id="propertyImagePlaceholder">
+                                <div class="placeholder-icon">🏠</div>
+                                <div class="placeholder-text">Property photo from Rightmove</div>
+                            </div>
+                        </div>
                         <div class="property-text-section">
                             <div class="property-location" id="propertyLocation"></div>
-                            <div class="property-title" id="propertyTitle"></div>
-                            <div class="property-price" id="propertyPrice"></div>
-                            <button id="savePropertyBtn" class="save-property-btn save" onclick="toggleSaveProperty()">☆ Save Property</button>
+                            <div class="property-details" id="propertyDetails"></div>
+                            <div class="property-price-row">
+                                <span class="property-price" id="propertyPrice"></span>
+                                <span class="property-tenure" id="propertyTenure"></span>
+                            </div>
                         </div>
-                        <img id="propertyImage" class="property-main-image" style="display: none;" alt="Property image">
                     </div>
+
+<!-- ========== REPLACE YOUR SCORE CARDS HTML WITH THIS ========== -->
+<!-- Find <div class="detailed-scores"> and replace all 4 score cards inside it -->
 
                     <!-- Score cards (stacked) -->
                     <div class="detailed-scores">
+                        <!-- GP Proximity -->
                         <div class="score-card">
                             <div class="score-header">
-                                <span class="score-icon">🏥</span>
-                                <span class="score-title">GP Proximity</span>
-                                <span class="tooltip">
-                                    <span class="info-icon">i</span>
-                                    <span class="tooltiptext">
-                                        <strong>GP Proximity Scoring (0-5)</strong><br><br>
-                                        • 5 (Excellent): ≤5 mins<br>
-                                        • 4 (Very Good): ≤10 mins<br>
-                                        • 3 (Good): ≤15 mins<br>
-                                        • 2 (Fair): ≤20 mins<br>
-                                        • 1 (Poor): ≤25 mins<br>
-                                        • 0 (Very Poor): >25 mins<br><br>
-                                        Walking times include 40% adjustment for mobility considerations.
+                                <div class="score-header-left">
+                                    <div class="score-icon-box">🏥</div>
+                                    <div class="score-title-group">
+                                        <span class="score-title">GP Proximity</span>
+                                        <span class="score-subtitle">Nearest surgery walking time</span>
+                                    </div>
+                                </div>
+                                <div class="score-header-right">
+                                    <span class="score-badge" id="gpBadge">-</span>
+                                    <span class="score-number" id="gpNumber">-</span>
+                                    <span class="tooltip">
+                                        <span class="info-icon">i</span>
+                                        <span class="tooltiptext">
+                                            <strong>GP Proximity Scoring (0-5)</strong><br><br>
+                                            • 5 (Excellent): ≤5 mins<br>
+                                            • 4 (Very Good): ≤10 mins<br>
+                                            • 3 (Good): ≤15 mins<br>
+                                            • 2 (Fair): ≤20 mins<br>
+                                            • 1 (Poor): ≤25 mins<br>
+                                            • 0 (Very Poor): >25 mins<br><br>
+                                            Walking times include 40% adjustment for mobility considerations.
+                                        </span>
                                     </span>
-                                </span>
+                                </div>
                             </div>
-                            <div class="score-value" id="gpScore"></div>
-                            <div class="score-description" id="gpDescription"></div>
-                            <div class="score-details" id="gpDetails"></div>
+                            <div class="score-body">
+                                <div id="gpDetails"></div>
+                            </div>
                         </div>
 
+                        <!-- Energy Efficiency -->
                         <div class="score-card">
                             <div class="score-header">
-                                <span class="score-icon">⚡</span>
-                                <span class="score-title">Energy Efficiency</span>
-                                <span class="tooltip">
-                                    <span class="info-icon">i</span>
-                                    <span class="tooltiptext">
-                                        <strong>Energy Efficiency Scoring</strong><br><br>
-                                        Based on the internationally used EPC scale from A to G:<br>
-                                        • A/B = Excellent (most efficient)<br>
-                                        • C = Good<br>
-                                        • D = Average<br>
-                                        • E = Below Average<br>
-                                        • F/G = Poor (least efficient)<br><br>
-                                        Energy efficiency affects running costs and environmental impact.
+                                <div class="score-header-left">
+                                    <div class="score-icon-box">⚡</div>
+                                    <div class="score-title-group">
+                                        <span class="score-title">Energy Efficiency</span>
+                                        <span class="score-subtitle">EPC rating & running costs</span>
+                                    </div>
+                                </div>
+                                <div class="score-header-right">
+                                    <span class="score-badge" id="epcBadge">-</span>
+                                    <span class="score-number" id="epcNumber">-</span>
+                                    <span class="tooltip">
+                                        <span class="info-icon">i</span>
+                                        <span class="tooltiptext">
+                                            <strong>Energy Efficiency Scoring</strong><br><br>
+                                            Based on the internationally used EPC scale from A to G:<br>
+                                            • A/B = Excellent (most efficient)<br>
+                                            • C = Good<br>
+                                            • D = Average<br>
+                                            • E = Below Average<br>
+                                            • F/G = Poor (least efficient)<br><br>
+                                            Energy efficiency affects running costs and environmental impact.
+                                        </span>
                                     </span>
-                                </span>
+                                </div>
                             </div>
-                            <div class="score-value" id="epcScore"></div>
-                            <div class="score-description" id="epcDescription"></div>
-                            <div class="score-details" id="epcDetails"></div>
+                            <div class="score-body">
+                                <div id="epcDetails"></div>
+                            </div>
                         </div>
 
+                        <!-- Accessible Features -->
                         <div class="score-card">
                             <div class="score-header">
-                                <span class="score-icon">🏠</span>
-                                <span class="score-title">Accessible Features</span>
-                                <span class="tooltip">
-                                    <span class="info-icon">i</span>
-                                    <span class="tooltiptext">
-                                        <strong>Accessible Features (8 criteria)</strong><br><br>
-                                        Scored out of 8 features, converted to 0-5 scale:<br>
-                                        1. Step-free internal access OR lift*<br>
-                                        2. Downstairs bedroom<br>
-                                        3. Downstairs bathroom/WC<br>
-                                        4. Ground floor entry<br>
-                                        5. Off-street/private parking<br>
-                                        6. Garden access<br>
-                                        7. Balcony/terrace/patio<br>
-                                        8. External level/ramp access<br><br>
-                                        *Multi-level properties score for having a lift/stairlift. Single-level properties automatically score for step-free access.
+                                <div class="score-header-left">
+                                    <div class="score-icon-box">🏠</div>
+                                    <div class="score-title-group">
+                                        <span class="score-title">Accessible Features</span>
+                                        <span class="score-subtitle">Mobility-friendly amenities</span>
+                                    </div>
+                                </div>
+                                <div class="score-header-right">
+                                    <span class="score-badge" id="accessBadge">-</span>
+                                    <span class="score-number" id="accessNumber">-</span>
+                                    <span class="tooltip">
+                                        <span class="info-icon">i</span>
+                                        <span class="tooltiptext">
+                                            <strong>Accessible Features (8 criteria)</strong><br><br>
+                                            Scored out of 8 features, converted to 0-5 scale:<br>
+                                            1. Step-free internal access OR lift*<br>
+                                            2. Downstairs bedroom<br>
+                                            3. Downstairs bathroom/WC<br>
+                                            4. Ground floor entry<br>
+                                            5. Off-street/private parking<br>
+                                            6. Garden access<br>
+                                            7. Balcony/terrace/patio<br>
+                                            8. External level/ramp access<br><br>
+                                            *Multi-level properties score for having a lift/stairlift. Single-level properties automatically score for step-free access.
+                                        </span>
                                     </span>
-                                </span>
+                                </div>
                             </div>
-                            <div class="score-value" id="accessibleFeaturesScore"></div>
-                            <div class="score-description" id="accessibleFeaturesDescription"></div>
-                            <div class="score-details" id="accessibleFeaturesDetails"></div>
+                            <div class="score-body">
+                                <div id="accessibleFeaturesDetails"></div>
+                            </div>
                         </div>
-
+                    
+                        <!-- Public Transport -->
                         <div class="score-card">
                             <div class="score-header">
-                                <span class="score-icon">🚌</span>
-                                <span class="score-title">Public Transport</span>
-                                <span class="tooltip">
-                                    <span class="info-icon">i</span>
-                                    <span class="tooltiptext">
-                                        <strong>Public Transport Scoring (0-5)</strong><br><br>
-                                        Based on nearest bus stop walking time:<br>
-                                        • 5 (Excellent): ≤5 mins<br>
-                                        • 4 (Very Good): ≤10 mins<br>
-                                        • 3 (Good): ≤15 mins<br>
-                                        • 2 (Fair): ≤20 mins<br>
-                                        • 1 (Poor): ≤25 mins<br>
-                                        • 0 (Very Poor): >25 mins<br><br>
-                                        Train station information shown for reference only.
+                                <div class="score-header-left">
+                                    <div class="score-icon-box">🚌</div>
+                                    <div class="score-title-group">
+                                        <span class="score-title">Public Transport</span>
+                                        <span class="score-subtitle">Bus & train accessibility</span>
+                                    </div>
+                                </div>
+                                <div class="score-header-right">
+                                    <span class="score-badge" id="transportBadge">-</span>
+                                    <span class="score-number" id="transportNumber">-</span>
+                                    <span class="tooltip">
+                                        <span class="info-icon">i</span>
+                                        <span class="tooltiptext">
+                                            <strong>Public Transport Scoring (0-5)</strong><br><br>
+                                            Based on nearest bus stop walking time:<br>
+                                            • 5 (Excellent): ≤5 mins<br>
+                                            • 4 (Very Good): ≤10 mins<br>
+                                            • 3 (Good): ≤15 mins<br>
+                                            • 2 (Fair): ≤20 mins<br>
+                                            • 1 (Poor): ≤25 mins<br>
+                                            • 0 (Very Poor): >25 mins<br><br>
+                                            Train station information shown for reference only.
+                                        </span>
                                     </span>
-                                </span>
+                                </div>
                             </div>
-                            <div class="score-value" id="publicTransportScore"></div>
-                            <div class="score-description" id="publicTransportDescription"></div>
-                            <div class="score-details" id="publicTransportDetails"></div>
+                            <div class="score-body">
+                                <div id="publicTransportDetails"></div>
+                            </div>
                         </div>
 
                         <div id="dimensionsCard" class="score-card" style="display: none;"></div>
@@ -1585,61 +2074,72 @@
                 <aside class="results-sidebar">
                     <!-- Overall Score -->
                     <div class="score-overview">
-                        <div class="overall-score" id="overallScore"></div>
-                        <div class="score-label">
-                            Overall Accessibility Score
-                            <span class="tooltip">
-                                <span class="info-icon" style="font-size: 14px;">i</span>
-                                <span class="tooltiptext">
-                                    <strong>How Overall Score Works</strong><br><br>
-                                    Features are combined to produce an overall score ranging from 0 to 5.<br><br>
-                                    Only information within the property listing is used for scoring. Where information is missing, it is advised to ASK AGENT.<br><br>
-                                    Where information is unavailable, that feature will not score and will not affect the overall score. This ensures properties aren't penalised for missing data.
-                                </span>
+                        <div class="score-overview-label">OVERALL ACCESSIBILITY SCORE</div>
+
+                        <span class="tooltip score-overview-tooltip">
+                            <span class="info-icon">i</span>
+                            <span class="tooltiptext">
+                                <strong>How Overall Score Works</strong><br><br>
+                                Features are combined to produce an overall score ranging from 0 to 5.<br><br>
+                                Only information within the property listing is used for scoring. Where information is missing, it is advised to ASK AGENT.<br><br>
+                                Where information is unavailable, that feature will not score and will not affect the overall score. This ensures properties aren't penalised for missing data.
                             </span>
-                        </div>
-                        <div class="star-rating" id="starRating"></div>
+                        </span>
                         
+                        <div class="score-overview-main">
+                            <div class="score-circle">
+                                <span class="score-circle-number" id="overallScore">-</span>
+                                <span class="score-circle-subtitle">out of 5</span>
+                            </div>
+                            <div class="score-overview-text">
+                                <div class="score-rating-text" id="overallRating">-</div>
+                                <div class="score-rating-subtitle" id="overallSubtitle">Accessibility assessment</div>
+                            </div>
+                            
+                        </div>
+
+                        <div class="star-rating" id="starRating"></div>
+
                         <!-- Mini Score Breakdown -->
                         <div class="score-breakdown" id="scoreBreakdown">
                             <div class="breakdown-item">
                                 <span class="breakdown-label">
-                                    <span class="breakdown-icon">🏥</span>
+                                    <span class="breakdown-icon-box" style="background: #fce4ec;">🏥</span>
                                     GP Proximity
                                 </span>
                                 <span class="breakdown-score" id="miniGpScore">-</span>
                             </div>
                             <div class="breakdown-item">
                                 <span class="breakdown-label">
-                                    <span class="breakdown-icon">⚡</span>
+                                    <span class="breakdown-icon-box" style="background: #fff3e0;">⚡</span>
                                     Energy
                                 </span>
                                 <span class="breakdown-score" id="miniEpcScore">-</span>
                             </div>
                             <div class="breakdown-item">
                                 <span class="breakdown-label">
-                                    <span class="breakdown-icon">🏠</span>
+                                    <span class="breakdown-icon-box" style="background: #e8f5e9;">🏠</span>
                                     Accessibility
                                 </span>
                                 <span class="breakdown-score" id="miniAccessScore">-</span>
                             </div>
                             <div class="breakdown-item">
                                 <span class="breakdown-label">
-                                    <span class="breakdown-icon">🚌</span>
+                                    <span class="breakdown-icon-box" style="background: #e3f2fd;">🚌</span>
                                     Transport
                                 </span>
                                 <span class="breakdown-score" id="miniTransportScore">-</span>
                             </div>
                             <div class="breakdown-item" id="miniRoomsRow" style="display: none;">
                                 <span class="breakdown-label">
-                                    <span class="breakdown-icon">🛏️</span>
+                                    <span class="breakdown-icon-box" style="background: #f3e5f5;">🛏️</span>
                                     Rooms
                                 </span>
                                 <span class="breakdown-score" id="miniRoomsScore">-</span>
                             </div>
                             <div class="breakdown-item" id="miniCostsRow" style="display: none;">
                                 <span class="breakdown-label">
-                                    <span class="breakdown-icon">💷</span>
+                                    <span class="breakdown-icon-box" style="background: #fff8e1;">💷</span>
                                     Costs
                                 </span>
                                 <span class="breakdown-score" id="miniCostsScore">-</span>
@@ -1739,11 +2239,93 @@
             document.getElementById('results').classList.add('show');
 
             // Property info
-            console.log('Property data:', property);
             document.getElementById('propertyLocation').textContent = property.location || '';
-            document.getElementById('propertyTitle').textContent = property.title;
             document.getElementById('propertyPrice').textContent = property.price;
-            document.getElementById('overallScore').textContent = analysis.overall;
+
+            // Property details (bedrooms, bathrooms, sq m)
+            const detailsContainer = document.getElementById('propertyDetails');
+            if (detailsContainer) {
+                let detailsHtml = '';
+                
+                // Get bedrooms - parse from title
+                if (property.title) {
+                    const bedroomMatch = property.title.match(/(\d+)\s*bedroom/i);
+                    if (bedroomMatch) {
+                        detailsHtml += `<span class="property-detail-item">🛏️ ${bedroomMatch[1]} bedrooms</span>`;
+                    }
+                }
+                
+                // Get bathrooms - count from roomAccommodation
+                if (analysis.roomAccommodation && analysis.roomAccommodation.roomsFound) {
+                    const rooms = analysis.roomAccommodation.roomsFound;
+                    const bathroomCount = rooms.filter(r => r.toLowerCase().includes('bathroom')).length;
+                    if (bathroomCount > 0) {
+                        detailsHtml += `<span class="property-detail-item">🚿 ${bathroomCount}+ bathrooms</span>`;
+                    }
+                }
+                
+                // Get size from dimensions
+                if (analysis.dimensions && analysis.dimensions.totalSqM) {
+                    detailsHtml += `<span class="property-detail-item">📐 ${analysis.dimensions.totalSqM} m²</span>`;
+                }
+                
+                // Fallback to title if nothing parsed
+                if (!detailsHtml && property.title) {
+                    detailsHtml = `<span class="property-detail-item">${property.title}</span>`;
+                }
+                
+                detailsContainer.innerHTML = detailsHtml;
+            }
+
+            // Tenure
+            const tenureEl = document.getElementById('propertyTenure');
+            if (tenureEl && property.tenure) {
+                tenureEl.textContent = property.tenure;
+            }
+
+            // Display property image
+            const propertyImage = document.getElementById('propertyImage');
+            const placeholder = document.getElementById('propertyImagePlaceholder');
+
+            if (property.images && property.images.length > 0) {
+                propertyImage.src = property.images[0];
+                propertyImage.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
+                propertyImage.onerror = function() {
+                    this.style.display = 'none';
+                    if (placeholder) placeholder.style.display = 'block';
+                };
+            } else {
+                propertyImage.style.display = 'none';
+                if (placeholder) placeholder.style.display = 'block';
+            }
+            
+            // Set overall rating text and subtitle
+            const overallRating = document.getElementById('overallRating');
+            const overallSubtitle = document.getElementById('overallSubtitle');
+            const score = analysis.overall || 0;
+
+            // Set the score number in the circle
+            const overallScoreEl = document.getElementById('overallScore');
+            if (overallScoreEl) {
+                overallScoreEl.textContent = score ? parseFloat(score).toFixed(1) : '-';
+            }
+
+            if (overallRating) {
+                if (score >= 4.5) overallRating.textContent = 'Excellent';
+                else if (score >= 3.5) overallRating.textContent = 'Very Good';
+                else if (score >= 2.5) overallRating.textContent = 'Good';
+                else if (score >= 1.5) overallRating.textContent = 'Fair';
+                else overallRating.textContent = 'Poor';
+            }
+
+            if (overallSubtitle) {
+                if (score >= 4.5) overallSubtitle.textContent = 'Excellent for accessibility needs';
+                else if (score >= 3.5) overallSubtitle.textContent = 'Well suited for accessibility needs';
+                else if (score >= 2.5) overallSubtitle.textContent = 'Moderate accessibility';
+                else if (score >= 1.5) overallSubtitle.textContent = 'Limited accessibility features';
+                else overallSubtitle.textContent = 'May not suit accessibility needs';
+            }
             
             // Display property image
             if (property.images && property.images.length > 0) {
@@ -1791,15 +2373,7 @@
                 overallScore: analysis.overall || null,
                 url: document.getElementById('propertyUrl').value || null
             };
-            
-            currentPropertyData = {
-            address: property.location || 'Unknown location',
-            title: property.title || '',
-            price: property.price || null,
-            overallScore: analysis.overall || null,
-            url: document.getElementById('propertyUrl').value || null
-        };
-        console.log('Property data to save:', currentPropertyData);
+            console.log('Property data to save:', currentPropertyData);
 
             // Remove existing save button if present
             const existingBtn = document.getElementById('savePropertyBtn');
@@ -1813,11 +2387,40 @@
                 saveBtn.innerHTML = isSaved ? '⭐ Saved' : '☆ Save Property';
                 saveBtn.onclick = toggleSaveProperty;
                 
-                document.querySelector('.property-text-section')?.prepend(saveBtn);
+                document.querySelector('.property-image-section')?.prepend(saveBtn);
             }
             
             updateMiniScores(analysis);
         }
+
+        function getScoreClass(score) {
+            if (score === null || score === undefined) return 'na';
+            const num = parseFloat(score);
+            if (num >= 4.5) return 'excellent';
+            if (num >= 3.5) return 'very-good';
+            if (num >= 2.5) return 'good';
+            if (num >= 1.5) return 'fair';
+            return 'poor';
+        }
+
+        function getRatingText(score) {
+            if (score === null || score === undefined) return 'N/A';
+            const num = parseFloat(score);
+            if (num >= 4.5) return 'Excellent';
+            if (num >= 3.5) return 'Very Good';
+            if (num >= 2.5) return 'Good';
+            if (num >= 1.5) return 'Fair';
+            return 'Poor';
+        }
+
+        function getEpcColor(rating) {
+            const colors = {
+                'A': '#00845a', 'B': '#2ba84a', 'C': '#8cc63f',
+                'D': '#ffce18', 'E': '#f6a600', 'F': '#f06400', 'G': '#e40000'
+            };
+            return colors[rating?.toUpperCase()] || '#6b7280';
+        }
+
 
         function updateMiniScores(analysis) {
             function getScoreClass(score) {
@@ -1990,151 +2593,201 @@
     starContainer.innerHTML = starsHtml;
 }
 
-       function displayGPProximity(gp) {
-            // At the start, check for API failure
+       // ========== REPLACE displayGPProximity ==========
+
+        function displayGPProximity(gp) {
+            const badge = document.getElementById('gpBadge');
+            const number = document.getElementById('gpNumber');
+            const details = document.getElementById('gpDetails');
+            
+            // Check for API failure
             if (!gp || gp.score === undefined) {
-                document.getElementById('gpScore').textContent = 'Error';
-                document.getElementById('gpScore').className = 'score-value fair';
-                document.getElementById('gpDescription').textContent = 'Unable to retrieve GP data';
-                document.getElementById('gpDetails').innerHTML = getRetryMessage('GP Information');
+                if (badge) { badge.textContent = 'N/A'; badge.className = 'score-badge na'; }
+                if (number) { number.textContent = '-'; }
+                if (details) details.innerHTML = getRetryMessage('GP Information');
                 return;
             }
-            console.log('DEBUG: GP data received:', gp);
-            console.log('DEBUG: nearestGPs array:', gp.nearestGPs);
             
-            document.getElementById('gpScore').textContent = gp.rating;
-            document.getElementById('gpScore').className = `score-value ${gp.rating.toLowerCase().replace(' ', '-')}`;
-            document.getElementById('gpDescription').textContent = gp.details;
+            const scoreClass = getScoreClass(gp.score);
+            const ratingText = getRatingText(gp.score);
+            
+            if (badge) {
+                badge.textContent = ratingText;
+                badge.className = 'score-badge ' + scoreClass;
+            }
+            
+            if (number) {
+                number.textContent = gp.score !== null ? gp.score.toFixed(1) : '-';
+            }
             
             let detailsHtml = '';
             
-            // Backend sends nearestGPs as an array
+            // Add summary/description line
+            if (gp.details) {
+                detailsHtml += `<p class="score-summary">${gp.details}</p>`;
+            }
+            
             if (gp.nearestGPs && gp.nearestGPs.length > 0) {
-                const gpInfo = gp.nearestGPs[0]; // Get first GP only
+                const gpInfo = gp.nearestGPs[0];
                 
                 detailsHtml += `
-                    <div class="gp-info">
-                        <div class="gp-name">🏥 ${gpInfo.name}</div>
-                        <div class="gp-address">📍 ${gpInfo.address}</div>
-                        ${gpInfo.distance ? `<div class="gp-time">📏 ${gpInfo.distance}</div>` : ''}
-                        ${gpInfo.adjustedTime && !gpInfo.tooFar ? `<div class="gp-time">🚶 ${gpInfo.adjustedTime} walk</div>` : ''}
-                        ${gpInfo.rating ? `<div class="gp-rating">⭐ ${gpInfo.rating}/5</div>` : ''}
+                    <div class="gp-info-card">
+                        <div class="gp-icon-circle">🏥</div>
+                        <div class="gp-info-content">
+                            <div class="gp-name">${gpInfo.name || 'GP Surgery'}</div>
+                            <div class="gp-address">${gpInfo.address || ''}</div>
+                            <div class="gp-stats">
+                                ${gpInfo.adjustedTime && !gpInfo.tooFar ? `
+                                    <div class="gp-stat">
+                                        <span>🚶</span>
+                                        <strong>${gpInfo.adjustedTime}</strong> walk
+                                    </div>
+                                ` : ''}
+                                ${gpInfo.distance ? `
+                                    <div class="gp-stat">
+                                        <span>📍</span>
+                                        <strong>${gpInfo.distance}</strong>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
                     </div>
                 `;
                 
                 if (gpInfo.routeWarnings && gpInfo.routeWarnings.length > 0) {
-                    detailsHtml += '<div class="route-warnings">';
-                    gpInfo.routeWarnings.forEach(warning => {
-                        detailsHtml += `<div class="warning">⚠️ ${warning}</div>`;
-                    });
-                    detailsHtml += '</div>';
+                    detailsHtml += `
+                        <div class="route-warning-box">
+                            <span class="warning-icon">⚠️</span>
+                            <div class="warning-text">
+                                <strong>Route Considerations</strong>
+                                ${gpInfo.routeWarnings.join('. ')}
+                            </div>
+                        </div>
+                    `;
                 }
             }
             
-            document.getElementById('gpDetails').innerHTML = detailsHtml;
+            if (details) details.innerHTML = detailsHtml;
         }
 
-       function displayEPCRating(epc) {
-            const scoreValue = document.getElementById('epcScore');
-            const scoreDescription = document.getElementById('epcDescription');
-            const scoreDetails = document.getElementById('epcDetails');
+
+        // ========== UPDATED displayEPCRating FUNCTION ==========
+        // Replace your existing displayEPCRating function with this
+
+        function displayEPCRating(epc) {
+            const badge = document.getElementById('epcBadge');
+            const number = document.getElementById('epcNumber');
+            const details = document.getElementById('epcDetails');
             
             // Check if API failed to return data
             if (!epc || !epc.rating) {
-                scoreValue.textContent = 'Error';
-                scoreValue.className = 'score-value fair';
-                scoreDescription.textContent = 'Unable to retrieve EPC data';
-                scoreDetails.innerHTML = getRetryMessage('EPC Rating');
+                if (badge) { badge.textContent = 'N/A'; badge.className = 'score-badge na'; }
+                if (number) { number.textContent = '-'; }
+                if (details) details.innerHTML = getRetryMessage('EPC Rating');
                 return;
             }
             
-            // Handle intentionally missing EPC (property doesn't have one)
-            if (epc.rating === 'Not available' || epc.rating === 'Unknown') {
-                scoreValue.textContent = 'Not Available';
-                scoreValue.className = 'score-value fair';
-                scoreDescription.textContent = 'EPC rating not found in property listing. This does not affect the overall score.';
-                scoreDetails.innerHTML = '<div style="padding: 0.5rem; background: #f0f9ff; border-radius: 8px; color: #666; font-size: 0.9rem;">💡 Contact the estate agent for energy efficiency information</div>';
+            // Handle missing EPC
+            if (epc.rating === 'Not available' || epc.rating === 'Unknown' || !epc.actualRating) {
+                if (badge) { badge.textContent = 'N/A'; badge.className = 'score-badge na'; }
+                if (number) { number.textContent = '-'; }
+                if (details) details.innerHTML = '<div style="padding: 1rem; background: #f0f9ff; border-radius: 8px; color: #666; font-size: 0.9rem;">💡 EPC not found. Contact the estate agent for energy efficiency information.</div>';
                 return;
             }
             
-            // Handle missing EPC data
-            if (!epc.actualRating || epc.rating === 'Not available' || epc.rating === 'Unknown') {
-                scoreValue.textContent = 'Not Available';
-                scoreValue.className = 'score-value fair';  // Neutral gray color
-                scoreDescription.textContent = 'EPC rating not found in property listing. This does not affect the overall score.';
-                scoreDetails.innerHTML = '<div style="padding: 0.5rem; background: #f0f9ff; border-radius: 8px; color: #666; font-size: 0.9rem;">💡 Contact the estate agent for energy efficiency information</div>';
-                return;
+            const scoreClass = getScoreClass(epc.score);
+            const ratingText = getRatingText(epc.score);
+            
+            if (badge) {
+                badge.textContent = ratingText;
+                badge.className = 'score-badge ' + scoreClass;
             }
             
-            // Display found EPC rating
-            scoreValue.textContent = epc.rating;
-            
-            // Convert rating to CSS class (handle spaces)
-            const ratingClass = epc.rating.toLowerCase().replace(/ /g, '-');
-            scoreValue.className = `score-value ${ratingClass}`;
-            
-            scoreDescription.textContent = epc.details;
-            
-            let detailsHtml = '';
-            if (epc.actualRating) {
-                detailsHtml += `<div><strong>EPC Rating:</strong> ${epc.actualRating}</div>`;
+            if (number) {
+                number.textContent = epc.score !== null && epc.score !== undefined ? epc.score.toFixed(1) : '-';
             }
-            scoreDetails.innerHTML = detailsHtml;
+            
+            if (details) {
+                const epcLetter = epc.actualRating?.toUpperCase() || 'D';
+                const epcNumber = epc.epcNumber || ''; // If you have numeric EPC score
+                
+                let html = `
+                    <div class="epc-display">
+                        <div class="epc-letter-box" style="background: ${getEpcColor(epcLetter)};">
+                            <span class="epc-letter">${epcLetter}</span>
+                        </div>
+                        <div class="epc-info">
+                            <div class="epc-title">EPC Rating: ${epcLetter}${epcNumber ? ' (' + epcNumber + ')' : ''}</div>
+                            <div class="epc-description">${epc.details || 'Energy Performance Certificate rating'}</div>
+                        </div>
+                    </div>
+                    <div class="epc-scale">
+                        <div class="epc-scale-bar epc-a ${epcLetter === 'A' ? 'active' : ''}"></div>
+                        <div class="epc-scale-bar epc-b ${epcLetter === 'B' ? 'active' : ''}"></div>
+                        <div class="epc-scale-bar epc-c ${epcLetter === 'C' ? 'active' : ''}"></div>
+                        <div class="epc-scale-bar epc-d ${epcLetter === 'D' ? 'active' : ''}"></div>
+                        <div class="epc-scale-bar epc-e ${epcLetter === 'E' ? 'active' : ''}"></div>
+                        <div class="epc-scale-bar epc-f ${epcLetter === 'F' ? 'active' : ''}"></div>
+                        <div class="epc-scale-bar epc-g ${epcLetter === 'G' ? 'active' : ''}"></div>
+                    </div>
+                `;
+                details.innerHTML = html;
+            }
         }
-       function displayAccessibleFeatures(accessibleFeatures) {
-            const scoreValue = document.getElementById('accessibleFeaturesScore');
-            const scoreDescription = document.getElementById('accessibleFeaturesDescription');
-            const scoreDetails = document.getElementById('accessibleFeaturesDetails');
+
+        function getEpcColor(rating) {
+            const colors = {
+                'A': '#00845a', 'B': '#2ba84a', 'C': '#8cc63f',
+                'D': '#ffce18', 'E': '#f6a600', 'F': '#f06400', 'G': '#e40000'
+            };
+            return colors[rating?.toUpperCase()] || '#ffce18';
+        }
+
+
+        // ========== REPLACE displayAccessibleFeatures ==========
+
+        function displayAccessibleFeatures(accessibleFeatures) {
+            const badge = document.getElementById('accessBadge');
+            const number = document.getElementById('accessNumber');
+            const details = document.getElementById('accessibleFeaturesDetails');
             
             // Check for API failure (no data returned)
             if (!accessibleFeatures) {
-                scoreValue.textContent = 'Error';
-                scoreValue.className = 'score-value fair';
-                scoreDescription.textContent = 'Unable to retrieve accessible features data';
-                scoreDetails.innerHTML = getRetryMessage('Accessible Features');
+                if (badge) { badge.textContent = 'N/A'; badge.className = 'score-badge na'; }
+                if (number) { number.textContent = '-'; }
+                if (details) details.innerHTML = getRetryMessage('Accessible Features');
                 return;
             }
             
-            // Use rating from backend if available, otherwise calculate it
-            let ratingText = accessibleFeatures.rating || 'Poor';
-            const displayScore = accessibleFeatures.displayScore || Math.round(accessibleFeatures.score || 0);
+            const scoreClass = getScoreClass(accessibleFeatures.score);
+            const ratingText = getRatingText(accessibleFeatures.score);
             
-            // Fallback: if backend doesn't send rating, calculate it based on rounded score
-            if (!accessibleFeatures.rating) {
-                const roundedScore = Math.round(displayScore);
-                if (roundedScore === 5) ratingText = 'Excellent';
-                else if (roundedScore === 4) ratingText = 'Very Good';
-                else if (roundedScore === 3) ratingText = 'Good';
-                else if (roundedScore === 2) ratingText = 'Fair';
-                else if (roundedScore === 1) ratingText = 'Poor';
-                else ratingText = 'Very Poor';
+            if (badge) {
+                badge.textContent = ratingText;
+                badge.className = 'score-badge ' + scoreClass;
             }
             
-            scoreValue.textContent = ratingText;
-            
-            // Convert rating text to CSS class (handles "Very Good" -> "very-good")
-            const scoreClass = ratingText.toLowerCase().replace(/ /g, '-');
-            
-            scoreValue.className = `score-value ${scoreClass}`;
-            scoreDescription.textContent = '';
-            
-            let detailsHtml = '<div class="accessible-features-list">';
+            if (number) {
+                number.textContent = accessibleFeatures.score !== null && accessibleFeatures.score !== undefined 
+                    ? accessibleFeatures.score.toFixed(1) : '-';
+            }
             
             const foundFeatures = accessibleFeatures.features || [];
             
             // Define the 8 criteria in display order
             const criteriaMapping = [
-                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: 'Step-free internal access' },
+                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: 'Step-free access' },
                 { key: 'downstairsBedroom', labels: ['Downstairs bedroom'], displayAs: 'Downstairs bedroom' },
-                { key: 'downstairsBathroom', labels: ['Downstairs bathroom/WC'], displayAs: 'Downstairs bathroom/WC' },
+                { key: 'downstairsBathroom', labels: ['Downstairs bathroom/WC'], displayAs: 'Downstairs bathroom' },
                 { key: 'groundFloorEntry', labels: ['Ground floor entry'], displayAs: 'Ground floor entry' },
-                { key: 'privateParking', labels: ['Off-street/private parking'], displayAs: 'Off-street/private parking' },
+                { key: 'privateParking', labels: ['Off-street/private parking'], displayAs: 'Private parking' },
                 { key: 'garden', labels: ['Garden access'], displayAs: 'Garden access' },
                 { key: 'balcony', labels: ['Balcony/terrace'], displayAs: 'Balcony/terrace' },
-                { key: 'externalLevelAccess', labels: ['External level/ramp access'], displayAs: 'External level/ramp access' }
+                { key: 'externalLevelAccess', labels: ['External level/ramp access'], displayAs: 'Level access' }
             ];
 
-            // Show all criteria with proper matching
+            let detailsHtml = '<div class="features-grid">';
+            
             criteriaMapping.forEach(criterion => {
                 const matchedFeature = foundFeatures.find(feature => 
                     criterion.labels.some(label => 
@@ -2144,26 +2797,22 @@
                 );
                 
                 const isFound = !!matchedFeature;
-                
-                let icon = isFound ? '✅' : '❌';
-                let displayLabel;
+                const checkClass = isFound ? 'yes' : 'no';
+                const checkIcon = isFound ? '✓' : '✗';
+                const displayLabel = (criterion.key === 'stepFreeOrLift' && matchedFeature) 
+                    ? matchedFeature : criterion.displayAs;
 
-                if (criterion.key === 'stepFreeOrLift' && matchedFeature) {
-                    displayLabel = matchedFeature;
-                } else {
-                    displayLabel = criterion.displayAs;
-                }
-
-                detailsHtml += `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${displayLabel}</div>`;
+                detailsHtml += `
+                    <div class="feature-item">
+                        <div class="feature-check ${checkClass}">${checkIcon}</div>
+                        <span class="feature-text">${displayLabel}</span>
+                    </div>
+                `;
             });
-            
-            if (foundFeatures.length === 0) {
-                detailsHtml += '<div class="no-features-found">No accessible features detected</div>';
-            }
             
             detailsHtml += '</div>';
             
-            scoreDetails.innerHTML = detailsHtml;
+            if (details) details.innerHTML = detailsHtml;
         }
         
 function displayDimensions(dimensions, roomAccommodation) {
@@ -2644,39 +3293,39 @@ function displayCostAnalysis(cost, propertyCost) {
 }
         
         function displayPublicTransport(publicTransport) {
-            const scoreValue = document.getElementById('publicTransportScore');
-            const scoreDescription = document.getElementById('publicTransportDescription');
-            const scoreDetails = document.getElementById('publicTransportDetails');
+            const badge = document.getElementById('transportBadge');
+            const number = document.getElementById('transportNumber');
+            const details = document.getElementById('publicTransportDetails');
             
-            if (!scoreValue || !scoreDescription || !scoreDetails) return;
-            
-            // Check for API failure (no data returned at all)
+            // Check for API failure
             if (!publicTransport || publicTransport.score === undefined) {
-                scoreValue.textContent = 'Error';
-                scoreValue.className = 'score-value fair';
-                scoreDescription.textContent = 'Unable to retrieve public transport data';
-                scoreDetails.innerHTML = getRetryMessage('Public Transport Information');
+                if (badge) { badge.textContent = 'N/A'; badge.className = 'score-badge na'; }
+                if (number) { number.textContent = '-'; }
+                if (details) details.innerHTML = getRetryMessage('Public Transport Information');
                 return;
             }
             
-            // Only show rating text with color, no score number
-            const rating = getScoreRating(publicTransport.score);
-            scoreValue.textContent = rating;
-            scoreValue.className = `score-value ${rating.toLowerCase().replace(/ /g, '-')}`;
+            const scoreClass = getScoreClass(publicTransport.score);
+            const ratingText = getRatingText(publicTransport.score);
             
-            // Remove the description line
-            scoreDescription.textContent = '';
+            if (badge) {
+                badge.textContent = ratingText;
+                badge.className = 'score-badge ' + scoreClass;
+            }
             
-            // Rest of existing logic continues...
+            if (number) {
+                number.textContent = publicTransport.score !== null ? publicTransport.score.toFixed(1) : '-';
+            }
             
-            // Handle completely empty state
+            // Handle empty state
             if ((!publicTransport.busStops || publicTransport.busStops.length === 0) && 
                 (!publicTransport.trainStations || publicTransport.trainStations.length === 0)) {
-                scoreDetails.innerHTML = `
-                    <div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-                        <div style="font-weight: 500; color: #856404; margin-bottom: 0.5rem;">⚠️ No Public Transport Found</div>
-                        <div style="font-size: 0.9rem; color: #856404;">
-                            No bus stops or train stations were found within the search area. This location may require personal transport or taxi services for travel.
+                if (details) details.innerHTML = `
+                    <div class="route-warning-box">
+                        <span class="warning-icon">⚠️</span>
+                        <div class="warning-text">
+                            <strong>No Public Transport Found</strong>
+                            No bus stops or train stations within the search area.
                         </div>
                     </div>
                 `;
@@ -2687,60 +3336,53 @@ function displayCostAnalysis(cost, propertyCost) {
             
             // Bus stops section
             if (publicTransport.busStops && publicTransport.busStops.length > 0) {
-                detailsHtml += '<div class="transport-type-header">🚌 Bus Stops:</div>';
+                detailsHtml += '<div class="transport-section">';
+                detailsHtml += '<div class="transport-section-header">🚌 Bus Stops</div>';
                 
                 publicTransport.busStops.slice(0, 2).forEach(bus => {
-                    detailsHtml += `<div class="transport-stop">`;
-                    detailsHtml += `<div class="stop-name">${bus.name}</div>`;
-                    detailsHtml += `<div class="stop-address">📍 ${bus.address}</div>`;
+                    const distanceText = bus.tooFar 
+                        ? `${bus.distance} - too far to walk`
+                        : `${bus.walkingTime} mins walk`;
                     
-                    if (bus.tooFar) {
-                        detailsHtml += `<div class="stop-distance" style="color: #dc3545;">
-                            📏 ${bus.distance} away - transport required
-                        </div>`;
-                    } else {
-                        detailsHtml += `<div class="stop-distance">
-                            🚶 ${bus.walkingTime} mins walk (${bus.distance})
-                        </div>`;
-                    }
-                    detailsHtml += `</div>`;
+                    detailsHtml += `
+                        <div class="transport-stop-card">
+                            <div class="transport-icon-circle bus">🚌</div>
+                            <div class="transport-stop-content">
+                                <div class="transport-stop-name">${bus.name || 'Bus Stop'}</div>
+                                <div class="transport-stop-distance">${distanceText}</div>
+                            </div>
+                        </div>
+                    `;
                 });
-            } else {
-                detailsHtml += '<div class="no-transport-found">No bus stops found in the area</div>';
+                detailsHtml += '</div>';
             }
             
             // Train stations section
             if (publicTransport.trainStations && publicTransport.trainStations.length > 0) {
-                detailsHtml += '<div class="transport-type-header">🚂 Train Stations (informational):</div>';
+                detailsHtml += '<div class="transport-section">';
+                detailsHtml += '<div class="transport-section-header">🚂 Train Stations</div>';
                 
                 publicTransport.trainStations.slice(0, 2).forEach(train => {
-                    detailsHtml += `<div class="transport-stop">`;
-                    detailsHtml += `<div class="stop-name">${train.name}</div>`;
-                    detailsHtml += `<div class="stop-address">📍 ${train.address}</div>`;
+                    const distanceText = train.tooFar 
+                        ? `${train.distance} away`
+                        : `${train.walkingTime} mins walk`;
                     
-                    if (train.tooFar) {
-                        detailsHtml += `<div class="stop-distance" style="color: #6b7280;">
-                            📏 ${train.distance} away
-                        </div>`;
-                    } else {
-                        detailsHtml += `<div class="stop-distance">
-                            🚶 ${train.walkingTime} mins walk (${train.distance})
-                        </div>`;
-                    }
-                    detailsHtml += `</div>`;
+                    detailsHtml += `
+                        <div class="transport-stop-card">
+                            <div class="transport-icon-circle train">🚂</div>
+                            <div class="transport-stop-content">
+                                <div class="transport-stop-name">${train.name || 'Train Station'}</div>
+                                <div class="transport-stop-distance">${distanceText}</div>
+                            </div>
+                        </div>
+                    `;
                 });
-            } else {
-                detailsHtml += '<div class="no-transport-found">No train stations found nearby</div>';
+                detailsHtml += '</div>';
             }
             
-            detailsHtml += `
-                <div style="margin-top: 1rem; font-size: 0.85rem; color: #666; font-style: italic;">
-                    Note: Score based on bus accessibility only
-                </div>
-            `;
-            
-            scoreDetails.innerHTML = detailsHtml;
+            if (details) details.innerHTML = detailsHtml;
         }
+
         
         function displayCouncilTax(councilTax) {
             const scoreValue = document.getElementById('councilTaxScore');
