@@ -28,7 +28,7 @@
         /* ========== HEADER ========== */
         .header {
             text-align: center;
-            color: white;
+            color: #1e3a5f;
             margin-bottom: 3rem;
         }
 
@@ -794,8 +794,26 @@
 
         .transport-stop-distance {
             font-size: 0.85rem;
-            color: #059669;
+            color: #6b7280;
             font-weight: 500;
+        }
+
+        .transport-stop-address {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .transport-note {
+            font-size: 0.8rem;
+            color: #6b7280;
+            background: #f8fafc;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-top: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         /* Features grid */
@@ -856,49 +874,45 @@
         .map-card {
             background: white;
             border-radius: 20px;
-            padding: 1.5rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e5e2dc;
+            overflow: hidden;
         }
 
-        .map-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        .map-body {
+            padding: 0;
         }
 
         .map-image {
             width: 100%;
-            border-radius: 12px;
-            margin-bottom: 1rem;
+            display: block;
         }
 
         .map-legend {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.5rem;
+            gap: 10px;
+            padding: 16px 20px;
+            background: #f8fafc;
             font-size: 0.85rem;
         }
 
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 10px;
         }
 
         .legend-marker {
-            width: 20px;
-            height: 20px;
+            width: 24px;
+            height: 24px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
         }
 
         .marker-property { background: #ef4444; }
@@ -906,26 +920,169 @@
         .marker-bus { background: #10b981; }
         .marker-train { background: #f97316; }
 
+        /* ========== COST CARDS ========== */
+
+        .cost-item-card > .cost-item-title {
+            margin: auto 0;
+        }
+        
+        .cost-item-card {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+        }
+
+        .cost-item-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            color: #1f2937;
+            font-size: 1.05rem;
+            align-self: center;
+        }
+
+        .cost-item-right {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .cost-item-card:last-child {
+            margin-bottom: 0;
+        }
+
+
+        .cost-item-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e3a5f;
+        }
+
+        .cost-item-description {
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        .cost-tag {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-left: 10px;
+        }
+
+        .cost-tag.expensive {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .cost-tag.moderate {
+            background: #fef3c7;
+            color: #d97706;
+        }
+
+        .cost-tag.good {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .cost-ongoing-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .cost-ongoing-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #4b5563;
+        }
+
+        .cost-ongoing-item span:last-child {
+            color: #1f2937;
+            font-weight: 500;
+        }
+
+        .cost-estimate {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-bottom: 6px;
+        }
+
+        #costDetails {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px;
+        }
+
+        #costDetails .cost-item-card {
+            display: block !important;
+            width: 100% !important;
+            flex-shrink: 0;
+        }
+
+
+        /* Price percentile bar */
+        .percentile-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .percentile-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(to right, #22c55e, #eab308, #ef4444);
+        }
+
         /* ========== SUMMARY SECTION ========== */
         .summary-section {
             background: white;
             border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            /* Now outside the grid, so naturally full width */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e5e2dc;
+            overflow: hidden;
+        }
+
+        .summary-header {
+            background: #1e3a5f;
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .summary-icon {
+            font-size: 1.25rem;
         }
 
         .summary-title {
             font-size: 1.1rem;
             font-weight: 700;
-            color: #333;
-            margin-bottom: 1rem;
+            color: white;
+            margin: 0;
+        }
+
+        .summary-body {
+            padding: 1.25rem;
         }
 
         .summary-text {
+            background: #f0f4f8;
+            border-radius: 12px;
+            padding: 1.25rem;
             font-size: 0.95rem;
             line-height: 1.7;
-            color: #555;
+            color: #444;
         }
 
         /* ========== TOOLTIP ========== */
@@ -1232,6 +1389,98 @@
             font-size: 13px;
             padding: 8px 0;
             text-align: center;
+        }
+
+        /* ========== ROOM CARDS (GRID LAYOUT) ========== */
+        .room-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .room-grid-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
+        .room-icon-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #f3e8ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .room-status-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+
+        .room-status-icon.found {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .room-status-icon.not-found {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+
+        .room-grid-name {
+            flex: 1;
+            font-size: 0.9rem;
+            color: #1f2937;
+            font-weight: 400;
+        }
+
+        .room-status-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .room-status-icon.found {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        .total-size-line {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            padding: 12px 0;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .total-size-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #1e3a5f;
+        }
+
+        .total-size-secondary {
+            font-size: 0.85rem;
+            color: #6b7280;
         }
 
         /* ========== ERROR ========== */
@@ -1885,7 +2134,7 @@
         <div class="input-section">
             <div class="url-input">
                 <input type="url" id="propertyUrl" placeholder="Paste Rightmove property URL here..." />
-                <button class="analyze-btn" onclick="analyzeProperty()">Analyze Property</button>
+                <button class="analyze-btn" onclick="analyzeProperty()">Analyse Property</button>
             </div>
             <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
                 📝 Enter a Rightmove property URL to get a comprehensive accessibility analysis
@@ -1894,7 +2143,7 @@
 
         <div class="loading" id="loading">
             <div class="spinner"></div>
-            <p>Analyzing property accessibility...</p>
+            <p>Analysing property accessibility...</p>
             <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem;">
                 Finding nearby GP surgeries, analyzing walking routes, and assessing accessible features
             </p>
@@ -2065,13 +2314,72 @@
                             </div>
                         </div>
 
-                        <div id="dimensionsCard" class="score-card" style="display: none;"></div>
-                        <div id="costCard" class="score-card" style="display: none;"></div>
+                        <!-- Room Breakdown -->
+                        <div class="score-card" id="dimensionsCard" style="display: none;">
+                            <div class="score-header">
+                                <div class="score-header-left">
+                                    <div class="score-icon-box">🛏️</div>
+                                    <div class="score-title-group">
+                                        <span class="score-title">Room Breakdown</span>
+                                        <span class="score-subtitle">Essential rooms assessment</span>
+                                    </div>
+                                </div>
+                                <div class="score-header-right">
+                                    <span class="score-badge" id="roomBadge">-</span>
+                                    <span class="score-number" id="roomNumber">-</span>
+                                    <span class="tooltip">
+                                        <span class="info-icon">i</span>
+                                        <span class="tooltiptext">
+                                            <strong>Room Breakdown Scoring</strong><br><br>
+                                            Based on essential rooms found:<br>
+                                            • Primary Bedroom<br>
+                                            • Additional Bedrooms<br>
+                                            • Bathroom(s)<br>
+                                            • Kitchen<br>
+                                            • Living Room<br><br>
+                                            Bonus rooms (study, utility, etc.) shown but don't affect score.
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="score-body">
+                                <div id="roomBreakdownDetails"></div>
+                            </div>
+                        </div>
+                        <!-- Property Costs -->
+                        <div class="score-card" id="costCard" style="display: none;">
+                            <div class="score-header">
+                                <div class="score-header-left">
+                                    <div class="score-icon-box">💷</div>
+                                    <div class="score-title-group">
+                                        <span class="score-title">Property Costs</span>
+                                        <span class="score-subtitle">Council tax, stamp duty & value</span>
+                                    </div>
+                                </div>
+                                <div class="score-header-right">
+                                    <span class="score-badge" id="costBadge">-</span>
+                                    <span class="score-number" id="costNumber">-</span>
+                                    <span class="tooltip">
+                                        <span class="info-icon">i</span>
+                                        <span class="tooltiptext">
+                                            <strong>Property Cost Scoring</strong><br><br>
+                                            Average of available factors:<br>
+                                            • Council Tax: Bands A-H (A=cheapest)<br>
+                                            • Price per sq m: vs national percentiles<br>
+                                            • Stamp Duty: Based on purchase price<br><br>
+                                            Lower costs = higher score.
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="score-body">
+                                <div id="costDetails"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
                 <!-- Right Column - Sidebar -->
-                <aside class="results-sidebar">
+                <aside class="results-sidebar">    
                     <!-- Overall Score -->
                     <div class="score-overview">
                         <div class="score-overview-label">OVERALL ACCESSIBILITY SCORE</div>
@@ -2149,39 +2457,48 @@
 
                     <!-- Map -->
                     <div class="map-card">
-                        <div class="map-title">
-                            <span>📍</span>
-                            <span>Location & Amenities</span>
+                        <div class="score-header">
+                            <div class="score-header-left">
+                                <div class="score-icon-box">📍</div>
+                                <div class="score-title-group">
+                                    <span class="score-title">Location & Amenities</span>
+                                    <span class="score-subtitle">Property and nearby services</span>
+                                </div>
+                            </div>
                         </div>
-                        <img id="mapImage" class="map-image" alt="Property location map" style="display: none;">
-                        <div class="map-legend">
-                            <div class="legend-item">
-                                <div class="legend-marker marker-property">H</div>
-                                <span>Property</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-marker marker-gp">GP</div>
-                                <span>Nearest GP</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-marker marker-bus">B</div>
-                                <span>Bus Stop</span>
-                            </div>
-                            <div class="legend-item">
-                                <div class="legend-marker marker-train">T</div>
-                                <span>Train Station</span>
+                        <div class="map-body">
+                            <img id="mapImage" class="map-image" alt="Property location map" style="display: none;">
+                            <div class="map-legend">
+                                <div class="legend-item">
+                                    <div class="legend-marker marker-property">H</div>
+                                    <span>Property</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-marker marker-gp">GP</div>
+                                    <span>Nearest GP</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-marker marker-bus">B</div>
+                                    <span>Bus Stop</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-marker marker-train">T</div>
+                                    <span>Train Station</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </aside>
-            </div>
-            
+                </div>
             <!-- Summary - Full width at bottom -->
             <div class="summary-section">
-                <div class="summary-title">📋 Summary & Recommendations</div>
-                <div class="summary-text" id="summaryText"></div>
+                <div class="summary-header">
+                    <span class="summary-icon">📋</span>
+                    <div class="summary-title">Summary & Recommendations</div>
+                </div>
+                <div class="summary-body">
+                    <div class="summary-text" id="summaryText"></div>
+                </div>
             </div>
-        </div>
 
     <script>
         async function analyzeProperty() {
@@ -2774,16 +3091,16 @@
             
             const foundFeatures = accessibleFeatures.features || [];
             
-            // Define the 8 criteria in display order
+            // Define the 8 criteria with icons
             const criteriaMapping = [
-                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: 'Step-free access' },
-                { key: 'downstairsBedroom', labels: ['Downstairs bedroom'], displayAs: 'Downstairs bedroom' },
-                { key: 'downstairsBathroom', labels: ['Downstairs bathroom/WC'], displayAs: 'Downstairs bathroom' },
-                { key: 'groundFloorEntry', labels: ['Ground floor entry'], displayAs: 'Ground floor entry' },
-                { key: 'privateParking', labels: ['Off-street/private parking'], displayAs: 'Private parking' },
-                { key: 'garden', labels: ['Garden access'], displayAs: 'Garden access' },
-                { key: 'balcony', labels: ['Balcony/terrace'], displayAs: 'Balcony/terrace' },
-                { key: 'externalLevelAccess', labels: ['External level/ramp access'], displayAs: 'Level access' }
+                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: 'Step-free access', icon: '🚶' },
+                { key: 'downstairsBedroom', labels: ['Downstairs bedroom'], displayAs: 'Downstairs bedroom', icon: '🛏️' },
+                { key: 'downstairsBathroom', labels: ['Downstairs bathroom/WC'], displayAs: 'Downstairs bathroom', icon: '🚿' },
+                { key: 'groundFloorEntry', labels: ['Ground floor entry'], displayAs: 'Ground floor entry', icon: '🚪' },
+                { key: 'privateParking', labels: ['Off-street/private parking'], displayAs: 'Private parking', icon: '🚗' },
+                { key: 'garden', labels: ['Garden access'], displayAs: 'Garden access', icon: '🌱' },
+                { key: 'balcony', labels: ['Balcony/terrace'], displayAs: 'Balcony/terrace', icon: '🌿' },
+                { key: 'externalLevelAccess', labels: ['External level/ramp access'], displayAs: 'Level access', icon: '♿' }
             ];
 
             let detailsHtml = '<div class="features-grid">';
@@ -2797,15 +3114,16 @@
                 );
                 
                 const isFound = !!matchedFeature;
-                const checkClass = isFound ? 'yes' : 'no';
+                const statusClass = isFound ? 'found' : 'not-found';
                 const checkIcon = isFound ? '✓' : '✗';
                 const displayLabel = (criterion.key === 'stepFreeOrLift' && matchedFeature) 
                     ? matchedFeature : criterion.displayAs;
 
                 detailsHtml += `
-                    <div class="feature-item">
-                        <div class="feature-check ${checkClass}">${checkIcon}</div>
-                        <span class="feature-text">${displayLabel}</span>
+                    <div class="room-grid-item">
+                        <div class="room-icon-circle">${criterion.icon}</div>
+                        <span class="room-grid-name">${displayLabel}</span>
+                        <div class="room-status-icon ${statusClass}">${checkIcon}</div>
                     </div>
                 `;
             });
@@ -2815,148 +3133,170 @@
             if (details) details.innerHTML = detailsHtml;
         }
         
-function displayDimensions(dimensions, roomAccommodation) {
-    const dimensionsContainer = document.getElementById('dimensionsCard');
-    
-    // Check for API failure (no data returned at all)
-    if (!dimensions && !roomAccommodation) {
-        dimensionsContainer.style.display = 'block';
-        dimensionsContainer.innerHTML = `
-            <div class="score-header">
-                <span class="score-icon">📐</span>
-                <span class="score-title">Room Breakdown</span>
-            </div>
-            <div class="score-value fair">Error</div>
-            <div class="score-description">Unable to retrieve room information</div>
-            <div class="score-details">${getRetryMessage('Room Information')}</div>
-        `;
-        return;
-    }
-    
-    // If we have some data but not all, continue with display
-    if (!dimensions || (!dimensions.totalSqM && !roomAccommodation)) {
-        dimensionsContainer.style.display = 'none';
-        return;
-    }
-    
-    dimensionsContainer.style.display = 'block';
-    
-    // Parse found rooms to determine actual room types
-    const foundRoomsList = roomAccommodation?.roomsFound || [];
+        function displayDimensions(dimensions, roomAccommodation) {
+            const dimensionsContainer = document.getElementById('dimensionsCard');
+            const roomBadge = document.getElementById('roomBadge');
+            const roomNumber = document.getElementById('roomNumber');
+            const roomDetails = document.getElementById('roomBreakdownDetails');
+            
+            // Check for API failure (no data returned at all)
+            if (!dimensions && !roomAccommodation) {
+                dimensionsContainer.style.display = 'block';
+                if (roomBadge) { roomBadge.textContent = 'N/A'; roomBadge.className = 'score-badge na'; }
+                if (roomNumber) { roomNumber.textContent = '-'; }
+                if (roomDetails) roomDetails.innerHTML = getRetryMessage('Room Information');
+                return;
+            }
+            
+            // If we have some data but not all, continue with display
+            if (!dimensions || (!dimensions.totalSqM && !roomAccommodation)) {
+                dimensionsContainer.style.display = 'none';
+                return;
+            }
+            
+            dimensionsContainer.style.display = 'block';
+            
+            // Set badge and score
+            if (roomAccommodation && roomAccommodation.score !== null) {
+                const scoreClass = getScoreClass(roomAccommodation.score);
+                const ratingText = getRatingText(roomAccommodation.score);
+                
+                if (roomBadge) {
+                    roomBadge.textContent = ratingText;
+                    roomBadge.className = 'score-badge ' + scoreClass;
+                }
+                if (roomNumber) {
+                    roomNumber.textContent = roomAccommodation.score.toFixed(1);
+                }
+            } else {
+                if (roomBadge) { roomBadge.textContent = '-'; roomBadge.className = 'score-badge'; }
+                if (roomNumber) { roomNumber.textContent = '-'; }
+            }
+            
+            // Build content HTML
+            let html = '';
 
-    // Determine actual room configuration
-    const hasKitchen = foundRoomsList.some(r => r.toLowerCase().includes('kitchen'));
-    const hasLivingRoom = foundRoomsList.some(r => r.toLowerCase().includes('living room'));
-    const hasBathroom1 = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 1'));
-    const hasBathroom2 = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 2'));
-    const hasBathroom3Plus = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 3+'));
-    const hasBedroom1 = foundRoomsList.some(r => r === 'Bedroom 1');
-    const hasBedroom2 = foundRoomsList.some(r => r === 'Bedroom 2');
-    const hasBedroom3Plus = foundRoomsList.some(r => r === 'Bedroom 3+');
-
-    // Determine kitchen type based on living room presence
-    const kitchenName = hasLivingRoom ? 'Kitchen' : 'Kitchen/diner';
-    const livingRoomName = 'Separate living room';
-
-    const roomStatus = [
-        { name: kitchenName, found: hasKitchen },
-        { name: livingRoomName, found: hasLivingRoom },
-        { name: 'Bathroom 1', found: hasBathroom1 },
-        { name: 'Bathroom 2', found: hasBathroom2 }
-    ];
-
-    // Add Bathroom 3+ if present
-    if (hasBathroom3Plus) {
-        roomStatus.push({ name: 'Bathroom 3+', found: true });
-    }
-
-    roomStatus.push({ name: 'Bedroom 1', found: hasBedroom1 });
-    roomStatus.push({ name: 'Bedroom 2', found: hasBedroom2 });
-
-    // Add Bedroom 3+ if present
-    if (hasBedroom3Plus) {
-        roomStatus.push({ name: 'Bedroom 3+', found: true });
-    }
-
-    let html = `
-        <div class="score-header">
-            <span class="score-icon">📐</span>
-            <span class="score-title">Room Breakdown</span>
-            <span class="tooltip">
-                <span class="info-icon">i</span>
-                <span class="tooltiptext">
-                    <strong>Room Accommodation Scoring</strong><br><br>
-                    Scored out of 6 desirable rooms, converted to 0-5 scale:<br>
-                    • Kitchen or kitchen/diner<br>
-                    • Separate living room (not open plan)<br>
-                    • Bedroom 1<br>
-                    • Bedroom 2<br>
-                    • Bathroom/toilet 1<br>
-                    • Bathroom/toilet 2<br><br>
-                    Additional bedrooms/bathrooms (3+) shown for information only.
-                </span>
-            </span>
-        </div>
-        
-        ${roomAccommodation && roomAccommodation.score !== null ? `
-            <div class="score-value ${roomAccommodation.rating.toLowerCase().replace(/ /g, '-')}">${roomAccommodation.rating}</div>
-        ` : ''}
-        
-        <!-- Total Size Section -->
-        ${dimensions.totalSqM ? `
-            <div class="dimension-transport-wrapper">
-                <div class="dimension-transport-section">
-                    <div class="dimension-section-header">TOTAL SIZE</div>
-                    <div class="dimension-size-display">
-                        <span class="dimension-primary-size">${dimensions.totalSqM} sq m</span>
-                        ${dimensions.totalSqFt ? `
-                            <span class="dimension-secondary-size">${dimensions.totalSqFt.toLocaleString()} sq ft</span>
-                        ` : ''}
+            // Total Size Section (simplified)
+            if (dimensions.totalSqM) {
+                html += `
+                    <div class="total-size-line">
+                        <span class="total-size-value">${dimensions.totalSqM} sq m</span>
+                        ${dimensions.totalSqFt ? `<span class="total-size-secondary">(${dimensions.totalSqFt.toLocaleString()} sq ft)</span>` : ''}
                     </div>
-                </div>
-            </div>
-        ` : ''}
-        
-        <!-- Room List Section -->
-        <div class="dimension-transport-wrapper">
-            <div class="dimension-transport-section">
-                <div class="accessible-features-list">
-                    ${roomStatus.map(room => {
-                        const icon = room.found ? '✅' : '❌';
-                        return `<div style="margin: 0.5rem 0; font-size: 0.9rem;">${icon} ${room.name}</div>`;
-                    }).join('')}
-                </div>
-            </div>
-        </div>
-    `;
-    
-    dimensionsContainer.innerHTML = html;
-}
+                `;
+            }
+
+            // Room Grid Section
+            const foundRoomsList = roomAccommodation?.roomsFound || [];
+
+            const hasKitchen = foundRoomsList.some(r => r.toLowerCase().includes('kitchen'));
+            const hasLivingRoom = foundRoomsList.some(r => r.toLowerCase().includes('living room'));
+            const hasBathroom1 = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 1'));
+            const hasBathroom2 = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 2'));
+            const hasBathroom3Plus = foundRoomsList.some(r => r.toLowerCase().includes('bathroom/toilet 3+'));
+            const hasBedroom1 = foundRoomsList.some(r => r === 'Bedroom 1');
+            const hasBedroom2 = foundRoomsList.some(r => r === 'Bedroom 2');
+            const hasBedroom3Plus = foundRoomsList.some(r => r === 'Bedroom 3+');
+
+            const roomItems = [
+                { name: 'Bedroom 1 (Primary)', found: hasBedroom1 },
+                { name: 'Bedroom 2', found: hasBedroom2 },
+                { name: 'Bedroom 3+', found: hasBedroom3Plus },
+                { name: 'Bathroom', found: hasBathroom1 },
+                { name: hasBathroom3Plus ? 'Bathroom 2+' : 'Bathroom 2', found: hasBathroom2 || hasBathroom3Plus },
+                { name: 'Kitchen', found: hasKitchen },
+                { name: 'Living Room', found: hasLivingRoom }
+            ].filter(room => room.found);
+
+            html += '<div class="room-grid">';
+
+            const roomIcons = {
+                'Bedroom 1 (Primary)': '🛏️',
+                'Bedroom 2': '🛏️',
+                'Bedroom 3+': '🛏️',
+                'Bathroom': '🚿',
+                'Bathroom 2+': '🚿',
+                'Kitchen': '🍳',
+                'Living Room': '🛋️'
+            };
+
+            roomItems.forEach(room => {
+                const icon = roomIcons[room.name] || '🏠';
+                html += `
+                    <div class="room-grid-item">
+                        <div class="room-icon-circle">${icon}</div>
+                        <span class="room-grid-name">${room.name}</span>
+                        <div class="room-status-icon found">✓</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+
+            if (roomDetails) roomDetails.innerHTML = html;
+        }
         
         function generateRoomBreakdown(dimensions) {
             if (!dimensions.roomTypes || dimensions.roomTypes.length === 0) {
                 return `<div class="dimension-no-data">No room information available</div>`;
             }
-        
-            // Check if we have individual room dimensions
-            const hasIndividualRooms = dimensions.rooms && dimensions.rooms.length > 0;
+
+            // Define essential rooms (these get "Found" badge)
+            const essentialRooms = ['bedroom', 'bathroom', 'kitchen', 'livingroom', 'livingRoom'];
             
-            if (hasIndividualRooms) {
-                return generateDetailedRoomList(dimensions);
-            } else {
-                // Show simple room list
-                return dimensions.roomTypes.map(room => {
-                    const icon = getRoomIcon(room.type);
-                    const roomCount = room.count > 1 ? `${room.count} ` : '';
-                    
-                    return `
-                        <div class="dimension-room-line">
-                            <span class="dimension-room-icon">${icon}</span>
-                            <span class="dimension-room-text">${roomCount}${room.display}</span>
+            // Define bonus rooms (these get "Bonus" badge)
+            const bonusRoomTypes = ['study', 'utility', 'conservatory', 'diningroom', 'diningRoom', 'garage', 'garden', 'balcony', 'terrace'];
+
+            let html = '';
+
+            dimensions.roomTypes.forEach(room => {
+                const icon = getRoomIcon(room.type);
+                const roomType = room.type.toLowerCase();
+                
+                // Determine badge type
+                let badgeClass = 'found';
+                let badgeText = 'Found';
+                
+                if (bonusRoomTypes.some(b => roomType.includes(b.toLowerCase()))) {
+                    badgeClass = 'bonus';
+                    badgeText = 'Bonus';
+                }
+
+                // Handle multiple rooms (e.g., Bedroom 1, Bedroom 2, Bedroom 3+)
+                if (room.count > 1) {
+                    for (let i = 1; i <= Math.min(room.count, 2); i++) {
+                        const label = room.type === 'bedroom' ? `Bedroom ${i}${i === 1 ? ' (Primary)' : ''}` : `${room.display} ${i}`;
+                        html += `
+                            <div class="room-card">
+                                <div class="room-icon-circle">${icon}</div>
+                                <div class="room-name">${label}</div>
+                                <span class="room-badge ${badgeClass}">${badgeText}</span>
+                            </div>
+                        `;
+                    }
+                    // If more than 2, add a "3+" card as bonus
+                    if (room.count > 2) {
+                        html += `
+                            <div class="room-card">
+                                <div class="room-icon-circle">${icon}</div>
+                                <div class="room-name">${room.display} 3+</div>
+                                <span class="room-badge bonus">Bonus</span>
+                            </div>
+                        `;
+                    }
+                } else {
+                    // Single room
+                    html += `
+                        <div class="room-card">
+                            <div class="room-icon-circle">${icon}</div>
+                            <div class="room-name">${room.display}</div>
+                            <span class="room-badge ${badgeClass}">${badgeText}</span>
                         </div>
                     `;
-                }).join('');
-            }
+                }
+            });
+
+            return html;
         }
         
         function generateDetailedRoomList(dimensions) {
@@ -3116,181 +3456,154 @@ function displayDimensions(dimensions, roomAccommodation) {
             return '🏠'; // Default icon
         }
 
-function displayCostAnalysis(cost, propertyCost) {
-    const costContainer = document.getElementById('costCard');
-    
-    // Check for API failure (no data returned at all)
-    if (!cost && !propertyCost) {
-        costContainer.style.display = 'block';
-        costContainer.innerHTML = `
-            <div class="score-header">
-                <span class="score-icon">💷</span>
-                <span class="score-title">Property Costs</span>
-            </div>
-            <div class="score-value fair">Error</div>
-            <div class="score-description">Unable to retrieve cost information</div>
-            <div class="score-details">${getRetryMessage('Cost Information')}</div>
-        `;
-        return;
-    }
-    
-    // Show the card
-    costContainer.style.display = 'block';
-    
-    if (!cost) {
-        costContainer.innerHTML = `
-            <div class="score-header">
-                <span class="score-icon">💷</span>
-                <span class="score-title">Property Costs</span>
-            </div>
-            <div class="score-description">Cost information not available</div>
-        `;
-        return;
-    }
+        function displayCostAnalysis(cost, propertyCost) {
+            const costContainer = document.getElementById('costCard');
+            const costBadge = document.getElementById('costBadge');
+            const costNumber = document.getElementById('costNumber');
+            const costDetails = document.getElementById('costDetails');
+            
+            // Check for API failure
+            if (!cost && !propertyCost) {
+                costContainer.style.display = 'block';
+                if (costBadge) { costBadge.textContent = 'N/A'; costBadge.className = 'score-badge na'; }
+                if (costNumber) { costNumber.textContent = '-'; }
+                if (costDetails) costDetails.innerHTML = getRetryMessage('Cost Information');
+                return;
+            }
+            
+            costContainer.style.display = 'block';
+            
+            if (!cost) {
+                if (costBadge) { costBadge.textContent = '-'; costBadge.className = 'score-badge'; }
+                if (costNumber) { costNumber.textContent = '-'; }
+                if (costDetails) costDetails.innerHTML = '<p style="color: #6b7280;">Cost information not available</p>';
+                return;
+            }
 
-    // Existing logic continues here...
+            // Set badge and score
+            if (propertyCost && propertyCost.score !== null) {
+                const scoreClass = getScoreClass(propertyCost.score);
+                const ratingText = getRatingText(propertyCost.score);
+                
+                if (costBadge) {
+                    costBadge.textContent = ratingText;
+                    costBadge.className = 'score-badge ' + scoreClass;
+                }
+                if (costNumber) {
+                    costNumber.textContent = propertyCost.score.toFixed(1);
+                }
+            }
 
-    let html = `
-        <div class="score-header">
-            <span class="score-icon">💷</span>
-            <span class="score-title">Property Costs</span>
-            <<span class="tooltip">
-                <span class="info-icon">i</span>
-                <span class="tooltiptext">
-                    <strong>Property Cost Scoring</strong><br><br>
-                    Average of available factors:<br>
-                    • Council Tax: Bands A (lowest) to H (highest). Band D is average<br>
-                    • Price per sq m: Compared to national percentiles<br>
-                    • Stamp Duty: Based on purchase price<br><br>
-                    All measurements shown in metric units.
-                </span>
-            </span>
-        </div>
-    
-        ${propertyCost && propertyCost.score !== null ? `
-            <div class="score-value ${propertyCost.rating.toLowerCase().replace(/ /g, '-')}">${propertyCost.rating}</div>
-        ` : ''}
-        
-        <!-- Council Tax Section -->
-        <div class="dimension-transport-wrapper">
-            <div class="dimension-transport-section">
-                <div class="dimension-section-header">COUNCIL TAX</div>
-                <div class="dimension-size-display">
-                    <span class="dimension-primary-size">${cost.councilTax || 'Not specified'}</span>
-                    ${propertyCost && propertyCost.councilTaxRating ? `
-                        <span class="dimension-secondary-size" style="background-color: ${
-                            propertyCost.councilTaxRating.includes('Cheapest') || propertyCost.councilTaxRating.includes('Average band') ? '#d4edda' : 
-                            propertyCost.councilTaxRating.includes('Above average') ? '#fff3cd' : 
-                            '#f8d7da'
-                        }; color: ${
-                            propertyCost.councilTaxRating.includes('Cheapest') || propertyCost.councilTaxRating.includes('Average band') ? '#155724' : 
-                            propertyCost.councilTaxRating.includes('Above average') ? '#856404' : 
-                            '#721c24'
-                        }; padding: 0.25rem 0.5rem; border-radius: 4px;">
-                            ${propertyCost.councilTaxRating}
-                        </span>
-                    ` : ''}
-                </div>
-            </div>
-        </div>
-        
-        
-        <!-- Price per Sq M Section -->
-        <div class="dimension-transport-wrapper">
-            <div class="dimension-transport-section">
-                <div class="dimension-section-header">PRICE PER SQ M</div>
-                <div class="dimension-size-display">
-                    <span class="dimension-primary-size">${cost.pricePerSqM || 'Unable to calculate'}</span>
-                    ${propertyCost && propertyCost.pricePerSqMPercentile ? `
-                        <span class="dimension-secondary-size" style="background-color: ${
-                            propertyCost.pricePerSqMPercentile === '10th' || propertyCost.pricePerSqMPercentile === '25th' ? '#d4edda' : 
-                            propertyCost.pricePerSqMPercentile === '50th' ? '#fff3cd' : 
-                            '#f8d7da'
-                        }; color: ${
-                            propertyCost.pricePerSqMPercentile === '10th' || propertyCost.pricePerSqMPercentile === '25th' ? '#155724' : 
-                            propertyCost.pricePerSqMPercentile === '50th' ? '#856404' : 
-                            '#721c24'
-                        }; padding: 0.25rem 0.5rem; border-radius: 4px;">
-                            ${(() => {
-                                if (propertyCost.pricePerSqMPercentile === '10th') return 'Cheaper than 90% of properties';
-                                if (propertyCost.pricePerSqMPercentile === '25th') return 'Cheaper than 75% of properties';
-                                if (propertyCost.pricePerSqMPercentile === '50th') {
-                                    // Check actual price to determine if cheap or expensive side of 50th
-                                    const price = parseInt(cost.pricePerSqM.replace(/[£,]/g, ''));
-                                    return price <= 2507 ? 'Cheaper than 50% of properties' : 'More expensive than 50% of properties';
-                                }
-                                if (propertyCost.pricePerSqMPercentile === '75th') return 'More expensive than 75% of properties';
-                                if (propertyCost.pricePerSqMPercentile === '90th') return 'More expensive than 90% of properties';
-                                return 'More expensive than 90% of properties';
-                            })()}
-                        </span>
-                    ` : cost.pricePerSqMNote ? `
-                        <span class="dimension-secondary-size">${cost.pricePerSqMNote}</span>
-                    ` : ''}
-                </div>
-            </div>
-        </div>
+            // Helper function to get tag class
+            function getCostTagClass(type, value) {
+                if (type === 'councilTax') {
+                    if (value.includes('Cheapest') || value.includes('Average band')) return 'good';
+                    if (value.includes('Above average')) return 'moderate';
+                    return 'expensive';
+                }
+                if (type === 'percentile') {
+                    if (value === '10th' || value === '25th') return 'good';
+                    if (value === '50th') return 'moderate';
+                    return 'expensive';
+                }
+                if (type === 'stampDuty') {
+                    if (value === 0 || value <= 10000) return 'good';
+                    if (value <= 20000) return 'moderate';
+                    return 'expensive';
+                }
+                return 'moderate';
+            }
 
-        <!-- Stamp Duty Section -->
-        ${propertyCost && propertyCost.stampDutyAmount !== null ? `
-            <div class="dimension-transport-wrapper">
-                <div class="dimension-transport-section">
-                    <div class="dimension-section-header">STAMP DUTY</div>
-                    <div class="dimension-size-display">
-                        <span class="dimension-primary-size">£${propertyCost.stampDutyAmount.toLocaleString()}</span>
-                        <span class="dimension-secondary-size" style="background-color: ${
-                            propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? '#d4edda' : 
-                            propertyCost.stampDutyAmount <= 20000 ? '#fff3cd' : 
-                            '#f8d7da'
-                        }; color: ${
-                            propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? '#155724' : 
-                            propertyCost.stampDutyAmount <= 20000 ? '#856404' : 
-                            '#721c24'
-                        }; padding: 0.25rem 0.5rem; border-radius: 4px;">
-                            ${propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? 'Low cost' : 
-                            propertyCost.stampDutyAmount <= 20000 ? 'Medium cost' : 
-                            'High cost'}
-                        </span>
+            // Helper for percentile text
+            function getPercentileText(percentile, pricePerSqM) {
+                if (percentile === '10th') return 'Cheaper than 90% of properties';
+                if (percentile === '25th') return 'Cheaper than 75% of properties';
+                if (percentile === '50th') {
+                    const price = parseInt(pricePerSqM.replace(/[£,]/g, ''));
+                    return price <= 2507 ? 'Cheaper than 50% of properties' : 'More expensive than 50% of properties';
+                }
+                if (percentile === '75th') return 'More expensive than 75% of properties';
+                return 'More expensive than 90% of properties';
+            }
+
+            let html = '';
+
+            // Council Tax Card
+            html += `
+                <div class="cost-item-card">
+                    <div class="cost-item-title">🏛️ Council Tax Band</div>
+                    <div class="cost-item-right">
+                        <div class="cost-item-value">${cost.councilTax || 'Not specified'}</div>
+                        ${propertyCost && propertyCost.councilTaxRating ? `
+                            <span class="cost-tag ${getCostTagClass('councilTax', propertyCost.councilTaxRating)}">${propertyCost.councilTaxRating}</span>
+                        ` : ''}
                     </div>
                 </div>
-            </div>
-        ` : ''}
+            `;
 
-        
-        <div class="dimension-transport-wrapper">
-            <div class="dimension-transport-section">
-                <div class="dimension-section-header">ONGOING COSTS</div>
-                <div class="dimension-room-content">
-                    <div class="dimension-room-line">
-                        <span class="dimension-room-icon">🏢</span>
-                        <div class="cost-item">
-                            <span class="cost-label">Service Charge</span>
-                            <span class="cost-value">${cost.serviceCharge || 'Not mentioned'}</span>
+            // Price per Sq M Card
+            if (cost.pricePerSqM) {
+                const percentileText = propertyCost && propertyCost.pricePerSqMPercentile 
+                    ? getPercentileText(propertyCost.pricePerSqMPercentile, cost.pricePerSqM)
+                    : cost.pricePerSqMNote || '';
+                
+                const tagClass = propertyCost && propertyCost.pricePerSqMPercentile 
+                    ? getCostTagClass('percentile', propertyCost.pricePerSqMPercentile)
+                    : 'moderate';
+
+                html += `
+                    <div class="cost-item-card">
+                        <div class="cost-item-title">📊 Price per sq m</div>
+                        <div class="cost-item-right">
+                            <div class="cost-item-value">${cost.pricePerSqM}</div>
+                            ${percentileText ? `<span class="cost-tag ${tagClass}">${percentileText}</span>` : ''}
                         </div>
                     </div>
-                    ${cost.groundRent ? `
-                        <div class="dimension-room-line">
-                            <span class="dimension-room-icon">🏡</span>
-                            <div class="cost-item">
-                                <span class="cost-label">Ground Rent</span>
-                                <span class="cost-value">${cost.groundRent}</span>
+                `;
+            }
+
+            // Stamp Duty Card
+            if (propertyCost && propertyCost.stampDutyAmount !== null) {
+                const stampTagClass = getCostTagClass('stampDuty', propertyCost.stampDutyAmount);
+                const stampTagText = propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? 'Low cost' : 
+                    propertyCost.stampDutyAmount <= 20000 ? 'Medium cost' : 'High cost';
+
+                html += `
+                    <div class="cost-item-card">
+                        <div class="cost-item-title">🏠 Stamp Duty (England)</div>
+                        <div class="cost-item-right">
+                            <div class="cost-item-value">£${propertyCost.stampDutyAmount.toLocaleString()}</div>
+                            <span class="cost-tag ${stampTagClass}">${stampTagText}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Ongoing Costs Card
+            html += `
+                <div class="cost-item-card">
+                    <div class="cost-item-title" style="margin-bottom: 12px;">📋 Ongoing Costs</div>
+                    <div class="cost-ongoing-list">
+                        <div class="cost-ongoing-item">
+                            <span>🏢 Service Charge</span>
+                            <span>${cost.serviceCharge || 'Not mentioned'}</span>
+                        </div>
+                        ${cost.groundRent ? `
+                            <div class="cost-ongoing-item">
+                                <span>🏡 Ground Rent</span>
+                                <span>${cost.groundRent}</span>
                             </div>
-                        </div>
-                    ` : ''}
-                    <div class="dimension-room-line">
-                        <span class="dimension-room-icon">📋</span>
-                        <div class="cost-item">
-                            <span class="cost-label">Leasehold</span>
-                            <span class="cost-value">${cost.leaseholdInfo || 'Leasehold'}</span>
+                        ` : ''}
+                        <div class="cost-ongoing-item">
+                            <span>📄 Tenure</span>
+                            <span>${cost.leaseholdInfo || 'Leasehold'}</span>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    `;
-    
-    costContainer.innerHTML = html;
-}
+            `;
+            
+            if (costDetails) costDetails.innerHTML = html;
+        }
         
         function displayPublicTransport(publicTransport) {
             const badge = document.getElementById('transportBadge');
@@ -3331,9 +3644,33 @@ function displayCostAnalysis(cost, propertyCost) {
                 `;
                 return;
             }
+
+            function getTransportSummary(score, walkingTime) {
+                if (score >= 4.5) {
+                    return `Excellent proximity – very manageable walk. Route appears level and pedestrian-friendly.`;
+                } else if (score >= 3.5) {
+                    return `Good proximity – reasonable walk to nearest bus stop. Route generally accessible.`;
+                } else if (score >= 2.5) {
+                    return `Moderate proximity – ${walkingTime} minute walk to nearest bus stop. May require some effort.`;
+                } else if (score >= 1.5) {
+                    return `Limited proximity – longer walk required. Consider alternative transport options.`;
+                } else {
+                    return `Poor proximity – bus stops are a significant distance away. Personal transport may be needed.`;
+                }
+            }
             
             let detailsHtml = '';
             
+            // Generate summary based on nearest bus stop
+            const nearestBus = publicTransport.busStops && publicTransport.busStops.length > 0 
+                ? publicTransport.busStops[0] 
+                : null;
+
+            if (nearestBus && !nearestBus.tooFar) {
+                const summaryText = getTransportSummary(publicTransport.score, nearestBus.walkingTime);
+                detailsHtml += `<p class="score-summary">${summaryText}</p>`;
+            }
+
             // Bus stops section
             if (publicTransport.busStops && publicTransport.busStops.length > 0) {
                 detailsHtml += '<div class="transport-section">';
@@ -3342,13 +3679,14 @@ function displayCostAnalysis(cost, propertyCost) {
                 publicTransport.busStops.slice(0, 2).forEach(bus => {
                     const distanceText = bus.tooFar 
                         ? `${bus.distance} - too far to walk`
-                        : `${bus.walkingTime} mins walk`;
+                        : `${bus.distance} · ${bus.walkingTime} mins walk`;
                     
                     detailsHtml += `
                         <div class="transport-stop-card">
                             <div class="transport-icon-circle bus">🚌</div>
                             <div class="transport-stop-content">
                                 <div class="transport-stop-name">${bus.name || 'Bus Stop'}</div>
+                                ${bus.address ? `<div class="transport-stop-address">${bus.address}</div>` : ''}
                                 <div class="transport-stop-distance">${distanceText}</div>
                             </div>
                         </div>
@@ -3365,13 +3703,14 @@ function displayCostAnalysis(cost, propertyCost) {
                 publicTransport.trainStations.slice(0, 2).forEach(train => {
                     const distanceText = train.tooFar 
                         ? `${train.distance} away`
-                        : `${train.walkingTime} mins walk`;
+                        : `${train.distance} · ${train.walkingTime} mins walk`;
                     
                     detailsHtml += `
                         <div class="transport-stop-card">
                             <div class="transport-icon-circle train">🚂</div>
                             <div class="transport-stop-content">
                                 <div class="transport-stop-name">${train.name || 'Train Station'}</div>
+                                ${train.address ? `<div class="transport-stop-address">${train.address}</div>` : ''}
                                 <div class="transport-stop-distance">${distanceText}</div>
                             </div>
                         </div>
@@ -3379,6 +3718,14 @@ function displayCostAnalysis(cost, propertyCost) {
                 });
                 detailsHtml += '</div>';
             }
+
+            // Add note about scoring
+            detailsHtml += `
+                <div class="transport-note">
+                    <span>ℹ️</span>
+                    Score based on bus stop walking times only
+                </div>
+            `;
             
             if (details) details.innerHTML = detailsHtml;
         }
