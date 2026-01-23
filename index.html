@@ -2057,38 +2057,274 @@
             cursor: not-allowed;
         }
 
+        /* Print report styles (hidden on screen) */
+        .print-report {
+            display: none;
+        }
+
+        .print-report.show {
+            display: block;
+        }
+
+        .print-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #1e3a5f;
+            margin-bottom: 12px;
+        }
+
+        .print-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .print-brand-icon {
+            font-size: 18px;
+        }
+
+        .print-brand-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e3a5f;
+        }
+
+        .print-date {
+            font-size: 9px;
+            color: #6b7280;
+        }
+
+        .print-property-header {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .print-property-image {
+            width: 90px;
+            height: 68px;
+            background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 22px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .print-property-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .print-property-info {
+            flex: 1;
+        }
+
+        .print-property-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 3px;
+        }
+
+        .print-property-details {
+            font-size: 9px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .print-property-price {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e3a5f;
+        }
+
+        .print-overall-score {
+            text-align: center;
+            background: #1e3a5f;
+            color: white;
+            padding: 10px 16px;
+            border-radius: 8px;
+            min-width: 100px;
+        }
+
+        .print-overall-label {
+            font-size: 7px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.8;
+            margin-bottom: 2px;
+        }
+
+        .print-overall-number {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .print-overall-rating {
+            font-size: 9px;
+            background: rgba(255,255,255,0.2);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 3px;
+            display: inline-block;
+        }
+
+        .print-scores-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .print-score-card {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px;
+        }
+
+        .print-score-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .print-score-title {
+            font-size: 8px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .print-score-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #1e3a5f;
+        }
+
+        .print-score-details {
+            font-size: 7px;
+            color: #6b7280;
+            line-height: 1.3;
+        }
+
+        .print-feature-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 8px;
+        }
+
+        .print-feature-item {
+            font-size: 7px;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .print-feature-item.yes {
+            color: #16a34a;
+        }
+
+        .print-feature-item.no {
+            color: #dc2626;
+        }
+
+        .print-cost-list {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .print-cost-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 7px;
+        }
+
+        .print-cost-label {
+            color: #6b7280;
+        }
+
+        .print-cost-value {
+            font-weight: 600;
+            color: #1e3a5f;
+        }
+
+        .print-summary {
+            background: #f0f9ff;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        .print-summary-title {
+            font-size: 9px;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 5px;
+        }
+
+        .print-summary-text {
+            font-size: 8px;
+            color: #374151;
+            line-height: 1.5;
+        }
+
+        .print-footer {
+            border-top: 1px solid #e5e7eb;
+            padding-top: 8px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 7px;
+            color: #9ca3af;
+        }
+
+
         @media print {
-            /* Hide elements not needed in print */
-            .header,
-            .actions-card,
-            .search-container,
-            .loading,
-            button,
-            .action-btn {
-                display: none !important;
+            @page {
+                size: A4;
+                margin: 10mm;
             }
             
-            /* Reset background for print */
-            body {
+            html, body {
                 background: white !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                height: 277mm !important;
+                max-height: 277mm !important;
+                overflow: hidden !important;
             }
             
-            .results {
+            /* Hide everything */
+            body * {
+                visibility: hidden;
+            }
+            
+            /* Show print report */
+            .print-report {
                 display: block !important;
+                visibility: visible !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                background: white !important;
             }
             
-            /* Single column layout for print */
-            .results-layout {
-                display: block !important;
-            }
-            
-            .score-card,
-            .summary-section {
-                break-inside: avoid;
-                page-break-inside: avoid;
-                margin-bottom: 20px;
+            .print-report * {
+                visibility: visible !important;
             }
         }
 
@@ -2139,6 +2375,9 @@
                 padding: 10px;
             }
         }
+
+        
+
     </style>
 </head>
 <body>
@@ -2621,6 +2860,7 @@
                 </div>
             </div>
 
+
     <script>
 
         // At the top of your <script> section
@@ -2982,7 +3222,156 @@
         }
 
         function downloadReport() {
-            window.print();
+            // Get current date
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('printDate').textContent = 'Generated: ' + dateStr;
+            
+            // Property info
+            document.getElementById('printTitle').textContent = document.getElementById('propertyLocation')?.textContent || '';
+            document.getElementById('printPrice').textContent = document.getElementById('propertyPrice')?.textContent || '';
+
+            // Property details (beds, baths, etc.)
+            const detailItems = document.querySelectorAll('#propertyDetails .property-detail-item');
+            let detailsText = [];
+            detailItems.forEach(item => {
+                detailsText.push(item.textContent.trim());
+            });
+            const tenure = document.getElementById('propertyTenure')?.textContent || '';
+            if (tenure) detailsText.push(tenure);
+            document.getElementById('printDetails').textContent = detailsText.join(' • ');
+
+            // Property image
+            const propertyImg = document.getElementById('propertyImage');
+            if (propertyImg && propertyImg.src) {
+                document.getElementById('printImage').innerHTML = `<img src="${propertyImg.src}" alt="Property" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">`;
+            } else {
+                document.getElementById('printImage').innerHTML = '🏡';
+            }
+            
+            // Overall score
+            const overallScore = document.getElementById('overallScore')?.textContent || '-';
+            document.getElementById('printOverallScore').textContent = overallScore;
+            document.getElementById('printOverallRating').textContent = getRatingText(parseFloat(overallScore) || 0);
+            
+            // GP Proximity
+            document.getElementById('printGpScore').textContent = document.getElementById('gpNumber')?.textContent || 'N/A';
+            const gpContent = document.querySelector('.gp-info-content');
+            if (gpContent) {
+                const gpName = gpContent.querySelector('.gp-name')?.textContent || '';
+                const gpAddress = gpContent.querySelector('.gp-address')?.textContent || '';
+                const gpStats = gpContent.querySelectorAll('.gp-stat');
+                let gpTime = '';
+                let gpDistance = '';
+                gpStats.forEach(stat => {
+                    const text = stat.textContent || '';
+                    if (text.includes('mins') || text.includes('walk')) {
+                        gpTime = text.trim();
+                    } else if (text.includes('km')) {
+                        gpDistance = text.trim();
+                    }
+                });
+                document.getElementById('printGpDetails').innerHTML = `<strong>${gpName}</strong><br>${gpAddress}<br>${gpTime} • ${gpDistance}`;
+            } else {
+                document.getElementById('printGpDetails').textContent = 'GP information not available';
+            }
+            
+            // EPC
+            document.getElementById('printEpcScore').textContent = document.getElementById('epcNumber')?.textContent || 'N/A';
+            const epcInfo = document.querySelector('.epc-info');
+            if (epcInfo) {
+                const epcTitle = epcInfo.querySelector('.epc-title')?.textContent || '';
+                const epcDesc = epcInfo.querySelector('.epc-description')?.textContent || '';
+                document.getElementById('printEpcDetails').innerHTML = `<strong>${epcTitle}</strong><br>${epcDesc}`;
+            } else {
+                document.getElementById('printEpcDetails').textContent = 'EPC not found. Contact the estate agent for energy efficiency information.';
+            }
+            
+            // Public Transport
+            document.getElementById('printTransportScore').textContent = document.getElementById('transportNumber')?.textContent || 'N/A';
+            const transportStops = document.querySelectorAll('#publicTransportDetails .transport-stop-card');
+            if (transportStops.length > 0) {
+                const firstStop = transportStops[0];
+                const stopName = firstStop.querySelector('.transport-stop-name')?.textContent || '';
+                const stopAddress = firstStop.querySelector('.transport-stop-address')?.textContent || '';
+                const stopDistance = firstStop.querySelector('.transport-stop-distance')?.textContent || '';
+                document.getElementById('printTransportDetails').innerHTML = `<strong>Nearest Bus Stop:</strong><br>${stopName}<br>${stopAddress}<br>${stopDistance}`;
+            } else {
+                document.getElementById('printTransportDetails').textContent = 'Transport information not available';
+            }
+            
+            // Accessible Features
+            document.getElementById('printAccessScore').textContent = document.getElementById('accessNumber')?.textContent || 'N/A';
+            const accessFeatures = document.querySelectorAll('#accessibleFeaturesDetails .room-grid-item');
+            let accessHtml = '';
+            accessFeatures.forEach(feature => {
+                const name = feature.querySelector('.room-grid-name')?.textContent || '';
+                const statusIcon = feature.querySelector('.room-status-icon');
+                const hasFeature = statusIcon?.classList.contains('found');
+                const itemClass = hasFeature ? 'yes' : 'no';
+                const icon = hasFeature ? '✓' : '✗';
+                accessHtml += `<div class="print-feature-item ${itemClass}"><span>${icon}</span> ${name}</div>`;
+            });
+            document.getElementById('printAccessFeatures').innerHTML = accessHtml || 'No features data available';
+            
+            // Room Breakdown
+            document.getElementById('printRoomScore').textContent = document.getElementById('roomNumber')?.textContent || 'N/A';
+            const roomFeatures = document.querySelectorAll('#roomBreakdownDetails .room-grid-item');
+            let roomHtml = '';
+            roomFeatures.forEach(feature => {
+                const name = feature.querySelector('.room-grid-name')?.textContent || '';
+                const statusIcon = feature.querySelector('.room-status-icon');
+                const hasFeature = statusIcon?.classList.contains('found');
+                const itemClass = hasFeature ? 'yes' : 'no';
+                const icon = hasFeature ? '✓' : '✗';
+                roomHtml += `<div class="print-feature-item ${itemClass}"><span>${icon}</span> ${name}</div>`;
+            });
+            document.getElementById('printRoomFeatures').innerHTML = roomHtml || 'No room data available';
+            
+            // Room size
+            const roomSize = document.querySelector('.size-primary')?.textContent || '';
+            const roomSizeFt = document.querySelector('.size-secondary')?.textContent || '';
+            document.getElementById('printRoomSize').textContent = roomSize ? `Total: ${roomSize}${roomSizeFt ? ' (' + roomSizeFt + ')' : ''}` : '';
+            
+            // Property Costs
+            document.getElementById('printCostScore').textContent = document.getElementById('costNumber')?.textContent || 'N/A';
+            const costCards = document.querySelectorAll('#costDetails .cost-item-card');
+            let costHtml = '';
+            costCards.forEach(item => {
+                const labelEl = item.querySelector('.cost-label');
+                const valueEl = item.querySelector('.cost-value');
+                if (labelEl && valueEl) {
+                    const label = labelEl.textContent || '';
+                    let value = valueEl.textContent || '';
+                    // Only include Council Tax, Price per sq m, and Stamp Duty
+                    if (label.includes('Council Tax') || label.includes('Price per sq m') || label.includes('Stamp Duty')) {
+                        const cleanLabel = label.replace(/🏛️|📊|🏠/g, '').trim();
+                        // Replace messy unavailable text with N/A
+                        if (value.toLowerCase().includes('unable') || value.toLowerCase().includes('not available') || value.toLowerCase().includes('not found')) {
+                            value = 'N/A';
+                        }
+                        costHtml += `<div class="print-cost-item"><span class="print-cost-label">${cleanLabel}</span><span class="print-cost-value">${value}</span></div>`;
+                    }
+                }
+            });
+            document.getElementById('printCostDetails').innerHTML = costHtml || 'Cost information not available';
+            
+            // Summary
+            document.getElementById('printSummary').textContent = document.getElementById('summaryText')?.textContent || '';
+            
+            // Property URL
+            document.getElementById('printPropertyUrl').textContent = currentPropertyUrl ? `Property: ${currentPropertyUrl}` : '';
+            
+            // Show print report and print
+            document.getElementById('printReport').classList.add('show');
+            
+            setTimeout(() => {
+                window.print();
+                // Hide after printing
+                setTimeout(() => {
+                    document.getElementById('printReport').classList.remove('show');
+                }, 500);
+            }, 100);
         }
 
         // Add this new function
@@ -4649,8 +5038,103 @@ async function removeSavedProperty(propertyId) {
         }
     }
 
+    
+
     // Run on page load
     document.addEventListener('DOMContentLoaded', checkAuth);
     </script>
+
+    <!-- Print Report Template -->
+            <div class="print-report" id="printReport">
+                <div class="print-header">
+                    <div class="print-brand">
+                        <span class="print-brand-icon">🏠</span>
+                        <span class="print-brand-name">Home Accessibility Score</span>
+                    </div>
+                    <div class="print-date" id="printDate"></div>
+                </div>
+                
+                <div class="print-property-header">
+                    <div class="print-property-image" id="printImage">🏡</div>
+                    <div class="print-property-info">
+                        <div class="print-property-title" id="printTitle"></div>
+                        <div class="print-property-details" id="printDetails"></div>
+                        <div class="print-property-price" id="printPrice"></div>
+                    </div>
+                    <div class="print-overall-score">
+                        <div class="print-overall-label">Overall Score</div>
+                        <div class="print-overall-number" id="printOverallScore"></div>
+                        <div class="print-overall-rating" id="printOverallRating"></div>
+                    </div>
+                </div>
+                
+                <div class="print-scores-grid">
+                    <!-- GP Proximity -->
+                    <div class="print-score-card">
+                        <div class="print-score-header">
+                            <span class="print-score-title">🏥 GP Proximity</span>
+                            <span class="print-score-value" id="printGpScore"></span>
+                        </div>
+                        <div class="print-score-details" id="printGpDetails"></div>
+                    </div>
+                    
+                    <!-- Energy Efficiency -->
+                    <div class="print-score-card">
+                        <div class="print-score-header">
+                            <span class="print-score-title">⚡ Energy Efficiency</span>
+                            <span class="print-score-value" id="printEpcScore"></span>
+                        </div>
+                        <div class="print-score-details" id="printEpcDetails"></div>
+                    </div>
+                    
+                    <!-- Public Transport -->
+                    <div class="print-score-card">
+                        <div class="print-score-header">
+                            <span class="print-score-title">🚌 Public Transport</span>
+                            <span class="print-score-value" id="printTransportScore"></span>
+                        </div>
+                        <div class="print-score-details" id="printTransportDetails"></div>
+                    </div>
+                    
+                    <!-- Accessible Features -->
+                    <div class="print-score-card">
+                        <div class="print-score-header">
+                            <span class="print-score-title">♿ Accessible Features</span>
+                            <span class="print-score-value" id="printAccessScore"></span>
+                        </div>
+                        <div class="print-feature-list" id="printAccessFeatures"></div>
+                    </div>
+                    
+                    <!-- Room Breakdown -->
+                    <div class="print-score-card">
+                        <div class="print-score-header">
+                            <span class="print-score-title">🛏️ Room Breakdown</span>
+                            <span class="print-score-value" id="printRoomScore"></span>
+                        </div>
+                        <div class="print-feature-list" id="printRoomFeatures"></div>
+                        <div style="margin-top: 4px; font-size: 7px; color: #1e3a5f; font-weight: 600;" id="printRoomSize"></div>
+                    </div>
+                    
+                    <!-- Property Costs -->
+                    <div class="print-score-card">
+                        <div class="print-score-header">
+                            <span class="print-score-title">💷 Property Costs</span>
+                            <span class="print-score-value" id="printCostScore"></span>
+                        </div>
+                        <div class="print-cost-list" id="printCostDetails"></div>
+                    </div>
+                </div>
+                
+                <div class="print-summary">
+                    <div class="print-summary-title">📋 Summary & Recommendations</div>
+                    <div class="print-summary-text" id="printSummary"></div>
+                </div>
+                
+                <div class="print-footer">
+                    <span>Report generated by Home Accessibility Score • homeaccessibilityscore.com</span>
+                    <span id="printPropertyUrl"></span>
+                </div>
+            </div>
+
 </body>
 </html>
