@@ -445,6 +445,10 @@
 
         .epc-info {
             flex: 1;
+            padding: 16px;
+            background: #f8fafc;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
         }
 
         .epc-title {
@@ -826,10 +830,10 @@
         .feature-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            padding: 12px 14px;
+            gap: 16px;
+            padding: 16px;
             background: #f8fafc;
-            border-radius: 10px;
+            border-radius: 12px;
             border: 1px solid #e5e7eb;
         }
 
@@ -921,75 +925,60 @@
         .marker-train { background: #f97316; }
 
         /* ========== COST CARDS ========== */
-
-        .cost-item-card > .cost-item-title {
-            margin: auto 0;
-        }
-        
         .cost-item-card {
             display: flex;
             align-items: center;
             justify-content: space-between;
             background: #f8fafc;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
             padding: 16px 20px;
             margin-bottom: 12px;
-        }
-
-        .cost-item-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 500;
-            color: #1f2937;
-            font-size: 1.05rem;
-            align-self: center;
-        }
-
-        .cost-item-right {
-            text-align: right;
-            flex-shrink: 0;
         }
 
         .cost-item-card:last-child {
             margin-bottom: 0;
         }
 
+        .cost-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-        .cost-item-value {
-            font-size: 1.25rem;
+        .cost-icon {
+            font-size: 18px;
+        }
+
+        .cost-label {
+            font-size: 14px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .cost-result {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .cost-value {
+            font-size: 18px;
             font-weight: 700;
             color: #1e3a5f;
         }
 
-        .cost-item-description {
-            text-align: right;
-            margin-top: 4px;
-        }
-
         .cost-tag {
             display: inline-block;
-            padding: 3px 10px;
+            padding: 4px 12px;
             border-radius: 20px;
-            font-size: 0.75rem;
+            font-size: 12px;
             font-weight: 500;
-            margin-left: 10px;
         }
 
-        .cost-tag.expensive {
-            background: #fee2e2;
-            color: #dc2626;
-        }
-
-        .cost-tag.moderate {
-            background: #fef3c7;
-            color: #d97706;
-        }
-
-        .cost-tag.good {
-            background: #dcfce7;
-            color: #16a34a;
-        }
+        .cost-tag.green { background: #dcfce7; color: #16a34a; }
+        .cost-tag.yellow { background: #fef3c7; color: #d97706; }
+        .cost-tag.red { background: #fee2e2; color: #dc2626; }
 
         .cost-ongoing-list {
             display: flex;
@@ -1001,31 +990,13 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.9rem;
+            font-size: 14px;
             color: #4b5563;
         }
 
         .cost-ongoing-item span:last-child {
             color: #1f2937;
             font-weight: 500;
-        }
-
-        .cost-estimate {
-            font-size: 0.85rem;
-            color: #6b7280;
-            margin-bottom: 6px;
-        }
-
-        #costDetails {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 12px;
-        }
-
-        #costDetails .cost-item-card {
-            display: block !important;
-            width: 100% !important;
-            flex-shrink: 0;
         }
 
 
@@ -1077,13 +1048,16 @@
         }
 
         .summary-text {
-            background: #f0f4f8;
+            padding: 16px;
+            background: #f8fafc;
             border-radius: 12px;
-            padding: 1.25rem;
+            border: 1px solid #e5e7eb;
             font-size: 0.95rem;
             line-height: 1.7;
             color: #444;
         }
+
+        
 
         /* ========== TOOLTIP ========== */
         .tooltip {
@@ -1261,15 +1235,16 @@
         }
 
         .accessible-feature-item {
-            background: #ecfdf5;
+            background: #f0f9ff;
             color: #059669;
             padding: 0.4rem 0.8rem;
-            border-radius: 8px;
+            border-radius: 12px;
             font-size: 0.85rem;
             margin: 0.3rem 0.3rem 0.3rem 0;
             display: inline-block;
-            border-left: 3px solid #10b981;
+            border: 1px solid #d0e3f0;
         }
+       
 
         .no-features-found {
             color: #6b7280;
@@ -1283,7 +1258,8 @@
 
         /* ========== DIMENSIONS ========== */
         .dimension-transport-wrapper {
-            background: #f8fafc;
+            background: #f0f9ff;
+            border: 1px solid #d0e3f0;
             border-radius: 12px;
             padding: 1rem;
             margin: 1rem 0;
@@ -1291,11 +1267,12 @@
 
         .dimension-transport-section {
             background: #f0f9ff;
-            border-left: 4px solid #3b82f6;
+            border: 1px solid #d0e3f0;
             padding: 1rem;
             margin: 0.5rem 0;
-            border-radius: 0 8px 8px 0;
+            border-radius: 12px;
         }
+            
 
         .dimension-section-header {
             font-weight: 600;
@@ -1401,10 +1378,11 @@
         .room-grid-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 14px;
+            gap: 16px;
+            padding: 16px;
             background: #f8fafc;
-            border-radius: 10px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
         }
 
         .room-icon-circle {
@@ -1464,23 +1442,106 @@
         }
 
         .total-size-line {
-            display: flex;
-            align-items: baseline;
-            gap: 10px;
-            padding: 12px 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 50px;
+            padding: 12px 24px;
             margin-bottom: 16px;
-            border-bottom: 1px solid #e5e7eb;
         }
 
-        .total-size-value {
-            font-size: 1.4rem;
+        .size-icon {
+            width: 40px;
+            height: 40px;
+            background: #1e3a5f;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .size-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .size-primary {
+            font-size: 20px;
             font-weight: 700;
             color: #1e3a5f;
         }
 
-        .total-size-secondary {
-            font-size: 0.85rem;
+        .size-secondary {
+            font-size: 13px;
             color: #6b7280;
+        }
+
+        /* ========== ACTION BUTTONS ========== */
+        .actions-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 20px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+
+        .actions-card h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 16px;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .action-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            width: 100%;
+        }
+
+        .action-btn-primary {
+            background: #e8985e;
+            color: white;
+        }
+
+        .action-btn-primary:hover {
+            background: #d4874d;
+            transform: translateY(-1px);
+        }
+
+        .action-btn-secondary {
+            background: #f0eeea;
+            color: #2c3e50;
+            border: 1px solid #e5e2dc;
+        }
+
+        .action-btn-secondary:hover {
+            background: #e5e2dc;
+        }
+
+        .action-btn svg {
+            width: 18px;
+            height: 18px;
         }
 
         /* ========== ERROR ========== */
@@ -1996,6 +2057,41 @@
             cursor: not-allowed;
         }
 
+        @media print {
+            /* Hide elements not needed in print */
+            .header,
+            .actions-card,
+            .search-container,
+            .loading,
+            button,
+            .action-btn {
+                display: none !important;
+            }
+            
+            /* Reset background for print */
+            body {
+                background: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .results {
+                display: block !important;
+            }
+            
+            /* Single column layout for print */
+            .results-layout {
+                display: block !important;
+            }
+            
+            .score-card,
+            .summary-section {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                margin-bottom: 20px;
+            }
+        }
+
         /* ========== RESPONSIVE ========== */
         @media (max-width: 1024px) {
             .results-layout {
@@ -2488,6 +2584,31 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Action Buttons -->
+                    <div class="actions-card">
+                        <h4>Actions</h4>
+                        <div class="action-buttons">
+                            <button class="action-btn action-btn-primary" onclick="downloadReport()">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                </svg>
+                                Download Report
+                            </button>
+                            <button class="action-btn action-btn-secondary" onclick="shareResults()">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                                </svg>
+                                Share Results
+                            </button>
+                            <button class="action-btn action-btn-secondary" onclick="viewOnRightmove()">
+                                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                                View on Rightmove
+                            </button>
+                        </div>
+                    </div>
                 </div>
             <!-- Summary - Full width at bottom -->
             <div class="summary-section">
@@ -2501,6 +2622,10 @@
             </div>
 
     <script>
+
+        // At the top of your <script> section
+        let currentPropertyUrl = '';
+
         async function analyzeProperty() {
             const url = document.getElementById('propertyUrl').value;
             
@@ -2508,6 +2633,9 @@
                 alert('Please enter a valid Rightmove property URL');
                 return;
             }
+
+            // Store the URL for the "View on Rightmove" button
+            currentPropertyUrl = url;
 
             document.getElementById('loading').classList.add('show');
             document.getElementById('results').classList.remove('show');
@@ -2815,6 +2943,46 @@
             if (score === 2) return 'Fair';
             if (score === 1) return 'Poor';
             return 'Very Poor';
+        }
+
+        // ========== ACTION BUTTON FUNCTIONS ==========
+
+        function viewOnRightmove() {
+            if (currentPropertyUrl) {
+                window.open(currentPropertyUrl, '_blank');
+            } else {
+                alert('No property URL available');
+            }
+        }
+
+        function shareResults() {
+            const propertyTitle = document.getElementById('property-title')?.textContent || 'Property';
+            const overallScore = document.getElementById('overallScore')?.textContent || '';
+            
+            const shareText = `Check out this property analysis: ${propertyTitle} - Overall Accessibility Score: ${overallScore}/5`;
+            const shareUrl = window.location.href;
+            
+            // Try native share API first (works on mobile)
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Home Accessibility Score',
+                    text: shareText,
+                    url: shareUrl
+                }).catch(err => console.log('Share cancelled'));
+            } else {
+                // Fallback: copy to clipboard
+                const fullText = `${shareText}\n${shareUrl}`;
+                navigator.clipboard.writeText(fullText).then(() => {
+                    alert('Link copied to clipboard!');
+                }).catch(() => {
+                    // Final fallback
+                    prompt('Copy this link:', fullText);
+                });
+            }
+        }
+
+        function downloadReport() {
+            window.print();
         }
 
         // Add this new function
@@ -3180,8 +3348,11 @@
             if (dimensions.totalSqM) {
                 html += `
                     <div class="total-size-line">
-                        <span class="total-size-value">${dimensions.totalSqM} sq m</span>
-                        ${dimensions.totalSqFt ? `<span class="total-size-secondary">(${dimensions.totalSqFt.toLocaleString()} sq ft)</span>` : ''}
+                        <div class="size-icon">📐</div>
+                        <div class="size-text">
+                            <span class="size-primary">86 sq m</span>
+                            <span class="size-secondary">926 sq ft</span>
+                        </div>
                     </div>
                 `;
             }
@@ -3494,36 +3665,78 @@
                 }
             }
 
-            // Helper function to get tag class
+            // Helper function to get tag class (now returns green/yellow/red)
             function getCostTagClass(type, value) {
                 if (type === 'councilTax') {
-                    if (value.includes('Cheapest') || value.includes('Average band')) return 'good';
-                    if (value.includes('Above average')) return 'moderate';
-                    return 'expensive';
+                    if (value.includes('Cheapest') || value.includes('Average band')) return 'green';
+                    if (value.includes('Above average')) return 'yellow';
+                    return 'red';
                 }
                 if (type === 'percentile') {
-                    if (value === '10th' || value === '25th') return 'good';
-                    if (value === '50th') return 'moderate';
-                    return 'expensive';
+                    if (value === '10th' || value === '25th') return 'green';
+                    if (value === '50th') return 'yellow';
+                    return 'red';
                 }
                 if (type === 'stampDuty') {
-                    if (value === 0 || value <= 10000) return 'good';
-                    if (value <= 20000) return 'moderate';
-                    return 'expensive';
+                    if (value === 0 || value <= 10000) return 'green';
+                    if (value <= 20000) return 'yellow';
+                    return 'red';
                 }
-                return 'moderate';
+                return 'yellow';
             }
 
-            // Helper for percentile text
+            // Helper for percentile text (shortened for compact display)
             function getPercentileText(percentile, pricePerSqM) {
-                if (percentile === '10th') return 'Cheaper than 90% of properties';
-                if (percentile === '25th') return 'Cheaper than 75% of properties';
-                if (percentile === '50th') {
-                    const price = parseInt(pricePerSqM.replace(/[£,]/g, ''));
-                    return price <= 2507 ? 'Cheaper than 50% of properties' : 'More expensive than 50% of properties';
+                if (percentile === '10th') return 'Bottom 10%';
+                if (percentile === '25th') return 'Bottom 25%';
+                if (percentile === '50th') return 'Average';
+                if (percentile === '75th') return 'Top 25%';
+                return 'Top 10%';
+            }
+
+            // Store the current property URL globally
+            let currentPropertyUrl = '';
+
+            // Update this when analysis runs (in your existing analyze function)
+            // Add this line: currentPropertyUrl = url;
+
+            function viewOnRightmove() {
+                if (currentPropertyUrl) {
+                    window.open(currentPropertyUrl, '_blank');
+                } else {
+                    alert('No property URL available');
                 }
-                if (percentile === '75th') return 'More expensive than 75% of properties';
-                return 'More expensive than 90% of properties';
+            }
+
+            function shareResults() {
+                const propertyTitle = document.getElementById('property-title')?.textContent || 'Property';
+                const overallScore = document.getElementById('overallScore')?.textContent || '';
+                
+                const shareText = `Check out this property analysis: ${propertyTitle} - Overall Accessibility Score: ${overallScore}/5`;
+                const shareUrl = window.location.href;
+                
+                // Try native share API first (mobile)
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Home Accessibility Score',
+                        text: shareText,
+                        url: shareUrl
+                    }).catch(err => console.log('Share cancelled'));
+                } else {
+                    // Fallback: copy to clipboard
+                    const fullText = `${shareText}\n${shareUrl}`;
+                    navigator.clipboard.writeText(fullText).then(() => {
+                        alert('Link copied to clipboard!');
+                    }).catch(() => {
+                        // Final fallback
+                        prompt('Copy this link:', fullText);
+                    });
+                }
+            }
+
+            function downloadReport() {
+                // Open print dialog for PDF generation
+                window.print();
             }
 
             let html = '';
@@ -3531,12 +3744,15 @@
             // Council Tax Card
             html += `
                 <div class="cost-item-card">
-                    <div class="cost-item-title">🏛️ Council Tax Band</div>
-                    <div class="cost-item-right">
-                        <div class="cost-item-value">${cost.councilTax || 'Not specified'}</div>
+                    <div class="cost-main">
+                        <span class="cost-icon">🏛️</span>
+                        <span class="cost-label">Council Tax Band</span>
+                    </div>
+                    <div class="cost-result">
                         ${propertyCost && propertyCost.councilTaxRating ? `
                             <span class="cost-tag ${getCostTagClass('councilTax', propertyCost.councilTaxRating)}">${propertyCost.councilTaxRating}</span>
                         ` : ''}
+                        <span class="cost-value">${cost.councilTax || 'Not specified'}</span>
                     </div>
                 </div>
             `;
@@ -3545,18 +3761,21 @@
             if (cost.pricePerSqM) {
                 const percentileText = propertyCost && propertyCost.pricePerSqMPercentile 
                     ? getPercentileText(propertyCost.pricePerSqMPercentile, cost.pricePerSqM)
-                    : cost.pricePerSqMNote || '';
+                    : '';
                 
                 const tagClass = propertyCost && propertyCost.pricePerSqMPercentile 
                     ? getCostTagClass('percentile', propertyCost.pricePerSqMPercentile)
-                    : 'moderate';
+                    : 'yellow';
 
                 html += `
                     <div class="cost-item-card">
-                        <div class="cost-item-title">📊 Price per sq m</div>
-                        <div class="cost-item-right">
-                            <div class="cost-item-value">${cost.pricePerSqM}</div>
+                        <div class="cost-main">
+                            <span class="cost-icon">📊</span>
+                            <span class="cost-label">Price per sq m</span>
+                        </div>
+                        <div class="cost-result">
                             ${percentileText ? `<span class="cost-tag ${tagClass}">${percentileText}</span>` : ''}
+                            <span class="cost-value">${cost.pricePerSqM}</span>
                         </div>
                     </div>
                 `;
@@ -3565,15 +3784,18 @@
             // Stamp Duty Card
             if (propertyCost && propertyCost.stampDutyAmount !== null) {
                 const stampTagClass = getCostTagClass('stampDuty', propertyCost.stampDutyAmount);
-                const stampTagText = propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? 'Low cost' : 
-                    propertyCost.stampDutyAmount <= 20000 ? 'Medium cost' : 'High cost';
+                const stampTagText = propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? 'Low' : 
+                    propertyCost.stampDutyAmount <= 20000 ? 'Medium' : 'High';
 
                 html += `
                     <div class="cost-item-card">
-                        <div class="cost-item-title">🏠 Stamp Duty (England)</div>
-                        <div class="cost-item-right">
-                            <div class="cost-item-value">£${propertyCost.stampDutyAmount.toLocaleString()}</div>
+                        <div class="cost-main">
+                            <span class="cost-icon">🏠</span>
+                            <span class="cost-label">Stamp Duty (England)</span>
+                        </div>
+                        <div class="cost-result">
                             <span class="cost-tag ${stampTagClass}">${stampTagText}</span>
+                            <span class="cost-value">£${propertyCost.stampDutyAmount.toLocaleString()}</span>
                         </div>
                     </div>
                 `;
@@ -3581,9 +3803,12 @@
 
             // Ongoing Costs Card
             html += `
-                <div class="cost-item-card">
-                    <div class="cost-item-title" style="margin-bottom: 12px;">📋 Ongoing Costs</div>
-                    <div class="cost-ongoing-list">
+                <div class="cost-item-card" style="flex-direction: column; align-items: flex-start;">
+                    <div class="cost-main" style="margin-bottom: 12px;">
+                        <span class="cost-icon">📋</span>
+                        <span class="cost-label" style="font-weight: 600;">Ongoing Costs</span>
+                    </div>
+                    <div class="cost-ongoing-list" style="width: 100%;">
                         <div class="cost-ongoing-item">
                             <span>🏢 Service Charge</span>
                             <span>${cost.serviceCharge || 'Not mentioned'}</span>
@@ -3596,7 +3821,7 @@
                         ` : ''}
                         <div class="cost-ongoing-item">
                             <span>📄 Tenure</span>
-                            <span>${cost.leaseholdInfo || 'Leasehold'}</span>
+                            <span>${cost.leaseholdInfo || 'Freehold'}</span>
                         </div>
                     </div>
                 </div>
