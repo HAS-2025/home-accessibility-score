@@ -1,0 +1,1422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 2 Development Plan - Home Accessibility Score</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1e3a5f;
+            --primary-light: #2d5a8a;
+            --accent: #e8985e;
+            --background: #faf9f7;
+            --text: #2c3e50;
+            --text-light: #5d6d7e;
+            --border: #e5e2dc;
+            --white: #ffffff;
+            --success: #1d7a5f;
+            --warning: #d4a03c;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+
+        /* Header */
+        .doc-header {
+            text-align: center;
+            padding: 60px 40px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            color: var(--white);
+            margin: -40px -40px 40px -40px;
+        }
+
+        .doc-header h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .doc-header .subtitle {
+            font-size: 1.125rem;
+            opacity: 0.9;
+        }
+
+        .doc-header .date {
+            margin-top: 20px;
+            font-size: 0.875rem;
+            opacity: 0.7;
+        }
+
+        .doc-header .version {
+            display: inline-block;
+            background: var(--accent);
+            padding: 4px 16px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 16px;
+        }
+
+        /* Table of Contents */
+        .toc {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 24px 32px;
+            margin-bottom: 40px;
+            border: 1px solid var(--border);
+        }
+
+        .toc h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+
+        .toc ol {
+            list-style: none;
+            counter-reset: toc-counter;
+        }
+
+        .toc li {
+            counter-increment: toc-counter;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .toc li:last-child {
+            border-bottom: none;
+        }
+
+        .toc li::before {
+            content: counter(toc-counter) ".";
+            color: var(--accent);
+            font-weight: 600;
+            margin-right: 12px;
+        }
+
+        .toc a {
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .toc a:hover {
+            color: var(--primary);
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 48px;
+        }
+
+        h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 1.75rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 24px 0 12px 0;
+        }
+
+        h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-light);
+            margin: 20px 0 8px 0;
+        }
+
+        p {
+            margin-bottom: 16px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 20px 0;
+            border: 1px solid var(--border);
+        }
+
+        .card.highlight {
+            border-left: 4px solid var(--accent);
+        }
+
+        .card.success {
+            border-left: 4px solid var(--success);
+            background: #f0faf6;
+        }
+
+        .card.warning {
+            border-left: 4px solid var(--warning);
+            background: #fffbf0;
+        }
+
+        .card h4 {
+            margin-top: 0;
+            color: var(--text);
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--primary);
+            color: var(--white);
+            font-weight: 600;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: var(--background);
+        }
+
+        .cost {
+            font-family: 'Fraunces', serif;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .time {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* Lists */
+        ul, ol {
+            margin: 16px 0;
+            padding-left: 24px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        /* Code */
+        code {
+            background: #f4f4f4;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+
+        pre {
+            background: var(--primary);
+            color: #f4f4f4;
+            padding: 20px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 16px 0;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+            color: inherit;
+        }
+
+        /* Flow Diagram */
+        .flow-diagram {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 24px 0;
+        }
+
+        .flow-step {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .flow-number {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .flow-content {
+            flex: 1;
+            background: var(--white);
+            padding: 16px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .flow-arrow {
+            width: 36px;
+            display: flex;
+            justify-content: center;
+            color: var(--text-muted);
+        }
+
+        /* Mockup Preview */
+        .mockup-section {
+            margin: 32px 0;
+        }
+
+        .mockup-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-top: 20px;
+        }
+
+        .mockup-card {
+            background: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .mockup-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+        }
+
+        .mockup-image {
+            height: 250px;
+            background: linear-gradient(135deg, var(--background), var(--border));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .mockup-preview {
+            width: 100%;
+            height: 100%;
+            border: none;
+            transform: scale(0.5);
+            transform-origin: top left;
+            width: 200%;
+            height: 200%;
+        }
+
+        .mockup-label {
+            padding: 16px;
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mockup-label span {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            font-weight: 400;
+        }
+
+        /* Decision Box */
+        .decision-box {
+            background: linear-gradient(135deg, #fff8f0, #fff);
+            border: 2px dashed var(--accent);
+            border-radius: 12px;
+            padding: 24px;
+            margin: 24px 0;
+        }
+
+        .decision-box h4 {
+            color: var(--accent);
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Summary Box */
+        .summary-box {
+            background: var(--primary);
+            color: var(--white);
+            border-radius: 12px;
+            padding: 32px;
+            margin: 32px 0;
+        }
+
+        .summary-box h3 {
+            color: var(--white);
+            margin-top: 0;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .summary-item {
+            text-align: center;
+        }
+
+        .summary-item .number {
+            font-family: 'Fraunces', serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .summary-item .label {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        /* Print styles */
+        @media print {
+            .container {
+                max-width: 100%;
+                padding: 20px;
+            }
+
+            .doc-header {
+                margin: -20px -20px 20px -20px;
+                padding: 40px;
+            }
+
+            .mockup-image {
+                height: 200px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            .doc-header {
+                margin: -20px -20px 20px -20px;
+                padding: 40px 20px;
+            }
+
+            .doc-header h1 {
+                font-size: 1.75rem;
+            }
+
+            .mockup-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            table {
+                font-size: 0.875rem;
+            }
+
+            th, td {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="doc-header">
+            <h1>Phase 2 Development Plan</h1>
+            <p class="subtitle">Home Accessibility Score — Infrastructure, Commercialisation & Premium Redesign</p>
+            <p class="date">December 2024</p>
+            <span class="version">DRAFT v1.0</span>
+        </header>
+
+        <!-- Table of Contents -->
+        <nav class="toc">
+            <h2>Contents</h2>
+            <ol>
+                <li><a href="#overview">Executive Overview</a></li>
+                <li><a href="#naming">Naming & Branding Discussion</a></li>
+                <li><a href="#infrastructure">Infrastructure & Database</a></li>
+                <li><a href="#authentication">Authentication — Magic Links</a></li>
+                <li><a href="#subscriptions">Account-Based Subscriptions</a></li>
+                <li><a href="#estate-agents">Estate Agent Multi-User Access</a></li>
+                <li><a href="#features">Feature Updates</a></li>
+                <li><a href="#design">Premium Redesign</a></li>
+                <li><a href="#timeline">Implementation Timeline</a></li>
+                <li><a href="#costs">Projected Costs</a></li>
+            </ol>
+        </nav>
+
+        <!-- Section 1: Overview -->
+        <section id="overview">
+            <h2>1. Executive Overview</h2>
+            <p>Phase 2 transforms our property accessibility tool from a functional prototype into a commercial product. This document outlines the technical decisions, implementation steps, and projected costs for launching a subscription-based service.</p>
+            
+            <div class="card highlight">
+                <h4>🎯 Phase 2 Goals</h4>
+                <ul>
+                    <li>Establish persistent database infrastructure for user data and search history</li>
+                    <li>Implement secure, user-friendly authentication via magic links</li>
+                    <li>Launch account-based subscription system via Stripe</li>
+                    <li>Support multi-user access for estate agency teams</li>
+                    <li>Add Wales/Scotland stamp duty calculations</li>
+                    <li>Deliver premium UI redesign to match market positioning</li>
+                </ul>
+            </div>
+
+            <div class="summary-box">
+                <h3>Phase 2 At a Glance</h3>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <div class="number">28-43</div>
+                        <div class="label">Development Hours</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="number">£0-50</div>
+                        <div class="label">Monthly Infrastructure</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="number">4-6</div>
+                        <div class="label">Weeks to Launch</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: Naming -->
+        <section id="naming">
+            <h2>2. Naming & Branding Discussion</h2>
+            <p>The product name is a strategic decision that affects memorability, SEO, and market positioning. We are currently undecided and will finalise this over the coming weeks.</p>
+
+            <div class="decision-box">
+                <h4>🤔 Decision Required: Product Name</h4>
+                <p>The current working name is <strong>Home Accessibility Score (HAS)</strong>. We are evaluating alternatives.</p>
+            </div>
+
+            <h3>Option A: Home Accessibility Score (HAS)</h3>
+            <div class="card">
+                <h4>Pros</h4>
+                <ul>
+                    <li><strong>Memorable acronym</strong> — "HAS" is short, like "EPC", and could become industry shorthand</li>
+                    <li><strong>Descriptive</strong> — Clearly explains what the tool does</li>
+                    <li><strong>Inclusive</strong> — "Accessibility" covers all mobility needs, not just age-related</li>
+                    <li><strong>Professional</strong> — Sounds like a formal assessment metric</li>
+                </ul>
+                <h4>Cons</h4>
+                <ul>
+                    <li>"HAS" is a common English word — may affect SEO</li>
+                    <li>Less emotionally resonant than alternatives</li>
+                </ul>
+            </div>
+
+            <h3>Option B: Age Ready Home</h3>
+            <div class="card">
+                <h4>Pros</h4>
+                <ul>
+                    <li><strong>Clear target audience</strong> — Immediately understood by older adults and their families</li>
+                    <li><strong>Emotionally resonant</strong> — Speaks to planning for the future</li>
+                    <li><strong>Good SEO potential</strong> — "Age ready" is a searchable term</li>
+                </ul>
+                <h4>Cons</h4>
+                <ul>
+                    <li><strong>Excludes disability market</strong> — Not all users with accessibility needs are older</li>
+                    <li>May feel limiting for estate agent use cases</li>
+                    <li>No memorable acronym</li>
+                </ul>
+            </div>
+
+            <h3>Other Considerations</h3>
+            <div class="card">
+                <ul>
+                    <li><strong>AccessCheck</strong> — Short, professional, but generic</li>
+                    <li><strong>MoveReady</strong> — Broader appeal, implies readiness for all</li>
+                    <li><strong>HomeScore Access</strong> — Combines scoring concept with accessibility</li>
+                </ul>
+                <p><strong>Recommendation:</strong> Continue with "Home Accessibility Score" for development, but commission user research with target demographics before final brand launch. The name may differ from the domain (e.g., product called "HAS" but domain is homeaccessibilityscore.co.uk).</p>
+            </div>
+        </section>
+
+        <!-- Section 3: Infrastructure -->
+        <section id="infrastructure">
+            <h2>3. Infrastructure & Database</h2>
+            
+            <h3>Database Hosting Decision: Supabase</h3>
+            <p>After evaluating options including raw PostgreSQL, Firebase, and PlanetScale, we recommend <strong>Supabase</strong> as our backend platform. Supabase is an open-source Firebase alternative that provides a PostgreSQL database with additional features.</p>
+
+            <div class="card success">
+                <h4>✅ Why Supabase?</h4>
+                <ul>
+                    <li><strong>All-in-one platform</strong> — Database + Authentication + Storage in one service</li>
+                    <li><strong>PostgreSQL foundation</strong> — Industry-standard, relational database with excellent tooling</li>
+                    <li><strong>Built-in Auth</strong> — Magic links, OAuth, and session management included (saves 8-12 hours of development)</li>
+                    <li><strong>Generous free tier</strong> — 500MB database, 50,000 monthly active users, 1GB file storage</li>
+                    <li><strong>Auto-generated APIs</strong> — REST and GraphQL APIs created automatically from your schema</li>
+                    <li><strong>Row-level security</strong> — Built-in security policies, reducing backend code complexity</li>
+                    <li><strong>Real-time subscriptions</strong> — Useful for future features (e.g., live collaboration)</li>
+                    <li><strong>Excellent documentation</strong> — Well-documented with JavaScript/TypeScript SDKs</li>
+                </ul>
+            </div>
+
+            <h3>Supabase Pricing</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan</th>
+                        <th>Price</th>
+                        <th>Database</th>
+                        <th>Auth Users</th>
+                        <th>Bandwidth</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Free</td>
+                        <td class="cost">£0/mo</td>
+                        <td>500 MB</td>
+                        <td>50,000 MAU</td>
+                        <td>5 GB</td>
+                    </tr>
+                    <tr>
+                        <td>Pro</td>
+                        <td class="cost">$25/mo (~£20)</td>
+                        <td>8 GB</td>
+                        <td>100,000 MAU</td>
+                        <td>250 GB</td>
+                    </tr>
+                    <tr>
+                        <td>Team</td>
+                        <td class="cost">$599/mo (~£475)</td>
+                        <td>Unlimited</td>
+                        <td>Unlimited</td>
+                        <td>Unlimited</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p><strong>Recommendation:</strong> Start on the <strong>Free tier</strong> for development and early launch. Upgrade to Pro (~£20/mo) once we exceed free limits or need production SLAs. The free tier should support several hundred active users comfortably.</p>
+
+            <h3>Proposed Database Schema</h3>
+            <pre><code>-- Users (managed by Supabase Auth, extended with profile)
+CREATE TABLE user_profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id),
+    email TEXT NOT NULL,
+    full_name TEXT,
+    company_name TEXT,           -- For estate agents
+    subscription_tier TEXT,      -- 'free', 'individual', 'team'
+    stripe_customer_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Organisations (for estate agent teams)
+CREATE TABLE organisations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    owner_id UUID REFERENCES user_profiles(id),
+    stripe_subscription_id TEXT,
+    max_seats INTEGER DEFAULT 5,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Organisation membership
+CREATE TABLE organisation_members (
+    organisation_id UUID REFERENCES organisations(id),
+    user_id UUID REFERENCES user_profiles(id),
+    role TEXT DEFAULT 'member',  -- 'owner', 'admin', 'member'
+    PRIMARY KEY (organisation_id, user_id)
+);
+
+-- Property searches
+CREATE TABLE searches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES user_profiles(id),
+    organisation_id UUID REFERENCES organisations(id),
+    rightmove_url TEXT NOT NULL,
+    property_address TEXT,
+    property_price INTEGER,
+    is_rental BOOLEAN DEFAULT FALSE,
+    country TEXT DEFAULT 'england',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Cached analysis results
+CREATE TABLE analysis_results (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    search_id UUID REFERENCES searches(id) ON DELETE CASCADE,
+    overall_score DECIMAL(3,2),
+    scores JSONB NOT NULL,        -- {gp: 4.0, transport: 5.0, ...}
+    property_data JSONB NOT NULL, -- Full scraped data
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);</code></pre>
+        </section>
+
+        <!-- Section 4: Authentication -->
+        <section id="authentication">
+            <h2>4. Authentication — Magic Links</h2>
+            <p>Rather than traditional username/password authentication, we will implement <strong>passwordless authentication via magic links</strong>. This approach is more secure, eliminates forgotten password issues, and provides a smoother user experience.</p>
+
+            <h3>What Are Magic Links?</h3>
+            <div class="card">
+                <p>A magic link is a unique, time-limited URL sent to a user's email address. Clicking the link automatically logs the user in — no password required. The link typically expires after 15-60 minutes and can only be used once.</p>
+            </div>
+
+            <h3>How Magic Links Work</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <div class="flow-number">1</div>
+                    <div class="flow-content">
+                        <strong>User enters email</strong><br>
+                        User provides their email address on the login/signup form
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">2</div>
+                    <div class="flow-content">
+                        <strong>System generates unique token</strong><br>
+                        Supabase creates a cryptographically secure token and stores it with an expiry time
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">3</div>
+                    <div class="flow-content">
+                        <strong>Email sent with magic link</strong><br>
+                        User receives email: "Click here to sign in to Home Accessibility Score"<br>
+                        <code>https://yoursite.com/auth/callback?token=abc123...</code>
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">4</div>
+                    <div class="flow-content">
+                        <strong>User clicks link</strong><br>
+                        Browser opens the link, which validates the token
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">5</div>
+                    <div class="flow-content">
+                        <strong>Session created</strong><br>
+                        Token is verified, user session is established, user is redirected to the app — fully logged in
+                    </div>
+                </div>
+            </div>
+
+            <h3>Benefits Over Password Authentication</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Aspect</th>
+                        <th>Magic Links</th>
+                        <th>Passwords</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Security</td>
+                        <td>✅ No passwords to steal or leak</td>
+                        <td>❌ Password reuse, weak passwords</td>
+                    </tr>
+                    <tr>
+                        <td>User friction</td>
+                        <td>✅ No password to remember</td>
+                        <td>❌ Forgotten password resets</td>
+                    </tr>
+                    <tr>
+                        <td>Development time</td>
+                        <td>✅ ~2 hours with Supabase</td>
+                        <td>❌ Password hashing, reset flows, validation</td>
+                    </tr>
+                    <tr>
+                        <td>Target audience fit</td>
+                        <td>✅ Simpler for older users</td>
+                        <td>❌ Password complexity frustrating</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Implementation with Supabase</h3>
+            <pre><code>// Frontend: Request magic link
+const { error } = await supabase.auth.signInWithOtp({
+  email: 'user@example.com',
+  options: {
+    emailRedirectTo: 'https://yoursite.com/dashboard'
+  }
+});
+
+// User clicks link in email...
+
+// Frontend: Check if user is logged in
+const { data: { user } } = await supabase.auth.getUser();
+if (user) {
+  // User is authenticated, show dashboard
+}</code></pre>
+            <p>Supabase handles token generation, email sending, expiry management, and session creation automatically. No additional email service configuration required on the free tier.</p>
+        </section>
+
+        <!-- Section 5: Subscriptions -->
+        <section id="subscriptions">
+            <h2>5. Account-Based Subscriptions</h2>
+            <p>We will implement an <strong>account-based subscription system</strong> rather than access codes. This provides better security, user experience, and business insights.</p>
+
+            <h3>Why Account-Based Over Access Codes?</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Factor</th>
+                        <th>Account-Based</th>
+                        <th>Access Codes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Sharing prevention</td>
+                        <td>✅ Tied to email, hard to share</td>
+                        <td>❌ Codes easily texted to friends</td>
+                    </tr>
+                    <tr>
+                        <td>Recurring revenue</td>
+                        <td>✅ Auto-renews via Stripe</td>
+                        <td>❌ Manual repurchase required</td>
+                    </tr>
+                    <tr>
+                        <td>Support burden</td>
+                        <td>✅ "Enter your email" to recover</td>
+                        <td>❌ "I lost my code" tickets</td>
+                    </tr>
+                    <tr>
+                        <td>User analytics</td>
+                        <td>✅ Full usage tracking per user</td>
+                        <td>❌ Anonymous, IP-based guessing</td>
+                    </tr>
+                    <tr>
+                        <td>Customer communication</td>
+                        <td>✅ Can email about features</td>
+                        <td>❌ No contact information</td>
+                    </tr>
+                    <tr>
+                        <td>Development complexity</td>
+                        <td>~15 hours (with Supabase)</td>
+                        <td>~20 hours (building from scratch)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Subscription Flow</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <div class="flow-number">1</div>
+                    <div class="flow-content">
+                        <strong>Free Search</strong><br>
+                        New visitor can perform 1 free property analysis without signing up
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">2</div>
+                    <div class="flow-content">
+                        <strong>Paywall Appears</strong><br>
+                        Second search triggers paywall: "Enter your email to continue"
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">3</div>
+                    <div class="flow-content">
+                        <strong>Email Capture</strong><br>
+                        User provides email → receives magic link → logs in
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">4</div>
+                    <div class="flow-content">
+                        <strong>Pricing Page</strong><br>
+                        User sees subscription options (Individual / Team plans)
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">5</div>
+                    <div class="flow-content">
+                        <strong>Stripe Checkout</strong><br>
+                        User redirected to Stripe's hosted checkout (we never handle card details)
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">6</div>
+                    <div class="flow-content">
+                        <strong>Subscription Active</strong><br>
+                        Webhook confirms payment → user marked as subscribed → full access granted
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">7</div>
+                    <div class="flow-content">
+                        <strong>Auto-Renewal</strong><br>
+                        Stripe handles recurring billing. User manages subscription via Stripe Portal
+                    </div>
+                </div>
+            </div>
+
+            <h3>Checking Subscription Status</h3>
+            <p>Rather than syncing subscription data to our database (which requires handling many webhook events), we query Stripe directly:</p>
+            <pre><code>// Check if user has active subscription
+async function hasActiveSubscription(stripeCustomerId) {
+  const subscriptions = await stripe.subscriptions.list({
+    customer: stripeCustomerId,
+    status: 'active',
+    limit: 1
+  });
+  return subscriptions.data.length > 0;
+}
+
+// Cache result for 5 minutes to reduce API calls
+const cacheKey = `subscription:${userId}`;
+let hasAccess = cache.get(cacheKey);
+if (hasAccess === undefined) {
+  hasAccess = await hasActiveSubscription(user.stripe_customer_id);
+  cache.set(cacheKey, hasAccess, 300); // 5 min TTL
+}</code></pre>
+        </section>
+
+        <!-- Section 6: Estate Agents -->
+        <section id="estate-agents">
+            <h2>6. Estate Agent Multi-User Access</h2>
+            <p>Estate agents are a key target market. A typical agency has 5-20 staff who may need access. We need a "Team" plan that allows multiple employees to use the service under one billing account.</p>
+
+            <h3>Proposed Team Plan Structure</h3>
+            <div class="card highlight">
+                <h4>Team Plan Features</h4>
+                <ul>
+                    <li><strong>Seats-based pricing</strong> — Base fee + per-seat cost</li>
+                    <li><strong>Centralised billing</strong> — One invoice to the agency</li>
+                    <li><strong>Admin dashboard</strong> — Add/remove team members</li>
+                    <li><strong>Shared search history</strong> — Team can see all properties analysed</li>
+                    <li><strong>Usage analytics</strong> — Track searches per team member</li>
+                </ul>
+            </div>
+
+            <h3>How Team Access Works</h3>
+            <div class="flow-diagram">
+                <div class="flow-step">
+                    <div class="flow-number">1</div>
+                    <div class="flow-content">
+                        <strong>Agency Owner Signs Up</strong><br>
+                        Registers with company email, selects "Team" plan, completes payment
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">2</div>
+                    <div class="flow-content">
+                        <strong>Organisation Created</strong><br>
+                        System creates an "organisation" record linked to the owner's account
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">3</div>
+                    <div class="flow-content">
+                        <strong>Invite Team Members</strong><br>
+                        Owner enters colleague emails → system sends invite links
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">4</div>
+                    <div class="flow-content">
+                        <strong>Members Join</strong><br>
+                        Colleagues click link → create account (magic link) → auto-joined to organisation
+                    </div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-arrow">↓</div>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-number">5</div>
+                    <div class="flow-content">
+                        <strong>Shared Access</strong><br>
+                        All team members have full access. Searches are logged to the organisation
+                    </div>
+                </div>
+            </div>
+
+            <h3>Suggested Pricing Structure</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan</th>
+                        <th>Monthly Price</th>
+                        <th>Annual Price</th>
+                        <th>Seats</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Individual</td>
+                        <td class="cost">£19.99</td>
+                        <td class="cost">£199.99</td>
+                        <td>1 user</td>
+                    </tr>
+                    <tr>
+                        <td>Team (Small)</td>
+                        <td class="cost">£49.99</td>
+                        <td class="cost">£499.99</td>
+                        <td>Up to 5 users</td>
+                    </tr>
+                    <tr>
+                        <td>Team (Agency)</td>
+                        <td class="cost">£99.99</td>
+                        <td class="cost">£999.99</td>
+                        <td>Up to 15 users</td>
+                    </tr>
+                    <tr>
+                        <td>Enterprise</td>
+                        <td colspan="3">Contact for pricing (unlimited users, API access, custom features)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="card warning">
+                <h4>⚠️ Phase 2 Scope Note</h4>
+                <p>For initial launch, we recommend implementing <strong>Individual subscriptions only</strong>. Team functionality adds complexity (invites, permissions, shared data, seat management) that could delay launch by 2-3 weeks.</p>
+                <p><strong>Recommended approach:</strong></p>
+                <ol>
+                    <li>Launch with Individual plans</li>
+                    <li>Add "Interested in team access? Contact us" on pricing page</li>
+                    <li>Gauge demand before building team features</li>
+                    <li>Build team features in Phase 3 if validated</li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- Section 7: Features -->
+        <section id="features">
+            <h2>7. Feature Updates</h2>
+
+            <h3>7a. Wales & Scotland Stamp Duty</h3>
+            <p>Currently, stamp duty calculations assume England. Properties in Wales (Land Transaction Tax) and Scotland (Land and Buildings Transaction Tax) have different rates.</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Band</th>
+                        <th>England (SDLT)</th>
+                        <th>Scotland (LBTT)</th>
+                        <th>Wales (LTT)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>£0 - £125k</td>
+                        <td>0%</td>
+                        <td>0% (to £145k)</td>
+                        <td>0% (to £225k)</td>
+                    </tr>
+                    <tr>
+                        <td>£125k - £250k</td>
+                        <td>2%</td>
+                        <td>2% (£145-250k)</td>
+                        <td>0% (to £225k)</td>
+                    </tr>
+                    <tr>
+                        <td>£250k - £400k</td>
+                        <td>5%</td>
+                        <td>5% (£250-325k)</td>
+                        <td>6% (£225-400k)</td>
+                    </tr>
+                    <tr>
+                        <td>£400k+</td>
+                        <td>5% (to £925k)</td>
+                        <td>10% (£325-750k)</td>
+                        <td>7.5% (£400-750k)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h4>Implementation Approach</h4>
+            <p>Use the <strong>postcodes.io API</strong> (free) to determine country from postcode:</p>
+            <pre><code>const response = await fetch(
+  `https://api.postcodes.io/postcodes/${postcode}`
+);
+const { result } = await response.json();
+const country = result.country; // "England", "Scotland", "Wales"</code></pre>
+
+            <p><strong>Estimated time:</strong> <span class="time">2-3 hours</span></p>
+
+            <h3>7b. Rental Properties Support</h3>
+            <div class="card warning">
+                <h4>⚠️ Recommendation: Defer to Phase 3</h4>
+                <p>Adding rental property support requires:</p>
+                <ul>
+                    <li>Different URL pattern detection</li>
+                    <li>Adjusted scraping for rent-specific data (monthly rent, deposit, let type)</li>
+                    <li>Modified scoring (remove stamp duty, price percentiles)</li>
+                    <li>UI changes to display rental-specific information</li>
+                </ul>
+                <p>Before investing 4-6 hours, we should validate demand. Consider adding a "Rental properties coming soon — register interest" form to measure interest.</p>
+            </div>
+        </section>
+
+        <!-- Section 8: Design -->
+        <section id="design">
+            <h2>8. Premium Redesign</h2>
+            <p>To position the product as a premium, trustworthy service, we will implement a comprehensive UI refresh.</p>
+
+            <h3>Design Principles</h3>
+            <div class="card">
+                <ul>
+                    <li><strong>Typography:</strong> Fraunces (serif headlines) + DM Sans (body) — warm yet professional</li>
+                    <li><strong>Colour palette:</strong> Navy (#1e3a5f) primary, Coral (#e8985e) accent — trustworthy with warmth</li>
+                    <li><strong>Imagery:</strong> Lifestyle photography of older adults engaging with homes</li>
+                    <li><strong>Spacing:</strong> Generous white space for premium feel</li>
+                    <li><strong>Accessibility:</strong> WCAG AA compliant contrast ratios throughout</li>
+                </ul>
+            </div>
+
+            <h3>Design Mockups</h3>
+            <div class="mockup-section">
+                <div class="mockup-grid">
+                    <div class="mockup-card">
+                        <div class="mockup-image">
+                            <iframe src="premium-design-mockups.html" class="mockup-preview" title="Landing Page Preview"></iframe>
+                        </div>
+                        <div class="mockup-label">
+                            Landing Page
+                            <span>Hero, features, pricing</span>
+                        </div>
+                    </div>
+                    <div class="mockup-card">
+                        <div class="mockup-image">
+                            <iframe src="analysis-results-mockup.html" class="mockup-preview" title="Results Page Preview"></iframe>
+                        </div>
+                        <div class="mockup-label">
+                            Analysis Results
+                            <span>Score breakdown, map, summary</span>
+                        </div>
+                    </div>
+                </div>
+                <p style="margin-top: 16px; font-size: 0.875rem; color: var(--text-light);">
+                    <strong>Note:</strong> Full interactive mockups are available as separate HTML files. The above shows scaled previews.
+                </p>
+            </div>
+        </section>
+
+        <!-- Section 9: Timeline -->
+        <section id="timeline">
+            <h2>9. Implementation Timeline</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Week</th>
+                        <th>Tasks</th>
+                        <th>Hours</th>
+                        <th>Dependencies</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Week 1</strong></td>
+                        <td>
+                            <ul style="margin: 0; padding-left: 16px;">
+                                <li>Set up Supabase project</li>
+                                <li>Create database schema</li>
+                                <li>Implement magic link auth</li>
+                                <li>Wales/Scotland stamp duty</li>
+                            </ul>
+                        </td>
+                        <td class="time">10-14 hrs</td>
+                        <td>None</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Week 2</strong></td>
+                        <td>
+                            <ul style="margin: 0; padding-left: 16px;">
+                                <li>Stripe integration</li>
+                                <li>Subscription flow</li>
+                                <li>Webhook handling</li>
+                                <li>Purchase branded domain</li>
+                            </ul>
+                        </td>
+                        <td class="time">10-14 hrs</td>
+                        <td>Week 1 complete</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Week 3</strong></td>
+                        <td>
+                            <ul style="margin: 0; padding-left: 16px;">
+                                <li>Landing page build</li>
+                                <li>Premium UI implementation</li>
+                                <li>Paywall integration</li>
+                            </ul>
+                        </td>
+                        <td class="time">10-12 hrs</td>
+                        <td>Week 2 complete</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Week 4</strong></td>
+                        <td>
+                            <ul style="margin: 0; padding-left: 16px;">
+                                <li>Testing & QA</li>
+                                <li>Privacy policy & terms</li>
+                                <li>Bug fixes</li>
+                                <li>Soft launch</li>
+                            </ul>
+                        </td>
+                        <td class="time">6-8 hrs</td>
+                        <td>Week 3 complete</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="card success">
+                <h4>✅ Total Estimated Time: 36-48 hours</h4>
+                <p>Assuming 10-12 hours/week of development time, Phase 2 can be completed in <strong>4-5 weeks</strong>.</p>
+            </div>
+        </section>
+
+        <!-- Section 10: Costs -->
+        <section id="costs">
+            <h2>10. Projected Costs</h2>
+
+            <h3>Monthly Infrastructure Costs</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Service</th>
+                        <th>At Launch</th>
+                        <th>At Scale (500+ users)</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Supabase (Database + Auth)</td>
+                        <td class="cost">£0</td>
+                        <td class="cost">£20</td>
+                        <td>Free tier → Pro when limits hit</td>
+                    </tr>
+                    <tr>
+                        <td>Render (Hosting)</td>
+                        <td class="cost">£0</td>
+                        <td class="cost">£20</td>
+                        <td>Free tier → Starter when needed</td>
+                    </tr>
+                    <tr>
+                        <td>Domain (.co.uk)</td>
+                        <td class="cost">~£8/year</td>
+                        <td class="cost">~£8/year</td>
+                        <td>One-time annual cost</td>
+                    </tr>
+                    <tr>
+                        <td>Stripe</td>
+                        <td class="cost">1.4% + 20p/txn</td>
+                        <td class="cost">1.4% + 20p/txn</td>
+                        <td>No monthly fee, per-transaction only</td>
+                    </tr>
+                    <tr>
+                        <td>Claude API (Anthropic)</td>
+                        <td class="cost">~£5-20</td>
+                        <td class="cost">~£50-100</td>
+                        <td>Depends on usage, ~£0.01-0.05 per analysis</td>
+                    </tr>
+                    <tr>
+                        <td>Google Maps/Places API</td>
+                        <td class="cost">~£0-20</td>
+                        <td class="cost">~£50-100</td>
+                        <td>$200 free credit/month, then pay-as-you-go</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total Monthly</strong></td>
+                        <td class="cost"><strong>£5-40</strong></td>
+                        <td class="cost"><strong>£140-260</strong></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>One-Time Setup Costs</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Cost</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Domain registration</td>
+                        <td class="cost">£8-15</td>
+                        <td>.co.uk recommended for UK market</td>
+                    </tr>
+                    <tr>
+                        <td>Stock photography (optional)</td>
+                        <td class="cost">£50-200</td>
+                        <td>Lifestyle images for landing page</td>
+                    </tr>
+                    <tr>
+                        <td>Legal templates (Privacy Policy, T&Cs)</td>
+                        <td class="cost">£0-100</td>
+                        <td>Free templates available, or use generator</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total One-Time</strong></td>
+                        <td class="cost"><strong>£58-315</strong></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Break-Even Analysis</h3>
+            <div class="card">
+                <p>At £19.99/month per subscriber with ~£40/month infrastructure costs:</p>
+                <ul>
+                    <li><strong>Break-even:</strong> 3 paying subscribers</li>
+                    <li><strong>Cover API costs at scale:</strong> 10-15 subscribers</li>
+                    <li><strong>Profitable at scale:</strong> 50+ subscribers = ~£800/month profit</li>
+                </ul>
+            </div>
+
+            <h3>Stripe Fee Impact</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Plan</th>
+                        <th>Price</th>
+                        <th>Stripe Fee (1.4% + 20p)</th>
+                        <th>Net Revenue</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Monthly</td>
+                        <td>£19.99</td>
+                        <td>£0.48</td>
+                        <td class="cost">£19.51</td>
+                    </tr>
+                    <tr>
+                        <td>Annual</td>
+                        <td>£199.99</td>
+                        <td>£3.00</td>
+                        <td class="cost">£196.99</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Final Summary -->
+        <section>
+            <h2>Next Steps</h2>
+            <div class="card highlight">
+                <h4>Immediate Actions</h4>
+                <ol>
+                    <li><strong>Finalise product name</strong> — Team decision required</li>
+                    <li><strong>Create Supabase account</strong> — Set up project, test connection</li>
+                    <li><strong>Create Stripe account</strong> — Get API keys, create test products</li>
+                    <li><strong>Purchase domain</strong> — Once name decided</li>
+                    <li><strong>Begin Week 1 development</strong> — Database schema, auth implementation</li>
+                </ol>
+            </div>
+
+            <div class="card">
+                <h4>Questions for Team Discussion</h4>
+                <ul>
+                    <li>Final decision on product name (HAS vs alternatives)?</li>
+                    <li>Confirm pricing tiers (£19.99/£199.99)?</li>
+                    <li>Include team plans in Phase 2 or defer to Phase 3?</li>
+                    <li>Target launch date?</li>
+                </ul>
+            </div>
+        </section>
+
+        <footer style="margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border); text-align: center; color: var(--text-muted); font-size: 0.875rem;">
+            <p>Phase 2 Development Plan — Home Accessibility Score</p>
+            <p>Document version 1.0 — December 2024</p>
+        </footer>
+    </div>
+</body>
+</html>

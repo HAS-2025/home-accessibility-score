@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Accessibility Score - Design Mockups</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* Navy Theme (Default) */
+            --primary: #1e3a5f;
+            --primary-light: #2d5a8a;
+            --primary-dark: #0f2744;
+            --accent: #e8985e;
+            --accent-light: #f4b183;
+            --background: #faf9f7;
+            --background-alt: #f0eeea;
+            --text: #2c3e50;
+            --text-light: #5d6d7e;
+            --text-muted: #8b9cad;
+            --white: #ffffff;
+            --success: #4a9b7f;
+            --border: #e5e2dc;
+        }
+
+        .theme-teal {
+            --primary: #1a535c;
+            --primary-light: #2d7a87;
+            --primary-dark: #0f3238;
+            --accent: #ff6b6b;
+            --accent-light: #ff9999;
+            --background: #f7fafa;
+            --background-alt: #e8f4f4;
+            --text: #1a535c;
+            --text-light: #4a7c84;
+            --text-muted: #7ba3aa;
+            --success: #4ecdc4;
+            --border: #d4e8e8;
+        }
+
+        .theme-mustard {
+            --primary: #2d3436;
+            --primary-light: #4a4f51;
+            --primary-dark: #1a1c1d;
+            --accent: #d4a03c;
+            --accent-light: #e8c36b;
+            --background: #fdfcf9;
+            --background-alt: #f5f2eb;
+            --text: #2d3436;
+            --text-light: #636e72;
+            --text-muted: #9ca8ad;
+            --success: #6ab04c;
+            --border: #e8e4db;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Theme Switcher */
+        .theme-switcher {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--white);
+            padding: 16px 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .theme-switcher h4 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .theme-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .theme-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 3px solid var(--white);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .theme-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .theme-btn.active {
+            box-shadow: 0 0 0 3px var(--accent);
+        }
+
+        .theme-btn.navy { background: linear-gradient(135deg, #1e3a5f, #e8985e); }
+        .theme-btn.teal { background: linear-gradient(135deg, #1a535c, #ff6b6b); }
+        .theme-btn.mustard { background: linear-gradient(135deg, #2d3436, #d4a03c); }
+
+        /* Section Label */
+        .section-label {
+            background: var(--primary);
+            color: var(--white);
+            padding: 12px 24px;
+            text-align: center;
+            font-size: 14px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 90vh;
+            display: flex;
+            align-items: center;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 80%;
+            height: 200%;
+            background: radial-gradient(ellipse, var(--primary-light) 0%, transparent 70%);
+            opacity: 0.3;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 120px;
+            background: linear-gradient(to top, var(--background), transparent);
+        }
+
+        .hero-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 40px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-content h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 3.5rem;
+            font-weight: 600;
+            color: var(--white);
+            line-height: 1.15;
+            margin-bottom: 24px;
+        }
+
+        .hero-content h1 span {
+            color: var(--accent-light);
+        }
+
+        .hero-content p {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.85);
+            margin-bottom: 40px;
+            line-height: 1.7;
+        }
+
+        .hero-cta {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 16px 32px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--white);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: var(--white);
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        .hero-visual {
+            position: relative;
+        }
+
+        .hero-image-container {
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+        }
+
+        .hero-image {
+            width: 100%;
+            height: 450px;
+            background: linear-gradient(135deg, var(--background-alt), var(--border));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .hero-image-placeholder {
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .hero-image-placeholder svg {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .floating-card {
+            position: absolute;
+            background: var(--white);
+            border-radius: 16px;
+            padding: 20px;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .floating-card.score {
+            bottom: -30px;
+            left: -40px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .score-circle {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--success), var(--primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-family: 'Fraunces', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .score-text {
+            font-size: 0.875rem;
+        }
+
+        .score-text strong {
+            display: block;
+            font-size: 1rem;
+            color: var(--text);
+        }
+
+        .floating-card.features {
+            top: 20px;
+            right: -30px;
+            animation-delay: -2s;
+        }
+
+        .feature-pills {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .feature-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: var(--text);
+        }
+
+        .feature-pill .check {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--success);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+
+        /* Trust Bar */
+        .trust-bar {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            padding: 32px 40px;
+        }
+
+        .trust-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 48px;
+            flex-wrap: wrap;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-light);
+        }
+
+        .trust-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--background-alt);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+        }
+
+        .trust-text {
+            font-size: 0.9rem;
+        }
+
+        .trust-text strong {
+            display: block;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* Features Section */
+        .features-section {
+            padding: 100px 40px;
+            background: var(--background);
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto 64px;
+        }
+
+        .section-header .eyebrow {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--accent);
+            margin-bottom: 16px;
+        }
+
+        .section-header h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 2.75rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 20px;
+        }
+
+        .section-header p {
+            font-size: 1.125rem;
+            color: var(--text-light);
+        }
+
+        .features-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+        }
+
+        .feature-card {
+            background: var(--white);
+            border-radius: 20px;
+            padding: 36px;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.08);
+            border-color: var(--accent);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        /* Analysis Preview */
+        .analysis-section {
+            padding: 100px 40px;
+            background: var(--background-alt);
+        }
+
+        .analysis-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 64px;
+            align-items: center;
+        }
+
+        .analysis-preview {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.08);
+        }
+
+        .property-header {
+            display: flex;
+            gap: 20px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .property-image {
+            width: 100px;
+            height: 80px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--background-alt), var(--border));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 2rem;
+        }
+
+        .property-info h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .property-info p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .property-price {
+            font-family: 'Fraunces', serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .overall-score {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 24px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 16px;
+            margin-bottom: 24px;
+        }
+
+        .overall-score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.15);
+            border: 4px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+        }
+
+        .overall-score-circle .number {
+            font-family: 'Fraunces', serif;
+            font-size: 2rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .overall-score-circle .label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+
+        .overall-score-text {
+            color: var(--white);
+        }
+
+        .overall-score-text h5 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .overall-score-text p {
+            font-size: 0.875rem;
+            opacity: 0.85;
+        }
+
+        .score-categories {
+            display: grid;
+            gap: 12px;
+        }
+
+        .score-category {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px;
+            background: var(--background);
+            border-radius: 12px;
+        }
+
+        .category-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.125rem;
+            border: 1px solid var(--border);
+        }
+
+        .category-info {
+            flex: 1;
+        }
+
+        .category-info h6 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 2px;
+        }
+
+        .category-info span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .category-score {
+            font-family: 'Fraunces', serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .category-score.excellent { color: #2d8a6e; }
+        .category-score.good { color: #4a9b7f; }
+        .category-score.fair { color: #d4a03c; }
+
+        /* Audience Section */
+        .audience-section {
+            padding: 100px 40px;
+            background: var(--white);
+        }
+
+        .audience-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 32px;
+        }
+
+        .audience-card {
+            text-align: center;
+            padding: 48px 32px;
+            border-radius: 20px;
+            background: var(--background);
+            border: 1px solid var(--border);
+        }
+
+        .audience-icon {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+        }
+
+        .audience-card h3 {
+            font-family: 'Fraunces', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 12px;
+        }
+
+        .audience-card p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            line-height: 1.7;
+        }
+
+        /* Pricing Section */
+        .pricing-section {
+            padding: 100px 40px;
+            background: var(--background-alt);
+        }
+
+        .pricing-grid {
+            max-width: 900px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 32px;
+        }
+
+        .pricing-card {
+            background: var(--white);
+            border-radius: 24px;
+            padding: 40px;
+            border: 2px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .pricing-card.featured {
+            border-color: var(--accent);
+            position: relative;
+        }
+
+        .pricing-card.featured::before {
+            content: 'Best Value';
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: var(--white);
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .pricing-card h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .pricing-card .price {
+            font-family: 'Fraunces', serif;
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 8px;
+        }
+
+        .pricing-card .price span {
+            font-size: 1rem;
+            font-weight: 400;
+            color: var(--text-muted);
+        }
+
+        .pricing-card .description {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .pricing-features {
+            list-style: none;
+            margin-bottom: 32px;
+        }
+
+        .pricing-features li {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            color: var(--text);
+            font-size: 0.95rem;
+        }
+
+        .pricing-features li::before {
+            content: '✓';
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--success);
+            color: var(--white);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .pricing-card .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 100px 40px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            text-align: center;
+        }
+
+        .cta-content {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .cta-content h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 2.75rem;
+            font-weight: 600;
+            color: var(--white);
+            margin-bottom: 20px;
+        }
+
+        .cta-content p {
+            font-size: 1.25rem;
+            color: rgba(255,255,255,0.85);
+            margin-bottom: 40px;
+        }
+
+        /* Input Group */
+        .input-group {
+            display: flex;
+            gap: 12px;
+            max-width: 600px;
+            margin: 0 auto;
+            background: var(--white);
+            padding: 8px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 16px 20px;
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            font-family: inherit;
+            color: var(--text);
+        }
+
+        .input-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-group input:focus {
+            outline: none;
+        }
+
+        .input-group .btn {
+            padding: 16px 28px;
+        }
+
+        /* Footer */
+        footer {
+            background: var(--primary-dark);
+            color: rgba(255,255,255,0.7);
+            padding: 48px 40px 32px;
+            text-align: center;
+        }
+
+        footer p {
+            font-size: 0.875rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .hero-container,
+            .analysis-container {
+                grid-template-columns: 1fr;
+                gap: 48px;
+            }
+
+            .features-grid,
+            .audience-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .hero-content h1 {
+                font-size: 2.75rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .features-grid,
+            .audience-grid,
+            .pricing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-content h1 {
+                font-size: 2.25rem;
+            }
+
+            .section-header h2 {
+                font-size: 2rem;
+            }
+
+            .floating-card {
+                display: none;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .trust-container {
+                gap: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Theme Switcher -->
+    <div class="theme-switcher">
+        <h4>Colour Theme</h4>
+        <div class="theme-buttons">
+            <button class="theme-btn navy active" onclick="setTheme('')" title="Navy + Coral"></button>
+            <button class="theme-btn teal" onclick="setTheme('theme-teal')" title="Teal + Coral"></button>
+            <button class="theme-btn mustard" onclick="setTheme('theme-mustard')" title="Charcoal + Mustard"></button>
+        </div>
+    </div>
+
+    <!-- Section Label -->
+    <div class="section-label">📐 Mockup 1: Landing Page Hero</div>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1>Find a home that works <span>for you</span></h1>
+                <p>Expert accessibility analysis for older adults and those with mobility needs. We assess GP proximity, public transport, and home features so you can make informed decisions.</p>
+                <div class="hero-cta">
+                    <a href="#" class="btn btn-primary">
+                        Analyse a Property
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                    <a href="#" class="btn btn-secondary">See Sample Report</a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-image-container">
+                    <div class="hero-image">
+                        <div class="hero-image-placeholder">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                <polyline points="9,22 9,12 15,12 15,22"/>
+                            </svg>
+                            <p>Lifestyle image of older couple<br>viewing a home together</p>
+                        </div>
+                    </div>
+                    <div class="floating-card score">
+                        <div class="score-circle">4.2</div>
+                        <div class="score-text">
+                            <strong>Very Good</strong>
+                            Overall Score
+                        </div>
+                    </div>
+                    <div class="floating-card features">
+                        <div class="feature-pills">
+                            <div class="feature-pill"><span class="check">✓</span> Step-free access</div>
+                            <div class="feature-pill"><span class="check">✓</span> GP within 10 mins</div>
+                            <div class="feature-pill"><span class="check">✓</span> Bus stop nearby</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trust Bar -->
+    <section class="trust-bar">
+        <div class="trust-container">
+            <div class="trust-item">
+                <div class="trust-icon">🏥</div>
+                <div class="trust-text">
+                    <strong>GP Proximity</strong>
+                    Walking time analysis
+                </div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">🚌</div>
+                <div class="trust-text">
+                    <strong>Public Transport</strong>
+                    Bus & train access
+                </div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">♿</div>
+                <div class="trust-text">
+                    <strong>Accessibility</strong>
+                    8-point assessment
+                </div>
+            </div>
+            <div class="trust-item">
+                <div class="trust-icon">⚡</div>
+                <div class="trust-text">
+                    <strong>Energy Costs</strong>
+                    EPC rating check
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section Label -->
+    <div class="section-label">📐 Mockup 2: Features Section</div>
+
+    <!-- Features Section -->
+    <section class="features-section">
+        <div class="section-header">
+            <div class="eyebrow">What We Analyse</div>
+            <h2>Everything you need to know, in one report</h2>
+            <p>We examine the factors that matter most when choosing a home for accessibility and convenience.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🏥</div>
+                <h3>GP Proximity</h3>
+                <p>We find the nearest GP surgeries and calculate realistic walking times, adjusted for mobility considerations. No more guessing about healthcare access.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🚌</div>
+                <h3>Public Transport</h3>
+                <p>Detailed analysis of bus stops and train stations within walking distance, so you can stay connected without relying on a car.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏠</div>
+                <h3>Home Accessibility</h3>
+                <p>We check for step-free access, ground floor facilities, parking, and garden access — the features that make daily life easier.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Energy Efficiency</h3>
+                <p>EPC ratings explained simply, so you understand potential heating costs and environmental impact before you buy.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💷</div>
+                <h3>True Costs</h3>
+                <p>Council tax bands, stamp duty calculations (including Scotland & Wales), and price comparisons for the area.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📋</div>
+                <h3>Room Assessment</h3>
+                <p>Does the property have the rooms you need? We identify bedrooms, bathrooms, and essential living spaces.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section Label -->
+    <div class="section-label">📐 Mockup 3: Analysis Results Preview</div>
+
+    <!-- Analysis Preview Section -->
+    <section class="analysis-section">
+        <div class="analysis-container">
+            <div class="section-header" style="text-align: left; margin: 0;">
+                <div class="eyebrow">Sample Report</div>
+                <h2>Clear scores. Actionable insights.</h2>
+                <p style="margin-bottom: 32px;">Every property analysis gives you a comprehensive breakdown of accessibility features, scored on a simple 0-5 scale.</p>
+                <a href="#" class="btn btn-primary">Try It Free</a>
+            </div>
+            <div class="analysis-preview">
+                <div class="property-header">
+                    <div class="property-image">🏡</div>
+                    <div class="property-info">
+                        <h4>3 Bedroom Bungalow</h4>
+                        <p>Meadow Lane, Cambridge, CB4 1NQ</p>
+                        <div class="property-price">£475,000</div>
+                    </div>
+                </div>
+                <div class="overall-score">
+                    <div class="overall-score-circle">
+                        <span class="number">4.2</span>
+                        <span class="label">out of 5</span>
+                    </div>
+                    <div class="overall-score-text">
+                        <h5>Very Good Accessibility</h5>
+                        <p>This property scores well across most categories</p>
+                    </div>
+                </div>
+                <div class="score-categories">
+                    <div class="score-category">
+                        <div class="category-icon">🏥</div>
+                        <div class="category-info">
+                            <h6>GP Proximity</h6>
+                            <span>8 min walk (adjusted)</span>
+                        </div>
+                        <div class="category-score excellent">4.0</div>
+                    </div>
+                    <div class="score-category">
+                        <div class="category-icon">🚌</div>
+                        <div class="category-info">
+                            <h6>Public Transport</h6>
+                            <span>Bus stop 4 mins away</span>
+                        </div>
+                        <div class="category-score excellent">5.0</div>
+                    </div>
+                    <div class="score-category">
+                        <div class="category-icon">🏠</div>
+                        <div class="category-info">
+                            <h6>Accessible Features</h6>
+                            <span>6 of 8 criteria met</span>
+                        </div>
+                        <div class="category-score good">3.8</div>
+                    </div>
+                    <div class="score-category">
+                        <div class="category-icon">⚡</div>
+                        <div class="category-info">
+                            <h6>Energy Efficiency</h6>
+                            <span>EPC Rating C</span>
+                        </div>
+                        <div class="category-score good">3.5</div>
+                    </div>
+                    <div class="score-category">
+                        <div class="category-icon">💷</div>
+                        <div class="category-info">
+                            <h6>Property Costs</h6>
+                            <span>Band D • 50th percentile</span>
+                        </div>
+                        <div class="category-score fair">3.0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section Label -->
+    <div class="section-label">📐 Mockup 4: Audience Section</div>
+
+    <!-- Audience Section -->
+    <section class="audience-section">
+        <div class="section-header">
+            <div class="eyebrow">Who It's For</div>
+            <h2>Built for those who need it most</h2>
+            <p>Whether you're searching for yourself or helping someone else, our tool provides the insights that matter.</p>
+        </div>
+        <div class="audience-grid">
+            <div class="audience-card">
+                <div class="audience-icon">👨‍👩‍👧</div>
+                <h3>Families</h3>
+                <p>Helping elderly parents find a suitable home? Get objective data on accessibility features and nearby healthcare.</p>
+            </div>
+            <div class="audience-card">
+                <div class="audience-icon">🏢</div>
+                <h3>Estate Agents</h3>
+                <p>Provide added value to clients with mobility needs. Generate professional accessibility reports for listings.</p>
+            </div>
+            <div class="audience-card">
+                <div class="audience-icon">🏛️</div>
+                <h3>Local Councils</h3>
+                <p>Assess housing stock suitability for an ageing population. Identify areas needing accessibility improvements.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section Label -->
+    <div class="section-label">📐 Mockup 5: Pricing Section</div>
+
+    <!-- Pricing Section -->
+    <section class="pricing-section">
+        <div class="section-header">
+            <div class="eyebrow">Simple Pricing</div>
+            <h2>Choose your plan</h2>
+            <p>Start with a free analysis, then upgrade for unlimited access during your property search.</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="pricing-card">
+                <h3>Monthly</h3>
+                <div class="price">£19.99<span>/month</span></div>
+                <p class="description">Perfect for active house hunters. Cancel anytime.</p>
+                <ul class="pricing-features">
+                    <li>Unlimited property analyses</li>
+                    <li>Full accessibility reports</li>
+                    <li>GP & transport scoring</li>
+                    <li>Cost breakdowns</li>
+                </ul>
+                <button class="btn btn-secondary" style="background: var(--background); color: var(--text); border: 2px solid var(--border);">Get Started</button>
+            </div>
+            <div class="pricing-card featured">
+                <h3>Annual</h3>
+                <div class="price">£199.99<span>/year</span></div>
+                <p class="description">Save £40 with annual billing. Best for thorough searches.</p>
+                <ul class="pricing-features">
+                    <li>Unlimited property analyses</li>
+                    <li>Full accessibility reports</li>
+                    <li>GP & transport scoring</li>
+                    <li>Cost breakdowns</li>
+                    <li>Priority support</li>
+                </ul>
+                <button class="btn btn-primary">Get Started</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Section Label -->
+    <div class="section-label">📐 Mockup 6: CTA Section</div>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <h2>Ready to find your perfect home?</h2>
+            <p>Enter any Rightmove URL and get your free accessibility analysis in seconds.</p>
+            <div class="input-group">
+                <input type="text" placeholder="Paste a Rightmove property URL...">
+                <button class="btn btn-primary">Analyse Free</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2025 Home Accessibility Score. Helping people find accessible homes.</p>
+    </footer>
+
+    <script>
+        function setTheme(theme) {
+            document.body.className = theme;
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            if (theme === '') {
+                document.querySelector('.theme-btn.navy').classList.add('active');
+            } else if (theme === 'theme-teal') {
+                document.querySelector('.theme-btn.teal').classList.add('active');
+            } else if (theme === 'theme-mustard') {
+                document.querySelector('.theme-btn.mustard').classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
