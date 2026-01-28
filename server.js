@@ -17,6 +17,18 @@ const supabase = createClient(
     process.env.SUPABASE_SERVICE_KEY
 );
 
+// Admin client for generating auth tokens
+const supabaseAdmin = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    }
+);
+
 
 // ============================================
 // CONFIGURATION CONSTANTS
@@ -887,20 +899,40 @@ app.get('/api/checkout-complete', async (req, res) => {
             .update({ subscription_status: 'active' })
             .eq('email', email);
         
-        // Send magic link to analysis page
+        // Generate a magic link token using admin API
+        const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+            type: 'magiclink',
+            email: email
+        });
+        
+        if (error) throw error;
+        
+        // Verify the token to get a session
+        const { data: sessionData, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
+            token_hash: data.properties.hashed_token,
+            type: 'magiclink'
+        });
+        
+        if (verifyError) throw verifyError;
+        
+        console.log('🎫 Auto-signed in new subscriber:', email);
+        res.json({ 
+            token: sessionData.session.access_token,
+            user: sessionData.user
+        });
+        
+    } catch (error) {
+        console.error('❌ Checkout complete error:', error.message);
+        // Fallback - send magic link email
+        const session = await stripe.checkout.sessions.retrieve(session_id);
         await supabase.auth.signInWithOtp({
-            email: email,
+            email: session.customer_email,
             options: {
                 emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
             }
         });
-        
-        console.log('📧 Magic link sent to new subscriber:', email);
-        res.json({ success: true, email: email });
-        
-    } catch (error) {
-        console.error('Checkout complete error:', error);
-        res.status(500).json({ error: 'Failed to complete signup' });
+        console.log('📧 Fallback: Magic link sent to:', session.customer_email);
+        res.json({ success: true, fallback: true });
     }
 });
 

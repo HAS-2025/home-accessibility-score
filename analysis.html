@@ -5309,18 +5309,25 @@ async function removeSavedProperty(propertyId) {
         var sessionId = urlParams.get('session_id');
 
         if (checkoutStatus === 'success' && sessionId) {
-            // Show message immediately
-            showToast('🎉 Payment successful! Check your email to sign in.');
-            
-            // Then process the checkout in background
             fetch('/api/checkout-complete?session_id=' + sessionId)
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
-                    console.log('Checkout complete:', data);
+                    if (data.token) {
+                        // Auto sign in!
+                        localStorage.setItem('auth_token', data.token);
+                        checkAuth();
+                        showToast('🎉 Welcome to Pro! You now have unlimited access.');
+                    } else if (data.fallback) {
+                        showToast('🎉 Payment successful! Check your email to sign in.');
+                    }
                 })
                 .catch(function(e) {
                     console.log('Checkout complete error:', e);
+                    showToast('🎉 Payment successful! Check your email to sign in.');
                 });
+            
+            // Clean URL
+            window.history.replaceState({}, '', '/analysis.html');
         }
         
         // Check for property URL from landing page
