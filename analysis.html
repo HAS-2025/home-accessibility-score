@@ -2058,58 +2058,39 @@
         }
 
         .paywall-box {
+            position: relative;
             background: white;
-            padding: 40px;
+            padding: 30px;
             border-radius: 20px;
             width: 90%;
-            max-width: 500px;
+            max-width: 380px;
+            max-height: 90vh;
+            overflow-y: auto;
             text-align: center;
             box-shadow: 0 25px 50px rgba(0,0,0,0.25);
         }
 
         .paywall-box h2 {
-            margin: 0 0 12px 0;
+            margin: 0 0 6px 0;
             color: #1e3a5f;
             font-family: 'Fraunces', serif;
-            font-size: 1.75rem;
+            font-size: 1.3rem;
         }
 
         .paywall-box .paywall-subtitle {
             color: #6b7280;
-            margin-bottom: 24px;
-        }
-
-        .paywall-box .paywall-features {
-            text-align: left;
-            background: #f8fafc;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 24px;
-            list-style: none;
-        }
-
-        .paywall-box .paywall-features li {
-            padding: 8px 0;
-            color: #374151;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .paywall-box .paywall-features li::before {
-            content: '✓';
-            color: #059669;
-            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 16px;
         }
 
         .paywall-box .btn-subscribe {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             background: #1e3a5f;
             color: white;
             border: none;
             border-radius: 10px;
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
             margin-bottom: 12px;
@@ -2124,8 +2105,395 @@
             border: none;
             color: #6b7280;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.85rem;
             margin-top: 12px;
+        }
+
+        .paywall-close-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 380px;
+            height: 0;
+            pointer-events: none;
+            z-index: 2001;
+        }
+
+        .paywall-close-x {
+            position: absolute;
+            top: -45vh;
+            right: 15px;
+            width: 32px;
+            height: 32px;
+            background: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            pointer-events: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        .paywall-close-x:hover {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        /* Plan type toggle (Individual vs Team) */
+        .plan-toggle {
+            display: flex;
+            background: #f3f4f6;
+            border-radius: 10px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+
+        .plan-toggle-btn {
+            flex: 1;
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+
+        .plan-toggle-btn.active {
+            background: white;
+            color: #1e3a5f;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Billing toggle (Monthly vs Annual) */
+        .billing-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .billing-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        .billing-label.active {
+            color: #1e3a5f;
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #e5e7eb;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch.active {
+            background: #1e3a5f;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .plan-price {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 4px;
+        }
+
+        .plan-price span {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #6b7280;
+        }
+
+        .savings-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .plan-price-crossed {
+            font-size: 0.95rem;
+            color: #9ca3af;
+            text-decoration: line-through;
+        }
+
+        .savings-badge {
+            background: #dcfce7;
+            color: #16a34a;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 12px 0;
+            text-align: left;
+        }
+
+        .plan-features li {
+            padding: 5px 0;
+            font-size: 0.85rem;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plan-features li::before {
+            content: '✓';
+            color: #059669;
+            font-weight: bold;
+        }
+
+        .upgrade-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 15px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        .upgrade-input:focus {
+            outline: none;
+            border-color: #1e3a5f;
+        }
+
+        .plan-content {
+            display: none;
+        }
+
+        .plan-content.active {
+            display: block;
+        }
+
+        /* Mobile styles for paywall */
+        @media (max-width: 480px) {
+            .paywall-box {
+                padding: 20px;
+                max-width: 95%;
+                border-radius: 16px;
+            }
+
+            .paywall-box h2 {
+                font-size: 1.1rem;
+            }
+
+            .plan-toggle-btn {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+
+            .billing-toggle {
+                gap: 8px;
+            }
+
+            .billing-label {
+                font-size: 0.8rem;
+            }
+
+            .toggle-switch {
+                width: 44px;
+                height: 24px;
+            }
+
+            .toggle-switch::after {
+                width: 18px;
+                height: 18px;
+            }
+
+            .toggle-switch.active::after {
+                transform: translateX(20px);
+            }
+
+            .plan-price {
+                font-size: 1.5rem;
+            }
+
+            .plan-features li {
+                font-size: 0.8rem;
+                padding: 4px 0;
+            }
+
+            .upgrade-input {
+                padding: 10px;
+                font-size: 14px;
+            }
+
+            .paywall-box .btn-subscribe {
+                padding: 10px;
+                font-size: 14px;
+            }
+        }
+
+        /* Billing toggle (Monthly vs Annual) */
+        .billing-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .billing-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        .billing-label.active {
+            color: #1e3a5f;
+            font-weight: 600;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+            background: #e5e7eb;
+            border-radius: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+            flex-shrink: 0;
+        }
+
+        .toggle-switch.active {
+            background: #1e3a5f;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .plan-price {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 4px;
+        }
+
+        .plan-price span {
+            font-size: 1rem;
+            font-weight: 400;
+            color: #6b7280;
+        }
+
+        .savings-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .plan-price-crossed {
+            font-size: 0.95rem;
+            color: #9ca3af;
+            text-decoration: line-through;
+        }
+
+        .savings-badge {
+            background: #dcfce7;
+            color: #16a34a;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 16px 0;
+            text-align: left;
+        }
+
+        .plan-features li {
+            padding: 8px 0;
+            font-size: 0.9rem;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .plan-features li::before {
+            content: '✓';
+            color: #059669;
+            font-weight: bold;
+        }
+
+        .upgrade-input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        .upgrade-input:focus {
+            outline: none;
+            border-color: #1e3a5f;
+        }
+
+        .plan-content {
+            display: none;
+        }
+
+        .plan-content.active {
+            display: block;
         }
 
         /* Save Property Button */
@@ -3021,16 +3389,61 @@
             
             var savedEmail = localStorage.getItem('captured_email') || '';
             
+            // Add X button in its own container
+            var existingContainer = modal.querySelector('.paywall-close-container');
+            if (!existingContainer) {
+                var container = document.createElement('div');
+                container.className = 'paywall-close-container';
+                container.innerHTML = '<div class="paywall-close-x" onclick="hidePaywallModal()">✕</div>';
+                modal.appendChild(container);
+            }
+            
             box.innerHTML = '<h2>You\'ve Used Your Free Analysis 🏠</h2>' +
-                '<p class="paywall-subtitle">Sign up to get unlimited analyses with Pro</p>' +
-                '<div class="paywall-upgrade-section">' +
-                '<input type="email" id="upgradeEmail" value="' + savedEmail + '" placeholder="your@email.com" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 12px; box-sizing: border-box;" />' +
-                '<button class="btn-subscribe" onclick="handleUpgrade()">Upgrade to Pro - £9.99/month</button>' +
-                '<p id="upgradeMessage" style="margin-top: 10px; font-size: 0.9rem;"></p>' +
+                
+                '<div class="plan-toggle">' +
+                '<button class="plan-toggle-btn active" onclick="showPlan(\'individual\')">Individual</button>' +
+                '<button class="plan-toggle-btn" onclick="showPlan(\'team\')">Estate Agents</button>' +
                 '</div>' +
-                '<div style="margin: 24px 0; text-align: center; color: #9ca3af; font-size: 0.85rem;">— or —</div>' +
-                '<p style="font-size: 0.95rem; color: #374151; margin-bottom: 12px;">Already have an account? Enter your email to sign in.</p>' +
-                '<div class="paywall-signin-section">' +
+                
+                '<div id="plan-individual" class="plan-content active">' +
+                '<div class="billing-toggle">' +
+                '<span class="billing-label active" id="label-monthly" onclick="setBilling(\'monthly\')">Monthly</span>' +
+                '<div class="toggle-switch" id="billing-switch" onclick="toggleBilling()"></div>' +
+                '<span class="billing-label" id="label-annual" onclick="setBilling(\'annual\')">Annual</span>' +
+                '</div>' +
+                '<div class="plan-price" id="individual-price">£19.99<span>/month</span></div>' +
+                '<div class="savings-row" id="savings-row" style="display: none;">' +
+                '<span class="plan-price-crossed">£239.88/year</span>' +
+                '<span class="savings-badge">Save £39.89</span>' +
+                '</div>' +
+                '<ul class="plan-features">' +
+                '<li>Unlimited property analyses</li>' +
+                '<li>Save up to 50 properties</li>' +
+                '<li>Full search history</li>' +
+                '<li>Download & print PDF reports</li>' +
+                '</ul>' +
+                '<input type="email" class="upgrade-input" id="individual-email" value="' + savedEmail + '" placeholder="your@email.com" />' +
+                '<button class="btn-subscribe" id="individual-btn" onclick="handleUpgrade(\'individual\')">Get Pro</button>' +
+                '</div>' +
+                
+                '<div id="plan-team" class="plan-content">' +
+                '<div class="plan-price">£50.00<span>/month</span></div>' +
+                '<ul class="plan-features">' +
+                '<li>Everything in Pro</li>' +
+                '<li>Up to 5 team members</li>' +
+                '<li>Shared property lists</li>' +
+                '<li>Team admin dashboard</li>' +
+                '</ul>' +
+                '<input type="email" class="upgrade-input" id="team-email" value="' + savedEmail + '" placeholder="your@email.com" />' +
+                '<button class="btn-subscribe" onclick="handleUpgrade(\'team\')">Get Team Plan</button>' +
+                '</div>' +
+                
+                '<p id="upgradeMessage" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></p>' +
+                
+                '<div class="divider" style="margin: 24px 0; text-align: center; color: #9ca3af; font-size: 0.85rem;">— or —</div>' +
+                
+                '<p style="font-size: 0.95rem; color: #374151; margin-bottom: 12px; text-align: center;">Already have an account? Enter your email to sign in.</p>' +
+                '<div style="max-width: 300px; margin: 0 auto;">' +
                 '<input type="email" id="paywallEmail" value="' + savedEmail + '" placeholder="your@email.com" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 12px; box-sizing: border-box;" />' +
                 '<button onclick="sendPaywallMagicLink()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">Send Sign-in Link</button>' +
                 '<p id="paywallMessage" style="margin-top: 10px; font-size: 0.9rem;"></p>' +
@@ -3040,14 +3453,72 @@
             modal.classList.remove('hidden');
         }
 
-        async function handleUpgrade() {
-            var email = document.getElementById('upgradeEmail').value;
+        var currentBilling = 'monthly';
+
+        function showPlan(plan) {
+            document.querySelectorAll('.plan-toggle-btn').forEach(function(btn, index) {
+                btn.classList.remove('active');
+                if ((plan === 'individual' && index === 0) || (plan === 'team' && index === 1)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            document.querySelectorAll('.plan-content').forEach(function(content) {
+                content.classList.remove('active');
+            });
+            document.getElementById('plan-' + plan).classList.add('active');
+        }
+
+        function toggleBilling() {
+            if (currentBilling === 'monthly') {
+                setBilling('annual');
+            } else {
+                setBilling('monthly');
+            }
+        }
+
+        function setBilling(billing) {
+            currentBilling = billing;
+            
+            var toggleSwitch = document.getElementById('billing-switch');
+            var labelMonthly = document.getElementById('label-monthly');
+            var labelAnnual = document.getElementById('label-annual');
+            var priceEl = document.getElementById('individual-price');
+            var savingsRow = document.getElementById('savings-row');
+            var btn = document.getElementById('individual-btn');
+            
+            if (billing === 'annual') {
+                toggleSwitch.classList.add('active');
+                labelMonthly.classList.remove('active');
+                labelAnnual.classList.add('active');
+                priceEl.innerHTML = '£199.99<span>/year</span>';
+                savingsRow.style.display = 'flex';
+                btn.textContent = 'Get Pro Annual';
+            } else {
+                toggleSwitch.classList.remove('active');
+                labelMonthly.classList.add('active');
+                labelAnnual.classList.remove('active');
+                priceEl.innerHTML = '£19.99<span>/month</span>';
+                savingsRow.style.display = 'none';
+                btn.textContent = 'Get Pro';
+            }
+        }
+
+        async function handleUpgrade(planType) {
+            var emailField = planType === 'team' ? 'team-email' : 'individual-email';
+            var email = document.getElementById(emailField).value;
             var messageEl = document.getElementById('upgradeMessage');
             
             if (!email || !email.includes('@')) {
                 messageEl.textContent = 'Please enter your email';
                 messageEl.style.color = '#ef4444';
                 return;
+            }
+            
+            // Determine the actual plan based on billing toggle
+            var plan = planType;
+            if (planType === 'individual' && currentBilling === 'annual') {
+                plan = 'annual';
             }
             
             messageEl.textContent = 'Redirecting to checkout...';
@@ -3057,7 +3528,7 @@
                 var response = await fetch('/api/create-checkout-guest', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email: email, plan: 'monthly' })
+                    body: JSON.stringify({ email: email, plan: plan })
                 });
                 
                 var data = await response.json();
@@ -3089,6 +3560,42 @@
             document.body.appendChild(toast);
             
             setTimeout(() => toast.remove(), 5000);
+        }
+
+        async function sendPaywallMagicLink() {
+            var email = document.getElementById('paywallEmail').value;
+            var messageEl = document.getElementById('paywallMessage');
+            
+            if (!email || !email.includes('@')) {
+                messageEl.textContent = 'Please enter your email';
+                messageEl.style.color = '#ef4444';
+                return;
+            }
+            
+            messageEl.textContent = 'Checking account...';
+            messageEl.style.color = '#6b7280';
+            
+            try {
+                var response = await fetch('/auth/magic-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                
+                var data = await response.json();
+                
+                if (response.ok) {
+                    messageEl.textContent = '✓ Check your email for the sign-in link!';
+                    messageEl.style.color = '#059669';
+                    localStorage.setItem('captured_email', email);
+                } else {
+                    messageEl.textContent = data.error || 'Failed to send link';
+                    messageEl.style.color = '#ef4444';
+                }
+            } catch (e) {
+                messageEl.textContent = 'Something went wrong. Try again.';
+                messageEl.style.color = '#ef4444';
+            }
         }
 
         

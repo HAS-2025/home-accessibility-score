@@ -835,6 +835,16 @@ app.post('/api/create-checkout-guest', async (req, res) => {
         return res.status(400).json({ error: 'Email is required' });
     }
     
+    // Select price based on plan type
+    let priceId;
+    if (plan === 'team') {
+        priceId = process.env.STRIPE_PRICE_TEAM;
+    } else if (plan === 'annual') {
+        priceId = process.env.STRIPE_PRICE_ANNUAL;
+    } else {
+        priceId = process.env.STRIPE_PRICE_MONTHLY;
+    }
+    
     try {
         // Create or find user
         let { data: user } = await supabase
@@ -846,7 +856,7 @@ app.post('/api/create-checkout-guest', async (req, res) => {
         if (!user) {
             const { data: newUser } = await supabase
                 .from('users')
-                .insert({ email: email, user_type: 'individual' })
+                .insert({ email: email, user_type: plan === 'team' ? 'agent' : 'individual' })
                 .select('id')
                 .single();
             user = newUser;
@@ -858,7 +868,7 @@ app.post('/api/create-checkout-guest', async (req, res) => {
             customer_email: email,
             payment_method_types: ['card'],
             line_items: [{
-                price: process.env.STRIPE_PRICE_MONTHLY,
+                price: priceId,
                 quantity: 1
             }],
             mode: 'subscription',
@@ -866,11 +876,12 @@ app.post('/api/create-checkout-guest', async (req, res) => {
             cancel_url: `${req.headers.origin}/analysis.html?checkout=cancelled`,
             metadata: {
                 user_id: user.id,
-                email: email
+                email: email,
+                plan: plan
             }
         });
         
-        console.log('💳 Checkout session created for:', email);
+        console.log('💳 Checkout session created for:', email, '- Plan:', plan);
         res.json({ url: session.url });
     } catch (error) {
         console.error('Checkout error:', error);
@@ -5473,7 +5484,7 @@ app.post('/api/analyze', async (req, res) => {
 // AUTHENTICATION ENDPOINTS
 // =============================================
 
-// Send magic link
+// Send magic link (only for users with active subscriptions)
 app.post('/auth/magic-link', async (req, res) => {
     const { email } = req.body;
     
@@ -5481,6 +5492,24 @@ app.post('/auth/magic-link', async (req, res) => {
         return res.status(400).json({ error: 'Email is required' });
     }
     
+    // Check if user exists and has active subscription
+    const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('id, subscription_status')
+        .eq('email', email)
+        .single();
+    
+    if (userError || !user) {
+        console.log('❌ Sign-in attempt for unregistered email:', email);
+        return res.status(404).json({ error: 'No account found with this email. Please subscribe to create an account.' });
+    }
+    
+    if (user.subscription_status !== 'active') {
+        console.log('❌ Sign-in attempt for non-subscriber:', email);
+        return res.status(403).json({ error: 'No active subscription found. Please subscribe to access your account.' });
+    }
+    
+    // User has active subscription - send magic link
     const { data, error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
@@ -5493,7 +5522,7 @@ app.post('/auth/magic-link', async (req, res) => {
         return res.status(400).json({ error: error.message });
     }
     
-    console.log('📧 Magic link sent to:', email);
+    console.log('📧 Magic link sent to subscriber:', email);
     res.json({ message: 'Check your email for the login link' });
 });
 
