@@ -1227,5 +1227,12 @@
         });
     </script>
 
+    <script>
+        // If landing page receives auth token, redirect to analysis
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+            window.location.href = '/analysis.html' + window.location.hash;
+        }
+    </script>
+
 </body>
 </html>

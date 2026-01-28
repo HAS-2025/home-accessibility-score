@@ -1631,6 +1631,30 @@
             color: #1f2937;
         }
 
+        .toast {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e3a5f;
+            color: white;
+            padding: 16px 28px;
+            border-radius: 10px;
+            font-size: 1rem;
+            z-index: 3000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            animation: slideDown 0.3s ease, fadeOut 0.5s ease 4.5s forwards;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        @keyframes fadeOut {
+            to { opacity: 0; }
+        }
+
         /* ========== PANELS (Saved, History, Team) ========== */
         .saved-panel,
         .history-panel {
@@ -2017,6 +2041,91 @@
 
         .hidden {
             display: none !important;
+        }
+
+        
+        .paywall-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .paywall-box {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+        }
+
+        .paywall-box h2 {
+            margin: 0 0 12px 0;
+            color: #1e3a5f;
+            font-family: 'Fraunces', serif;
+            font-size: 1.75rem;
+        }
+
+        .paywall-box .paywall-subtitle {
+            color: #6b7280;
+            margin-bottom: 24px;
+        }
+
+        .paywall-box .paywall-features {
+            text-align: left;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            list-style: none;
+        }
+
+        .paywall-box .paywall-features li {
+            padding: 8px 0;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .paywall-box .paywall-features li::before {
+            content: '✓';
+            color: #059669;
+            font-weight: bold;
+        }
+
+        .paywall-box .btn-subscribe {
+            width: 100%;
+            padding: 14px;
+            background: #1e3a5f;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+
+        .paywall-box .btn-subscribe:hover {
+            background: #2d4a6f;
+        }
+
+        .paywall-box .btn-close-paywall {
+            background: none;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 12px;
         }
 
         /* Save Property Button */
@@ -2418,6 +2527,24 @@
             <button class="btn-primary" onclick="sendMagicLink()">Send Magic Link</button>
             <button class="btn-close" onclick="hideLoginModal()">Cancel</button>
             <p id="loginMessage" style="margin-top: 15px; text-align: center; color: #059669;"></p>
+        </div>
+    </div>
+
+        <!-- Paywall Modal (for 2nd+ analysis or post-login upsell) -->
+    <div class="paywall-modal hidden" id="paywallModal">
+        <div class="paywall-box">
+            <h2>Upgrade to Pro 🚀</h2>
+            <p class="paywall-subtitle">Get unlimited property analyses</p>
+            
+            <ul class="paywall-features">
+                <li>Unlimited property analyses</li>
+                <li>Save up to 50 properties</li>
+                <li>Compare properties side-by-side</li>
+                <li>Priority support</li>
+            </ul>
+            
+            <button class="btn-subscribe" onclick="showUpgradeModal()">Upgrade to Pro - £9.99/month</button>
+            <button class="btn-close-paywall" onclick="hidePaywallModal()">Maybe later</button>
         </div>
     </div>
 
@@ -2861,16 +2988,121 @@
             </div>
 
 
-    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+    <script>
 
         // At the top of your <script> section
         let currentPropertyUrl = '';
 
+        let pendingAnalysisData = null;
+
+        // ========== FREE SEARCH TRACKING ==========
+        function hasUsedFreeSearch() {
+            return localStorage.getItem('hasUsedFreeSearch') === 'true';
+        }
+
+        function markFreeSearchUsed() {
+            localStorage.setItem('hasUsedFreeSearch', 'true');
+        }
+
+        function isSignedIn() {
+            return !!localStorage.getItem('auth_token');
+        }
+
+        function canAnalyze() {
+            if (isSignedIn()) return true;
+            return !hasUsedFreeSearch();
+        }
+
+        
+       
+        function showPaywallModal() {
+            var modal = document.getElementById('paywallModal');
+            var box = modal.querySelector('.paywall-box');
+            
+            var savedEmail = localStorage.getItem('captured_email') || '';
+            
+            box.innerHTML = '<h2>You\'ve Used Your Free Analysis 🏠</h2>' +
+                '<p class="paywall-subtitle">Sign up to get unlimited analyses with Pro</p>' +
+                '<div class="paywall-upgrade-section">' +
+                '<input type="email" id="upgradeEmail" value="' + savedEmail + '" placeholder="your@email.com" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 12px; box-sizing: border-box;" />' +
+                '<button class="btn-subscribe" onclick="handleUpgrade()">Upgrade to Pro - £9.99/month</button>' +
+                '<p id="upgradeMessage" style="margin-top: 10px; font-size: 0.9rem;"></p>' +
+                '</div>' +
+                '<div style="margin: 24px 0; text-align: center; color: #9ca3af; font-size: 0.85rem;">— or —</div>' +
+                '<p style="font-size: 0.95rem; color: #374151; margin-bottom: 12px;">Already have an account? Enter your email to sign in.</p>' +
+                '<div class="paywall-signin-section">' +
+                '<input type="email" id="paywallEmail" value="' + savedEmail + '" placeholder="your@email.com" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 12px; box-sizing: border-box;" />' +
+                '<button onclick="sendPaywallMagicLink()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">Send Sign-in Link</button>' +
+                '<p id="paywallMessage" style="margin-top: 10px; font-size: 0.9rem;"></p>' +
+                '</div>' +
+                '<button class="btn-close-paywall" onclick="hidePaywallModal()">Maybe later</button>';
+            
+            modal.classList.remove('hidden');
+        }
+
+        async function handleUpgrade() {
+            var email = document.getElementById('upgradeEmail').value;
+            var messageEl = document.getElementById('upgradeMessage');
+            
+            if (!email || !email.includes('@')) {
+                messageEl.textContent = 'Please enter your email';
+                messageEl.style.color = '#ef4444';
+                return;
+            }
+            
+            messageEl.textContent = 'Redirecting to checkout...';
+            messageEl.style.color = '#6b7280';
+            
+            try {
+                var response = await fetch('/api/create-checkout-guest', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, plan: 'monthly' })
+                });
+                
+                var data = await response.json();
+                
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    messageEl.textContent = data.error || 'Failed to start checkout';
+                    messageEl.style.color = '#ef4444';
+                }
+            } catch (e) {
+                messageEl.textContent = 'Something went wrong. Try again.';
+                messageEl.style.color = '#ef4444';
+            }
+        }
+
+        function hidePaywallModal() {
+            document.getElementById('paywallModal').classList.add('hidden');
+        }
+
+        
+        function showToast(message) {
+            const existing = document.querySelector('.toast');
+            if (existing) existing.remove();
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => toast.remove(), 5000);
+        }
+
+        
         async function analyzeProperty() {
             const url = document.getElementById('propertyUrl').value;
             
             if (!url || !url.includes('rightmove.co.uk')) {
                 alert('Please enter a valid Rightmove property URL');
+                return;
+            }
+
+            // Check if user can analyze (signed in OR hasn't used free search)
+            if (!isSignedIn() && hasUsedFreeSearch()) {
+                showPaywallModal();
                 return;
             }
 
@@ -2900,6 +3132,12 @@
 
                 displayResults(data);
 
+                // Mark free search as used for non-signed-in users
+                if (!isSignedIn()) {
+                    markFreeSearchUsed();
+                }
+
+                
             } catch (error) {
                 console.error('Analysis error:', error);
                 document.getElementById('loading').innerHTML = `
@@ -4421,32 +4659,6 @@
         });
     </script>
     <script>
-    // Handle auth callback - check for token in URL fragment
-    if (window.location.hash.includes('access_token')) {
-        const params = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = params.get('access_token');
-        
-        if (accessToken) {
-            // Store token
-            localStorage.setItem('auth_token', accessToken);
-            
-            // Create user in our database
-            fetch('/auth/create-user', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            }).then(r => r.json()).then(data => {
-                console.log('User created:', data);
-                // Clean up URL
-                window.history.replaceState({}, document.title, '/');
-                window.location.reload();
-            });
-        }
-    }
-    </script>
-    <script>
     // =============================================
     // AUTH & USER MANAGEMENT
     // =============================================
@@ -5041,22 +5253,94 @@ async function removeSavedProperty(propertyId) {
     
 
     // Run on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        checkAuth();
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('🔍 Page loaded');
+        console.log('🔍 Full URL:', window.location.href);
+        console.log('🔍 Hash:', window.location.hash);
+        console.log('🔍 Has access_token:', window.location.hash.includes('access_token'));
         
-        // Check for URL parameter from landing page
         const urlParams = new URLSearchParams(window.location.search);
-        const propertyUrl = urlParams.get('url');
         
+        // Handle hash fragment from Supabase magic link (implicit flow)
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+            console.log('🔍 Found access token in hash!');
+            const hashParams = new URLSearchParams(window.location.hash.substring(1));
+            const accessToken = hashParams.get('access_token');
+            
+            if (accessToken) {
+                console.log('🔑 Got token from hash fragment');
+                localStorage.setItem('auth_token', accessToken);
+                
+                // Clean up URL
+                window.history.replaceState({}, '', '/analysis.html');
+                
+                // Check subscription and show paywall if needed
+                try {
+                    const response = await fetch('/auth/user', {
+                        headers: { 'Authorization': 'Bearer ' + accessToken }
+                    });
+                    const data = await response.json();
+                    
+                    if (data.user && data.user.subscription_status === 'active') {
+                        console.log('🎫 Subscriber - full access');
+                        showToast('🎉 Welcome back! You have unlimited access.');
+                    } else {
+                        console.log('🆓 Free user signed in');
+                        // Don't show paywall on sign-in, only when they try to analyze
+                    }
+                } catch (e) {
+                    console.log('Error checking subscription:', e);
+                    setTimeout(function() { showPaywallModal(); }, 300);
+                }
+            }
+        }
+        
+        // Handle token from query param
+        const token = urlParams.get('token');
+        if (token) {
+            localStorage.setItem('auth_token', token);
+        }
+        
+        // Check auth
+        checkAuth();
+
+        // Handle successful checkout
+        var checkoutStatus = urlParams.get('checkout');
+        var sessionId = urlParams.get('session_id');
+
+        if (checkoutStatus === 'success' && sessionId) {
+            // Show message immediately
+            showToast('🎉 Payment successful! Check your email to sign in.');
+            
+            // Then process the checkout in background
+            fetch('/api/checkout-complete?session_id=' + sessionId)
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    console.log('Checkout complete:', data);
+                })
+                .catch(function(e) {
+                    console.log('Checkout complete error:', e);
+                });
+        }
+        
+        // Check for property URL from landing page
+        const propertyUrl = urlParams.get('url');
         if (propertyUrl) {
-            // Populate the input field
             document.getElementById('propertyUrl').value = propertyUrl;
-            // Auto-start the analysis
-            setTimeout(() => {
-                analyzeProperty();
-            }, 500);
+            setTimeout(function() { analyzeProperty(); }, 500);
+        }
+
+        // Show paywall if redirected with showPaywall param
+        if (urlParams.get('showPaywall') === 'true') {
+            setTimeout(function() { showPaywallModal(); }, 300);
+        }
+        
+        // Clean up URL
+        if (urlParams.toString() || window.location.hash) {
+            window.history.replaceState({}, '', '/analysis.html');
         }
     });
+
     </script>
 
     <!-- Print Report Template -->

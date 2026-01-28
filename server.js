@@ -815,6 +815,95 @@ app.post('/api/create-team-checkout', async (req, res) => {
     }
 });
 
+// Guest checkout (no auth required)
+app.post('/api/create-checkout-guest', async (req, res) => {
+    const { email, plan } = req.body;
+    
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    try {
+        // Create or find user
+        let { data: user } = await supabase
+            .from('users')
+            .select('id')
+            .eq('email', email)
+            .single();
+        
+        if (!user) {
+            const { data: newUser } = await supabase
+                .from('users')
+                .insert({ email: email, user_type: 'individual' })
+                .select('id')
+                .single();
+            user = newUser;
+            console.log('👤 New user created for checkout:', email);
+        }
+        
+        // Create Stripe checkout session
+        const session = await stripe.checkout.sessions.create({
+            customer_email: email,
+            payment_method_types: ['card'],
+            line_items: [{
+                price: process.env.STRIPE_PRICE_MONTHLY,
+                quantity: 1
+            }],
+            mode: 'subscription',
+            success_url: `${req.headers.origin}/analysis.html?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${req.headers.origin}/analysis.html?checkout=cancelled`,
+            metadata: {
+                user_id: user.id,
+                email: email
+            }
+        });
+        
+        console.log('💳 Checkout session created for:', email);
+        res.json({ url: session.url });
+    } catch (error) {
+        console.error('Checkout error:', error);
+        res.status(500).json({ error: 'Failed to create checkout' });
+    }
+});
+
+// Complete checkout and auto-sign in
+app.get('/api/checkout-complete', async (req, res) => {
+    const { session_id } = req.query;
+    
+    if (!session_id) {
+        return res.status(400).json({ error: 'Session ID required' });
+    }
+    
+    try {
+        // Get session from Stripe
+        const session = await stripe.checkout.sessions.retrieve(session_id);
+        const email = session.customer_email;
+        
+        console.log('✅ Checkout complete for:', email);
+        
+        // Update user subscription status
+        await supabase
+            .from('users')
+            .update({ subscription_status: 'active' })
+            .eq('email', email);
+        
+        // Send magic link to analysis page
+        await supabase.auth.signInWithOtp({
+            email: email,
+            options: {
+                emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
+            }
+        });
+        
+        console.log('📧 Magic link sent to new subscriber:', email);
+        res.json({ success: true, email: email });
+        
+    } catch (error) {
+        console.error('Checkout complete error:', error);
+        res.status(500).json({ error: 'Failed to complete signup' });
+    }
+});
+
 // =============================================
 // SAVED PROPERTIES ENDPOINTS
 // =============================================
@@ -5363,7 +5452,7 @@ app.post('/auth/magic-link', async (req, res) => {
     const { data, error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
-            emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/auth/callback`
+            emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
         }
     });
     
@@ -5374,42 +5463,6 @@ app.post('/auth/magic-link', async (req, res) => {
     
     console.log('📧 Magic link sent to:', email);
     res.json({ message: 'Check your email for the login link' });
-});
-
-// Handle auth callback (exchange code for session)
-app.get('/auth/callback', async (req, res) => {
-    const { code } = req.query;
-    
-    if (code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-        
-        if (error) {
-            console.log('❌ Auth callback error:', error.message);
-            return res.redirect('/?error=auth_failed');
-        }
-        
-        console.log('✅ User authenticated:', data.user.email);
-        
-        // Check if user exists in our users table, if not create them
-        const { data: existingUser } = await supabase
-            .from('users')
-            .select('id')
-            .eq('email', data.user.email)
-            .single();
-        
-        if (!existingUser) {
-            await supabase.from('users').insert({
-                email: data.user.email,
-                user_type: 'individual'
-            });
-            console.log('👤 New user created:', data.user.email);
-        }
-        
-        // Redirect to app with success
-        res.redirect('/?auth=success');
-    } else {
-        res.redirect('/?error=no_code');
-    }
 });
 
 // Get current user
@@ -5435,6 +5488,67 @@ app.get('/auth/user', async (req, res) => {
         .single();
     
     res.json({ user: userData });
+});
+
+// Handle auth callback (exchange code for session)
+app.get('/auth/callback', async (req, res) => {
+    console.log('🔔 AUTH CALLBACK HIT');
+    console.log('🔔 Full query:', req.query);
+    
+    const { code } = req.query;
+    
+    if (!code) {
+        console.log('❌ No code in query params');
+        return res.redirect('/analysis.html?error=no_code');
+    }
+    
+    console.log('🔔 Got code, exchanging...');
+    
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    
+    if (error) {
+        console.log('❌ Exchange error:', error.message);
+        return res.redirect('/analysis.html?error=auth_failed');
+    }
+    
+    console.log('✅ User authenticated:', data.user.email);
+    
+    // Check if user exists in our users table, if not create them
+    let { data: existingUser } = await supabase
+        .from('users')
+        .select('id, subscription_status')
+        .eq('email', data.user.email)
+        .single();
+    
+    if (!existingUser) {
+        const { data: newUser } = await supabase
+            .from('users')
+            .insert({
+                email: data.user.email,
+                user_type: 'individual'
+            })
+            .select('id, subscription_status')
+            .single();
+        
+        existingUser = newUser;
+        console.log('👤 New user created:', data.user.email);
+    }
+    
+    // Check subscription status
+    const hasSubscription = existingUser?.subscription_status === 'active';
+    
+    // Get the token
+    const token = data.session.access_token;
+    
+    if (hasSubscription) {
+        // Subscriber - go straight to analysis
+        console.log('🎫 Subscriber login:', data.user.email);
+        res.redirect(`/analysis.html?token=${token}`);
+    } else {
+        // Non-subscriber - show paywall
+        console.log('🆓 Free user login:', data.user.email);
+        res.redirect(`/analysis.html?token=${token}&showPaywall=true`);
+    }
 });
 
 // Create user after OAuth callback
