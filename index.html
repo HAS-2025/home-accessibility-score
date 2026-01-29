@@ -895,55 +895,97 @@
         footer {
             background: var(--primary);
             color: var(--white);
-            padding: 60px 40px 30px;
+            padding: 60px 40px 40px;
         }
 
-        .footer-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            gap: 40px;
+        .footer-brand-top {
+            text-align: center;
             margin-bottom: 40px;
+            padding-bottom: 40px;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
         }
 
-        .footer-brand p {
-            opacity: 0.8;
-            margin-top: 12px;
+        .footer-brand-top .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: white;
+            margin-bottom: 12px;
+        }
+
+        .footer-brand-top .logo-icon {
+            font-size: 28px;
+        }
+
+        .footer-brand-top .logo-text {
+            font-family: 'Fraunces', serif;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .footer-brand-top p {
+            color: rgba(255,255,255,0.7);
             font-size: 0.95rem;
+            max-width: 500px;
+            margin: 0 auto;
             line-height: 1.6;
         }
 
+        .footer-columns {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 40px;
+            max-width: 800px;
+            margin: 0 auto 40px;
+        }
+
+        .footer-column {
+            text-align: center;
+        }
+
         .footer-column h4 {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             text-transform: uppercase;
             letter-spacing: 1px;
             margin-bottom: 16px;
-            opacity: 0.7;
+            color: rgba(255,255,255,0.5);
         }
 
         .footer-column a {
             display: block;
-            color: var(--white);
+            color: rgba(255,255,255,0.8);
             text-decoration: none;
-            opacity: 0.85;
-            margin-bottom: 10px;
             font-size: 0.95rem;
-            transition: opacity 0.2s;
+            margin-bottom: 10px;
+            transition: color 0.2s;
         }
 
         .footer-column a:hover {
-            opacity: 1;
+            color: white;
         }
 
         .footer-bottom {
-            border-top: 1px solid rgba(255,255,255,0.15);
-            padding-top: 24px;
             text-align: center;
-            font-size: 0.9rem;
-            opacity: 0.7;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.15);
         }
 
+        .footer-disclaimer {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 12px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.5;
+        }
+
+        .footer-copyright {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.4);
+        }
+        
         @media (max-width: 1024px) {
             .hero-container,
             .agent-benefits {
@@ -1422,14 +1464,15 @@
 
     <!-- Footer -->
     <footer>
-        <div class="footer-container">
-            <div class="footer-brand">
-                <a href="#" class="logo" style="color: white;">
-                    <span class="logo-icon">🏠</span>
-                    <span class="logo-text">Home Accessibility Score</span>
-                </a>
-                <p>Helping people find homes they can live in comfortably. Built for older adults, families, and the estate agents who serve them.</p>
-            </div>
+        <div class="footer-brand-top">
+            <a href="#" class="logo">
+                <span class="logo-icon">🏠</span>
+                <span class="logo-text">Home Accessibility Score</span>
+            </a>
+            <p>Helping people find homes they can live in comfortably. Built for older adults, families, and the estate agents who serve them.</p>
+        </div>
+        
+        <div class="footer-columns">
             <div class="footer-column">
                 <h4>Product</h4>
                 <a href="#how-it-works">How It Works</a>
@@ -1445,12 +1488,14 @@
             </div>
             <div class="footer-column">
                 <h4>Legal</h4>
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
+                <a href="privacy.html">Privacy Policy</a>
+                <a href="terms.html">Terms of Service</a>
             </div>
         </div>
+        
         <div class="footer-bottom">
-            <p>© 2026 Home Accessibility Score. All rights reserved.</p>
+            <p class="footer-disclaimer">Home Accessibility Score provides indicative assessments for informational purposes only. Data is sourced from third parties and may occasionally be incomplete or outdated.</p>
+            <p class="footer-copyright">© 2025 Home Accessibility Score. All rights reserved.</p>
         </div>
     </footer>
 
