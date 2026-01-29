@@ -3509,6 +3509,7 @@
         <div class="footer-right">
             <a href="privacy.html">Privacy</a>
             <a href="terms.html">Terms</a>
+            <a href="faq.html">FAQ</a>
             <a href="mailto:contact@homeaccessibilityscore.com">Contact</a>
         </div>
     </footer>
@@ -3914,17 +3915,6 @@
                 else overallSubtitle.textContent = 'May not suit accessibility needs';
             }
             
-            // Display property image
-            if (property.images && property.images.length > 0) {
-                const propertyImage = document.getElementById('propertyImage');
-                propertyImage.src = property.images[0];
-                propertyImage.style.display = 'block';
-                propertyImage.onerror = function() {
-                    this.style.display = 'none';
-                };
-            } else {
-                document.getElementById('propertyImage').style.display = 'none';
-            }
 
             // Display map
             if (mapUrl) {

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - Home Accessibility Score</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fraunces:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1e3a5f;
+            --primary-dark: #0f2744;
+            --accent: #e8985e;
+            --background: #f5f3ef;
+            --text: #2c3e50;
+            --text-light: #5d6d7e;
+            --white: #ffffff;
+            --border: #e5e7eb;
+            --success: #22c55e;
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--background);
+            color: var(--text);
+            line-height: 1.7;
+        }
+
+        /* Header */
+        .header {
+            background: var(--primary);
+            padding: 24px 40px;
+        }
+
+        .header-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            color: white;
+        }
+
+        .logo-icon {
+            font-size: 24px;
+        }
+
+        .logo-text {
+            font-family: 'Fraunces', serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        .back-link {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            color: white;
+        }
+
+        /* Content */
+        .content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 16px;
+        }
+
+        .intro {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 40px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        /* FAQ Sections */
+        .faq-section {
+            margin-bottom: 40px;
+        }
+
+        .faq-section-title {
+            font-family: 'Fraunces', serif;
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .faq-section-title .icon {
+            font-size: 1.2rem;
+        }
+
+        /* FAQ Items */
+        .faq-item {
+            background: var(--white);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 20px 24px;
+            font-weight: 600;
+            color: var(--primary);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+
+        .faq-question:hover {
+            background: #f8fafc;
+        }
+
+        .faq-question::after {
+            content: '+';
+            font-size: 1.5rem;
+            color: var(--accent);
+            font-weight: 400;
+            transition: transform 0.3s;
+        }
+
+        .faq-item.open .faq-question::after {
+            content: '−';
+        }
+
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+
+        .faq-item.open .faq-answer {
+            max-height: 500px;
+        }
+
+        .faq-answer-content {
+            padding: 0 24px 20px;
+            color: var(--text);
+        }
+
+        .faq-answer-content p {
+            margin-bottom: 12px;
+        }
+
+        .faq-answer-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .faq-answer-content ul {
+            margin: 12px 0;
+            padding-left: 20px;
+        }
+
+        .faq-answer-content li {
+            margin-bottom: 6px;
+        }
+
+        .faq-answer-content strong {
+            color: var(--primary);
+        }
+
+        /* Score table */
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 0.9rem;
+        }
+
+        .score-table th,
+        .score-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .score-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .score-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .score-badge.excellent { background: #dcfce7; color: #166534; }
+        .score-badge.good { background: #fef3c7; color: #92400e; }
+        .score-badge.poor { background: #fee2e2; color: #991b1b; }
+
+        a {
+            color: var(--accent);
+        }
+
+        /* Footer */
+        .footer-minimal {
+            background: var(--primary-dark);
+            padding: 24px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin-top: 60px;
+        }
+
+        .footer-minimal .footer-left {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .footer-minimal .footer-right {
+            display: flex;
+            gap: 20px;
+        }
+
+        .footer-minimal a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 0.8rem;
+        }
+
+        .footer-minimal a:hover {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<header class="header">
+    <div class="header-container">
+        <a href="index.html" class="logo">
+            <span class="logo-icon">🏠</span>
+            <span class="logo-text">Home Accessibility Score</span>
+        </a>
+        <a href="index.html" class="back-link">← Back to Home</a>
+    </div>
+</header>
+
+<main class="content">
+    <h1>Frequently Asked Questions</h1>
+    <p class="intro">Find answers to common questions about Home Accessibility Score, how it works, and how to get the most out of our service.</p>
+
+    <!-- Getting Started -->
+    <div class="faq-section">
+        <h2 class="faq-section-title"><span class="icon">🚀</span> Getting Started</h2>
+        
+        <div class="faq-item">
+            <div class="faq-question">What is Home Accessibility Score?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Home Accessibility Score (HAS) is a tool that analyses Rightmove property listings to assess how suitable they are for older adults and people with mobility needs.</p>
+                    <p>We evaluate properties based on proximity to healthcare, public transport access, accessibility features, energy efficiency, and running costs – giving you a comprehensive picture before you visit.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How do I use it?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Simply paste a Rightmove property URL into the search bar and click "Analyse". Within seconds, you'll receive a detailed accessibility report including:</p>
+                    <ul>
+                        <li>Overall accessibility score (out of 5)</li>
+                        <li>GP proximity and walking time</li>
+                        <li>Nearest bus stops and train stations</li>
+                        <li>Accessible features found in the listing</li>
+                        <li>Energy efficiency rating and costs</li>
+                        <li>Property costs breakdown</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Which properties can I analyse?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Currently, we support properties listed on Rightmove (rightmove.co.uk). Simply copy the URL from any Rightmove property listing and paste it into our tool.</p>
+                    <p>We plan to add support for other property websites in the future.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing & Subscriptions -->
+    <div class="faq-section">
+        <h2 class="faq-section-title"><span class="icon">💳</span> Pricing & Subscriptions</h2>
+        
+        <div class="faq-item">
+            <div class="faq-question">Is it free to use?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Yes! You can try Home Accessibility Score with <strong>one free analysis</strong> – no sign-up required.</p>
+                    <p>After your free analysis, you'll need to subscribe to continue using the service.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How much does a subscription cost?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>We offer affordable subscription plans for individuals and teams. Pricing is displayed when you subscribe after using your free analysis.</p>
+                    <p>All subscriptions include unlimited property analyses, downloadable PDF reports, and the ability to save properties.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Can I cancel my subscription?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Yes, you can cancel your subscription at any time. Your access will continue until the end of your current billing period.</p>
+                    <p>We don't offer refunds for partial subscription periods, but you won't be charged again after cancelling.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scores & Analysis -->
+    <div class="faq-section">
+        <h2 class="faq-section-title"><span class="icon">📊</span> Scores & Analysis</h2>
+        
+        <div class="faq-item">
+            <div class="faq-question">How are accessibility scores calculated?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Each property receives scores (0-5) across six categories, which are combined into an overall accessibility score:</p>
+                    <ul>
+                        <li><strong>GP Proximity:</strong> Walking time to nearest GP surgery, adjusted for slower walking speeds</li>
+                        <li><strong>Public Transport:</strong> Distance to bus stops and train stations</li>
+                        <li><strong>Accessible Features:</strong> Features like step-free access, ground floor bedrooms, parking</li>
+                        <li><strong>Energy Efficiency:</strong> Based on the property's EPC rating</li>
+                        <li><strong>Property Costs:</strong> Council tax band and value for money</li>
+                        <li><strong>Room Breakdown:</strong> Number of bedrooms, bathrooms, and overall space</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">What do the score ratings mean?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <table class="score-table">
+                        <tr>
+                            <th>Score</th>
+                            <th>Rating</th>
+                            <th>Meaning</th>
+                        </tr>
+                        <tr>
+                            <td>4.5 - 5.0</td>
+                            <td><span class="score-badge excellent">Excellent</span></td>
+                            <td>Highly suitable for accessibility needs</td>
+                        </tr>
+                        <tr>
+                            <td>3.5 - 4.4</td>
+                            <td><span class="score-badge excellent">Very Good</span></td>
+                            <td>Well suited with minor considerations</td>
+                        </tr>
+                        <tr>
+                            <td>2.5 - 3.4</td>
+                            <td><span class="score-badge good">Good</span></td>
+                            <td>Suitable with some limitations</td>
+                        </tr>
+                        <tr>
+                            <td>1.5 - 2.4</td>
+                            <td><span class="score-badge good">Fair</span></td>
+                            <td>May present challenges</td>
+                        </tr>
+                        <tr>
+                            <td>0 - 1.4</td>
+                            <td><span class="score-badge poor">Poor</span></td>
+                            <td>Significant accessibility concerns</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">How accurate is the data?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>We source data from trusted third parties including:</p>
+                    <ul>
+                        <li>Google Maps for walking times and distances</li>
+                        <li>Government EPC register for energy ratings</li>
+                        <li>Rightmove listings for property details</li>
+                    </ul>
+                    <p>While we strive for accuracy, third-party data may occasionally be incomplete or outdated. Walking times are adjusted by 40% to account for slower mobility, but actual times will vary by individual.</p>
+                    <p><strong>We recommend always verifying important details in person before making decisions.</strong></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="faq-section">
+        <h2 class="faq-section-title"><span class="icon">✨</span> Features</h2>
+        
+        <div class="faq-item">
+            <div class="faq-question">How do I download a report?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>After analysing a property, click the <strong>"Download Report"</strong> button in the results sidebar. This will generate a printable PDF summary of the accessibility analysis.</p>
+                    <p>The report includes all scores, key features, and recommendations – perfect for sharing with family members or keeping for your records.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Can I save properties to review later?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Yes! Subscribers can save properties by clicking the <strong>"Save Property"</strong> button. Your saved properties are stored in your account and can be accessed anytime you're signed in.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Can I share results with others?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Yes, you can share results in two ways:</p>
+                    <ul>
+                        <li><strong>Download the PDF report</strong> and share it via email or messaging</li>
+                        <li><strong>Copy the page URL</strong> while viewing results (note: the recipient will need a subscription to view full details)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- For Estate Agents -->
+    <div class="faq-section">
+        <h2 class="faq-section-title"><span class="icon">🏢</span> For Estate Agents</h2>
+        
+        <div class="faq-item">
+            <div class="faq-question">Can estate agents use Home Accessibility Score?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Absolutely! We offer team plans specifically designed for estate agents. Use HAS to:</p>
+                    <ul>
+                        <li>Identify suitable properties for clients with accessibility needs</li>
+                        <li>Add accessibility information to your property listings</li>
+                        <li>Generate professional reports for property packs</li>
+                        <li>Differentiate your service in the market</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">Is there a team or business plan?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Yes, we offer team plans for estate agents and businesses. Team plans include:</p>
+                    <ul>
+                        <li>Multiple user accounts under one subscription</li>
+                        <li>Unlimited property analyses</li>
+                        <li>Branded PDF reports</li>
+                        <li>Priority support</li>
+                    </ul>
+                    <p>Select "Estate Agents" when subscribing to see team pricing options.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technical -->
+    <div class="faq-section">
+        <h2 class="faq-section-title"><span class="icon">⚙️</span> Technical</h2>
+        
+        <div class="faq-item">
+            <div class="faq-question">Why does the analysis sometimes take a while to load?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>When you analyse a property, we fetch data from multiple sources in real-time, including Google Maps for walking distances, the EPC register, and the property listing. This typically takes 10-30 seconds.</p>
+                    <p>If the site has been idle for a while, the first request may take slightly longer (up to a minute) while our servers wake up. Subsequent analyses will be faster.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">What browsers are supported?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>Home Accessibility Score works best on modern browsers including:</p>
+                    <ul>
+                        <li>Google Chrome (recommended)</li>
+                        <li>Mozilla Firefox</li>
+                        <li>Microsoft Edge</li>
+                        <li>Safari</li>
+                    </ul>
+                    <p>We also support mobile browsers on iOS and Android devices.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="faq-item">
+            <div class="faq-question">I found a bug or have feedback – how do I report it?</div>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    <p>We'd love to hear from you! Please email us with your feedback. Your input helps us improve the service for everyone.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</main>
+
+<footer class="footer-minimal">
+    <div class="footer-left">
+        © 2026 Home Accessibility Score · For informational purposes only
+    </div>
+    <div class="footer-right">
+        <a href="privacy.html">Privacy</a>
+        <a href="terms.html">Terms</a>
+        <a href="faq.html">FAQ</a>
+    </div>
+</footer>
+
+<script>
+    // FAQ accordion functionality
+    document.querySelectorAll('.faq-question').forEach(question => {
+        question.addEventListener('click', () => {
+            const item = question.parentElement;
+            const wasOpen = item.classList.contains('open');
+            
+            // Close all items
+            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+            
+            // Open clicked item if it wasn't already open
+            if (!wasOpen) {
+                item.classList.add('open');
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

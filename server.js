@@ -3677,13 +3677,13 @@ async function scrapeRightmoveProperty(url) {
                 
                 // Filter for ACTUAL property photos
                 if ((src.includes('media.rightmove') || src.includes('rightmove.co.uk')) &&
-                    src.match(/IMG_\d+_\d+\.(jpeg|jpg|png)/i) &&  // Must match property image pattern
+                    (src.includes('/property-photo/') || src.match(/IMG_\d+_\d+\.(jpeg|jpg|png)/i)) &&  // ← Accept EITHER format
                     !src.includes('logo') && 
                     !src.includes('icon') &&
                     !src.includes('marker') &&
                     !src.includes('epc') &&
                     !src.includes('flp') &&
-                    !src.includes('_bp_') &&  // Exclude banner ads (_bp_ = banner/promotional)
+                    !src.includes('_bp_') &&
                     !src.includes('branch_logo') &&
                     !src.includes('affiliation') &&
                     !src.includes('svg')) {
