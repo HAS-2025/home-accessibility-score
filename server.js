@@ -2094,11 +2094,7 @@ function analyzeCostInformation(property, dimensions) {
             }
         }
     } else if (property.price) {
-        if (!dimensions || !dimensions.totalSqM) {
-            cost.pricePerSqM = "Unable to calculate - property size not available";
-        } else {
-            cost.pricePerSqM = "Unable to calculate - price format not recognized";
-        }
+        cost.pricePerSqM = "N/A";
     }
 
     // Use scraped council tax band first, then fallback to text extraction

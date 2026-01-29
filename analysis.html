@@ -315,12 +315,7 @@
         }
 
         .score-overview-label {
-            font-size: 1rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: white;
-            margin-bottom: 24px;
+            padding-right: 30px;
         }
 
         .score-overview-main {
@@ -332,9 +327,8 @@
 
         .score-overview .score-overview-tooltip {
             position: absolute;
-            top: 28px;
-            right: 28px;
-            margin-left: 0;
+            top: 12px;
+            right: 12px;
         }
 
         .score-circle {
@@ -1009,6 +1003,23 @@
         .cost-ongoing-item span:last-child {
             color: #1f2937;
             font-weight: 500;
+        }
+
+        /* Smaller "no data" warning style */
+        .no-data-warning {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #92400e;
+        }
+
+        .no-data-warning::before {
+            content: "⚠️";
         }
 
 
@@ -2946,18 +2957,190 @@
         }
 
         @media (max-width: 768px) {
+            /* 1. Push header down to avoid auth overlap */
             .container {
-                padding: 1rem;
+                padding: 70px 15px 20px 15px;
+            }
+            
+            /* Auth container adjustments for mobile */
+            .auth-container {
+                top: 10px;
+                right: 10px;
+            }
+            
+            .user-email {
+                padding: 8px 12px;
+                font-size: 12px;
+                max-width: 180px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            
+            .auth-btn {
+                padding: 8px 12px;
+                font-size: 12px;
             }
 
+            /* 2. Optimise header title and subtext */
+            .header {
+                margin-bottom: 1.5rem;
+            }
+            
             .header h1 {
-                font-size: 2rem;
+                font-size: 1.6rem;
+                line-height: 1.2;
+            }
+
+            .header p {
+                font-size: 0.95rem;
+            }
+            
+            /* Input section full width */
+            .input-section {
+                padding: 1rem;
+                border-radius: 12px;
+                margin-bottom: 1.5rem;
             }
 
             .url-input {
                 flex-direction: column;
+                gap: 0.75rem;
+            }
+            
+            .analyze-btn {
+                width: 100%;
+                padding: 1rem;
+            }
+            
+            input[type="url"] {
+                width: 100%;
+                font-size: 16px; /* Prevents zoom on iOS */
             }
 
+            /* 3, 4, 5. Reorder results layout for mobile */
+            .results-layout {
+                display: flex;
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .results-main {
+                order: 1;
+                display: contents; /* Let children participate in parent flex */
+            }
+            
+            .results-sidebar {
+                order: 2;
+                display: contents; /* Let children participate in parent flex */
+            }
+            
+            /* Property Card - first */
+            .property-card {
+                order: 1;
+            }
+            
+            /* Score Overview (with mini breakdown) - second */
+            .score-overview {
+                margin-left: -15px;
+                margin-right: -15px;
+                border-radius: 0;
+                width: calc(100% + 30px);
+                text-align: center;
+            }
+
+            .score-overview-label {
+                text-align: center;
+                padding-right: 0;
+                margin-bottom: 16px;
+            }
+
+            .score-overview .star-rating {
+                justify-content: center;
+                display: flex;
+            }
+            
+            /* Score Cards - third */
+            .detailed-scores {
+                order: 3;
+                display: flex;
+                flex-direction: column;
+                gap: 16px;
+            }
+            
+            .score-card {
+                border-radius: 16px;
+            }
+            
+            /* Map card - fourth */
+            .map-card {
+                order: 4;
+            }
+            
+            /* Actions card - fifth (last in sidebar, but we want it after summary) */
+            .actions-card {
+                order: 100;
+                width: calc(100% + 30px);
+                margin-left: -15px;
+                margin-right: -15px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+                text-align: center;
+            }
+
+        
+            .actions-card h4 {
+                text-align: center;
+            }
+
+            .action-buttons {
+                align-items: center;
+            }
+
+            .action-btn {
+                max-width: 280px;
+                margin: 0 auto;
+            }
+            
+            /* 6. Summary section - comes after score cards */
+            .summary-section {
+                order: 50;
+                margin-left: -15px;
+                margin-right: -15px;
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+            
+            .summary-header {
+                padding: 1rem;
+            }
+            
+            .summary-body {
+                padding: 1rem;
+            }
+            
+            .summary-text {
+                padding: 12px;
+                font-size: 0.9rem;
+            }
+            
+            /* Footer full width */
+            .footer-minimal {
+                flex-direction: column;
+                text-align: center;
+                padding: 20px 15px;
+                gap: 12px;
+            }
+            
+            .footer-minimal .footer-right {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 15px;
+            }
+            
+            /* Other mobile refinements */
             .detailed-scores {
                 grid-template-columns: 1fr;
             }
@@ -2974,6 +3157,65 @@
             
             .dimension-primary-size {
                 font-size: 20px;
+            }
+            
+            /* Score card adjustments */
+            .score-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            
+            .score-header-right {
+                width: 100%;
+                justify-content: flex-start;
+                gap: 10px;
+            }
+            
+            /* Property image */
+            .property-image-section {
+                min-height: 200px;
+            }
+            
+            .property-main-image {
+                max-height: 250px;
+            }
+            
+            /* Mini breakdown spacing */
+            .breakdown-item {
+                padding: 8px 0;
+                justify-content: space-between;
+            }
+
+            .breakdown-label {
+                text-align: left;
+            }
+            
+            .score-overview-main {
+                flex-direction: column;
+                text-align: center;
+                gap: 16px;
+                justify-content: center;
+            }
+            
+            .score-overview-text {
+                text-align: center;
+            }
+            
+            /* Room grid single column */
+            .room-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            /* Action buttons */
+            .action-btn {
+                padding: 14px 20px;
+            }
+            
+            /* Disclaimer */
+            .disclaimer-subtle {
+                font-size: 0.75rem;
+                padding: 0 0 10px 0;
             }
         }
 
@@ -3481,17 +3723,18 @@
                             </button>
                         </div>
                     </div>
+                <!-- Summary - Full width at bottom (inside results-layout for mobile ordering) -->
+                <div class="summary-section">
+                    <div class="summary-header">
+                        <span class="summary-icon">📋</span>
+                        <div class="summary-title">Summary & Recommendations</div>
+                    </div>
+                    <div class="summary-body">
+                        <div class="summary-text" id="summaryText"></div>
+                    </div>
                 </div>
-            <!-- Summary - Full width at bottom -->
-            <div class="summary-section">
-                <div class="summary-header">
-                    <span class="summary-icon">📋</span>
-                    <div class="summary-title">Summary & Recommendations</div>
-                </div>
-                <div class="summary-body">
-                    <div class="summary-text" id="summaryText"></div>
-                </div>
-            </div>
+                
+            </div> <!-- closes results-layout -->
             
             <!-- Disclaimer -->
             <p class="disclaimer-subtle">
