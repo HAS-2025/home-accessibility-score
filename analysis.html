@@ -315,7 +315,9 @@
         }
 
         .score-overview-label {
-            padding-right: 30px;
+            text-align: center;
+            font-weight: 800;
+            margin-bottom: 28px;
         }
 
         .score-overview-main {
@@ -323,6 +325,7 @@
             align-items: center;
             gap: 24px;
             margin-bottom: 20px;
+            justify-content: center;
         }
 
         .score-overview .score-overview-tooltip {
@@ -395,6 +398,8 @@
         .star-rating {
             font-size: 1.3rem;
             margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: center;
         }
 
         .star {
@@ -422,6 +427,39 @@
 
         .star-empty {
             color: rgba(255,255,255,0.2);
+        }
+
+        /* ICONS */
+
+
+        /* GP Proximity icon */
+        .score-card:nth-of-type(1) .score-icon-box {
+            background: #fce4ec;
+        }
+
+        /* Energy/EPC icon */
+        .score-card:nth-of-type(2) .score-icon-box {
+            background: #fff3e0;
+        }
+
+        /* Accessible Features icon */
+        .score-card:nth-of-type(3) .score-icon-box {
+            background: #e8f5e9;
+        }
+
+        /* Public Transport icon */
+        .score-card:nth-of-type(4) .score-icon-box {
+            background: #e3f2fd;
+        }
+
+        /* Room Breakdown icon */
+        #dimensionsCard .score-icon-box {
+            background: #f3e5f5;
+        }
+
+        /* Property Costs icon */
+        #costCard .score-icon-box {
+            background: #fff8e1;
         }
 
         /* EPC Display */
@@ -485,7 +523,7 @@
 
         .epc-scale-bar.active {
             opacity: 1;
-            transform: scaleY(1.5);
+            transform: scaleY(2.5);
         }
 
         .epc-scale-bar.epc-a { background: #00845a; }
@@ -1045,6 +1083,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             border: 1px solid #e5e2dc;
             overflow: hidden;
+            grid-column: 1 / -1;
         }
 
         .summary-header {
@@ -3392,7 +3431,11 @@
                         <div class="score-card">
                             <div class="score-header">
                                 <div class="score-header-left">
-                                    <div class="score-icon-box">🏥</div>
+                                    <div class="score-icon-box" style="background: #fce4ec;">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="#dc2626">
+                                            <path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7V2z"/>
+                                        </svg>
+                                    </div>
                                     <div class="score-title-group">
                                         <span class="score-title">GP Proximity</span>
                                         <span class="score-subtitle">Nearest surgery walking time</span>
@@ -3622,7 +3665,11 @@
                         <div class="score-breakdown" id="scoreBreakdown">
                             <div class="breakdown-item">
                                 <span class="breakdown-label">
-                                    <span class="breakdown-icon-box" style="background: #fce4ec;">🏥</span>
+                                    <span class="breakdown-icon-box" style="background: #fce4ec;">
+                                        <svg viewBox="0 0 24 24" width="16" height="16" fill="#dc2626">
+                                            <path d="M9 2h6v7h7v6h-7v7H9v-7H2V9h7V2z"/>
+                                        </svg>
+                                    </span>
                                     GP Proximity
                                 </span>
                                 <span class="breakdown-score" id="miniGpScore">-</span>
@@ -3723,6 +3770,8 @@
                             </button>
                         </div>
                     </div>
+                </aside>
+                
                 <!-- Summary - Full width at bottom (inside results-layout for mobile ordering) -->
                 <div class="summary-section">
                     <div class="summary-header">
