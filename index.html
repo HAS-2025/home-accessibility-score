@@ -41,8 +41,6 @@
         /* Navigation */
         .nav {
             background: var(--white);
-            padding: 16px 40px;
-            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 100;
@@ -51,6 +49,7 @@
         .nav-container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 16px 40px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -89,6 +88,60 @@
 
         .nav-links a:hover {
             color: var(--primary);
+        }
+
+        .nav-search-row {
+            background: var(--accent);
+            padding: 14px 40px;
+        }
+
+        .nav-search-container {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-search {
+            flex: 1;
+            display: flex;
+            gap: 10px;
+            max-width: 700px;
+        }
+
+        .nav-search input {
+            flex: 1;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+
+        .nav-search input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+        }
+
+        .nav-search input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .nav-search .btn {
+            background: var(--primary);
+            padding: 14px 28px;
+            white-space: nowrap;
+        }
+
+        .nav-search .btn:hover {
+            background: var(--primary-dark);
+        }
+
+
+        .btn-sm {
+            padding: 10px 18px;
+            font-size: 0.85rem;
         }
 
         .btn {
@@ -368,11 +421,38 @@
         }
 
         .benefit-card {
-            background: var(--background);
+            background: var(--background-alt);
             border-radius: 16px;
             padding: 32px;
-            border: 1px solid var(--border);
-            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .benefit-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .benefit-header-text {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .benefit-title {
+            font-family: 'Fraunces', serif;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.3;
+        }
+
+        .benefit-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .benefit-card:hover {
@@ -388,8 +468,8 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 20px;
+            font-size: 24px;
+            flex-shrink: 0;
         }
 
         .benefit-card h3 {
@@ -470,7 +550,9 @@
 
         .agent-benefit-content h4 {
             font-size: 1.1rem;
-            margin-bottom: 6px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--accent);
         }
 
         .agent-benefit-content p {
@@ -480,56 +562,52 @@
         }
 
         .agent-mockup {
-            background: #f5f3ef;
+            background: var(--white);
             border-radius: 16px;
-            padding: 24px;
-            color: var(--text);
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
         }
 
         .mockup-header {
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
+            margin-bottom: 14px;
+            padding-bottom: 10px;
             border-bottom: 1px solid var(--border);
         }
 
-        .mockup-logo {
-            font-size: 1.5rem;
-        }
-
-        .mockup-title {
+        .mockup-brand {
+            display: flex;
+            align-items: center;
+            gap: 6px;
             font-family: 'Fraunces', serif;
-            font-size: 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
             color: var(--primary);
         }
 
         .mockup-badge {
-            margin-left: auto;
-            background: var(--success-bg);
-            color: var(--success);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            background: #16a34a;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.65rem;
             font-weight: 600;
         }
 
         .mockup-property {
             display: flex;
-            gap: 16px;
-            margin-bottom: 16px;
+            gap: 12px;
+            margin-bottom: 14px;
         }
 
         .mockup-property-image {
-            width: 100px;
-            height: 75px;
-            background: #e8e4dc;
+            width: 60px;
+            height: 60px;
             border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             overflow: hidden;
+            flex-shrink: 0;
         }
 
         .mockup-property-image img {
@@ -539,63 +617,61 @@
         }
 
         .mockup-property-info h5 {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: var(--primary);
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         .mockup-property-info p {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             color: var(--text-muted);
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .mockup-property-price {
-            font-family: Georgia, 'Times New Roman', serif;
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
             color: var(--primary);
         }
 
         .mockup-score-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--white);
-            padding: 16px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-        }
-
-        .mockup-score-text h6 {
-            font-size: 0.85rem;
-            color: var(--text);
-            margin-bottom: 2px;
-        }
-
-        .mockup-score-text span {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-
-        .mockup-score-badge {
             background: var(--primary);
-            color: var(--white);
-            padding: 10px 18px;
             border-radius: 10px;
-            text-align: center;
-        }
-
-        .mockup-score-badge .number {
-            font-family: Georgia, 'Times New Roman', serif;
-            font-size: 1.8rem;
-            font-weight: 700;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
             color: white;
         }
 
-        .mockup-score-badge .label {
-            font-size: 0.7rem;
-            opacity: 0.85;
+        .mockup-score-circle {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .mockup-score-circle .number {
+            font-family: Georgia, serif;
+            font-size: 1.9rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .mockup-score-circle .label {
+            background: #16a34a;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.6rem;
+            font-weight: 700;
+        }
+
+        .mockup-score-text {
+            flex: 1;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            opacity: 0.9;
         }
 
         .agent-use-cases {
@@ -618,8 +694,10 @@
         }
 
         .use-case-card h4 {
-            font-size: 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
             margin-bottom: 8px;
+            color: var(--accent);
         }
 
         .use-case-card p {
@@ -730,7 +808,7 @@
         }
 
         .cta-card {
-            max-width: 800px;
+            max-width: 850px;
             margin: 0 auto;
             background: var(--white);
             border-radius: 24px;
@@ -776,6 +854,41 @@
         .cta-note {
             font-size: 0.85rem;
             color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .cta {
+                padding: 60px 16px;
+            }
+
+            .cta-card {
+                padding: 36px 24px;
+                border-radius: 16px;
+            }
+
+            .cta-card h2 {
+                font-size: 1.5rem;
+                line-height: 1.3;
+            }
+
+            .cta-card p {
+                font-size: 0.95rem;
+                margin-bottom: 24px;
+            }
+
+            .cta-input-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .cta-input-group input {
+                padding: 14px 16px;
+            }
+
+            .cta-input-group .btn {
+                width: 100%;
+                justify-content: center;
+            }
         }
 
         /* Footer */
@@ -831,7 +944,6 @@
             opacity: 0.7;
         }
 
-        /* Responsive */
         @media (max-width: 1024px) {
             .hero-container,
             .agent-benefits {
@@ -848,27 +960,149 @@
             .footer-container {
                 grid-template-columns: 1fr 1fr;
             }
+
+            .nav-search {
+                max-width: 300px;
+                margin: 0 16px;
+            }
         }
 
         @media (max-width: 768px) {
+
+            body {
+                overflow-x: hidden;
+            }
+
+            .nav {
+                margin: 0;
+                padding: 0;
+            }
+
+            /* Nav mobile layout */
+            .nav {
+                padding: 12px 20px;
+            }
+            
+            /* Nav mobile */
+            .nav-container {
+                padding: 12px 16px;
+            }
+
+            .logo-text {
+                font-size: 0.95rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+
+            /* Orange search bar mobile */
+            .nav-search-row {
+                padding: 10px 12px;
+                margin: 0 -12px;
+                width: calc(100% + 24px);
+            }
+
+            .nav-search-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .search-prompt {
+                font-size: 0.85rem;
+            }
+
+            .nav-search {
+                max-width: 100%;
+                gap: 8px;
+            }
+
+            .nav-search input {
+                padding: 12px 14px;
+                font-size: 0.9rem;
+            }
+
+            .nav-search .btn {
+                padding: 12px 16px;
+                font-size: 0.85rem;
+            }
+
+            /* Hero mobile layout */
+            .hero {
+                padding: 40px 20px 60px;
+            }
+            
+            .hero-container {
+                gap: 32px;
+            }
+            
+            /* Preview card (results) shows FIRST on mobile */
+            .hero-preview {
+                order: -1;
+            }
+            
+            .hero-content {
+                text-align: center;
+            }
+            
             .hero-content h1 {
-                font-size: 2.2rem;
+                font-size: 1.9rem;
+            }
+            
+            .hero-content .subtitle {
+                font-size: 1rem;
+            }
+
+            .hero-cta {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            /* Overall score - stacked layout */
+            .preview-overall-score {
+                padding: 14px 16px;
+                flex-direction: row;
+                align-items: center;
+                gap: 16px;
+            }
+
+            .preview-overall-left {
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                gap: 10px;
+            }
+
+            .preview-overall-number {
+                font-size: 2rem;
+                order: -1;
+                line-height: 1;
+                margin-top: -6px;
+            }
+
+            .preview-overall-badge {
+                font-size: 0.6rem;
+                padding: 4px 10px;
+            }
+
+            .preview-overall-text {
+                font-size: 0.7rem;
+                line-height: 1.5;
+                flex: 1;
+            }
+            
+            .preview-score-cards {
+                grid-template-columns: 1fr;
+                gap: 10px;
             }
 
             .section-header h2 {
                 font-size: 1.8rem;
             }
 
-            .hero-cta {
-                flex-direction: column;
-            }
-
             .cta-input-group {
                 flex-direction: column;
-            }
-
-            .nav-links {
-                display: none;
             }
 
             .footer-container {
@@ -882,7 +1116,7 @@
     <!-- Navigation -->
     <nav class="nav">
         <div class="nav-container">
-            <a href="#" class="logo">
+            <a href="index.html" class="logo">
                 <span class="logo-icon">🏠</span>
                 <span class="logo-text">Home Accessibility Score</span>
             </a>
@@ -890,7 +1124,15 @@
                 <a href="#benefits">Benefits</a>
                 <a href="#estate-agents">For Estate Agents</a>
                 <a href="#how-it-works">How It Works</a>
-                <a href="#cta" class="btn btn-primary">Try It Free</a>
+                <a href="analysis.html">Sign In</a>
+            </div>
+        </div>
+        <div class="nav-search-row">
+            <div class="nav-search-container">
+                <form class="nav-search" onsubmit="handleNavAnalyse(event)">
+                    <input type="text" id="navPropertyUrl" placeholder="Paste Rightmove URL here...">
+                    <button type="submit" class="btn btn-primary">Analyse Free</button>
+                </form>
             </div>
         </div>
     </nav>
@@ -900,9 +1142,8 @@
         <div class="hero-container">
             <div class="hero-content">
                 <h1>Take the stress out of finding an <span>accessible home</span></h1>
-                <p class="subtitle">Whether you're searching for yourself, a loved one, or a client, get instant accessibility insights and scoring on any Rightmove listing. Know that your next home will cater to your needs for years to come.</p>
+                <p class="subtitle">Instant accessibility insights on any Rightmove listing.</p>
                 <div class="hero-cta">
-                    <a href="#cta" class="btn btn-primary">Analyse a Property Free</a>
                     <a href="#how-it-works" class="btn btn-ghost">See How It Works</a>
                 </div>
             </div>
@@ -922,7 +1163,7 @@
                         <div class="preview-overall-number">4.7</div>
                     </div>
                     <div class="preview-overall-text">
-                        This property scores highly across all accessibility categories. Ideal for accessible living.
+                        Scores highly across all accessibility categories. Ideal for accessible living.
                     </div>
                 </div>
                 <div class="preview-score-cards">
@@ -973,40 +1214,64 @@
             </div>
             <div class="benefits-grid">
                 <div class="benefit-card">
-                    <div class="benefit-icon">🏥</div>
-                    <div class="benefit-category">GP Proximity</div>
-                    <h3>Never be far from healthcare</h3>
-                    <p>Know exactly how long it takes to walk to the nearest GP surgery — adjusted for slower walking speeds. Peace of mind for you and your family.</p>
+                    <div class="benefit-header">
+                        <div class="benefit-icon">🏥</div>
+                        <div class="benefit-header-text">
+                            <div class="benefit-label">GP Proximity</div>
+                            <div class="benefit-title">Never be far from healthcare</div>
+                        </div>
+                    </div>
+                    <p class="benefit-description">Know exactly how long it takes to walk to the nearest GP surgery — adjusted for slower walking speeds. Peace of mind for you and your family.</p>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">🚌</div>
-                    <div class="benefit-category">Public Transport</div>
-                    <h3>Stay independent without a car</h3>
-                    <p>See bus stops and train stations within walking distance, so you can maintain your independence and stay connected to friends and family.</p>
+                    <div class="benefit-header">
+                        <div class="benefit-icon">🚌</div>
+                        <div class="benefit-header-text">
+                            <div class="benefit-label">Public Transport</div>
+                            <div class="benefit-title">Stay independent without a car</div>
+                        </div>
+                    </div>
+                    <p class="benefit-description">See bus stops and train stations within walking distance, so you can maintain your independence and stay connected to friends and family.</p>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">♿</div>
-                    <div class="benefit-category">Accessible Features</div>
-                    <h3>Know if it works for your mobility</h3>
-                    <p>Instant checks for step-free access, ground floor bedrooms and bathrooms, parking, and garden access — the features that make daily life easier.</p>
+                    <div class="benefit-header">
+                        <div class="benefit-icon">♿</div>
+                        <div class="benefit-header-text">
+                            <div class="benefit-label">Accessible Features</div>
+                            <div class="benefit-title">Know if it works for your mobility</div>
+                        </div>
+                    </div>
+                    <p class="benefit-description">Instant checks for step-free access, ground floor bedrooms and bathrooms, parking, and garden access — the features that make daily life easier.</p>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">⚡</div>
-                    <div class="benefit-category">Energy Efficiency</div>
-                    <h3>Avoid surprise heating bills</h3>
-                    <p>Understand the property's energy efficiency before you buy. Poor insulation can mean hundreds of pounds extra each year.</p>
+                    <div class="benefit-header">
+                        <div class="benefit-icon">⚡</div>
+                        <div class="benefit-header-text">
+                            <div class="benefit-label">Energy Efficiency</div>
+                            <div class="benefit-title">Avoid surprise heating bills</div>
+                        </div>
+                    </div>
+                    <p class="benefit-description">Understand the property's energy efficiency before you buy. Poor insulation can mean hundreds of pounds extra each year.</p>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">💷</div>
-                    <div class="benefit-category">Property Costs</div>
-                    <h3>Understand the true cost</h3>
-                    <p>See council tax band, stamp duty calculations, and how the price compares to similar properties in the area — all in one place.</p>
+                    <div class="benefit-header">
+                        <div class="benefit-icon">💷</div>
+                        <div class="benefit-header-text">
+                            <div class="benefit-label">Property Costs</div>
+                            <div class="benefit-title">Understand the true cost</div>
+                        </div>
+                    </div>
+                    <p class="benefit-description">See council tax band, stamp duty calculations, and how the price compares to similar properties in the area — all in one place.</p>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">🛏️</div>
-                    <div class="benefit-category">Room Breakdown</div>
-                    <h3>See all rooms at a glance</h3>
-                    <p>Quickly check the property has the rooms you need — bedrooms, bathrooms, kitchen, and living spaces — with total floor area included.</p>
+                    <div class="benefit-header">
+                        <div class="benefit-icon">🛏️</div>
+                        <div class="benefit-header-text">
+                            <div class="benefit-label">Room Breakdown</div>
+                            <div class="benefit-title">See all rooms at a glance</div>
+                        </div>
+                    </div>
+                    <p class="benefit-description">Quickly check the property has the rooms you need — bedrooms, bathrooms, kitchen, and living spaces — with total floor area included.</p>
                 </div>
             </div>
         </div>
@@ -1055,8 +1320,9 @@
                 
                 <div class="agent-mockup">
                     <div class="mockup-header">
-                        <span class="mockup-logo">🏠</span>
-                        <span class="mockup-title">Home Accessibility Score</span>
+                        <div class="mockup-brand">
+                            <span>🏠</span> Home Accessibility Score
+                        </div>
                         <span class="mockup-badge">✓ Verified</span>
                     </div>
                     <div class="mockup-property">
@@ -1070,14 +1336,11 @@
                         </div>
                     </div>
                     <div class="mockup-score-row">
-                        <div class="mockup-score-text">
-                            <h6>Overall Accessibility Score</h6>
-                            <span>Highly suitable for accessible living</span>
-                        </div>
-                        <div class="mockup-score-badge">
+                        <div class="mockup-score-circle">
                             <div class="number">4.2</div>
-                            <div class="label">Very Good</div>
+                            <div class="label">VERY GOOD</div>
                         </div>
+                        <div class="mockup-score-text">Highly suitable for accessible living</div>
                     </div>
                 </div>
             </div>
@@ -1231,6 +1494,28 @@
         // If landing page receives auth token, redirect to analysis
         if (window.location.hash && window.location.hash.includes('access_token')) {
             window.location.href = '/analysis.html' + window.location.hash;
+        }
+    </script>
+
+    <script>
+        function handleNavAnalyse(event) {
+            event.preventDefault();
+            const url = document.getElementById('navPropertyUrl').value;
+            if (url && url.includes('rightmove.co.uk')) {
+                window.location.href = `analysis.html?url=${encodeURIComponent(url)}`;
+            } else {
+                alert('Please enter a valid Rightmove URL');
+            }
+        }
+        
+        function handleAnalyse(event) {
+            event.preventDefault();
+            const url = document.getElementById('propertyUrl').value;
+            if (url && url.includes('rightmove.co.uk')) {
+                window.location.href = `analysis.html?url=${encodeURIComponent(url)}`;
+            } else {
+                alert('Please enter a valid Rightmove URL');
+            }
         }
     </script>
 

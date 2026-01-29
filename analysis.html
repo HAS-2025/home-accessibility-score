@@ -3967,14 +3967,32 @@
         }
 
         function downloadReport() {
+            // Helper functions to safely set content
+            const setText = (id, text) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = text;
+            };
+            
+            const setHtml = (id, html) => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = html;
+            };
+            
+            // Check if print report exists
+            const printReport = document.getElementById('printReport');
+            if (!printReport) {
+                alert('Print template not found. Please use Ctrl+P (or Cmd+P on Mac) to print.');
+                return;
+            }
+            
             // Get current date
             const today = new Date();
             const dateStr = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-            document.getElementById('printDate').textContent = 'Generated: ' + dateStr;
+            setText('printDate', 'Generated: ' + dateStr);
             
             // Property info
-            document.getElementById('printTitle').textContent = document.getElementById('propertyLocation')?.textContent || '';
-            document.getElementById('printPrice').textContent = document.getElementById('propertyPrice')?.textContent || '';
+            setText('printTitle', document.getElementById('propertyLocation')?.textContent || '');
+            setText('printPrice', document.getElementById('propertyPrice')?.textContent || '');
 
             // Property details (beds, baths, etc.)
             const detailItems = document.querySelectorAll('#propertyDetails .property-detail-item');
@@ -3984,23 +4002,23 @@
             });
             const tenure = document.getElementById('propertyTenure')?.textContent || '';
             if (tenure) detailsText.push(tenure);
-            document.getElementById('printDetails').textContent = detailsText.join(' • ');
+            setText('printDetails', detailsText.join(' • '));
 
             // Property image
             const propertyImg = document.getElementById('propertyImage');
             if (propertyImg && propertyImg.src) {
-                document.getElementById('printImage').innerHTML = `<img src="${propertyImg.src}" alt="Property" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">`;
+                setHtml('printImage', `<img src="${propertyImg.src}" alt="Property" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">`);
             } else {
-                document.getElementById('printImage').innerHTML = '🏡';
+                setHtml('printImage', '🏡');
             }
             
             // Overall score
             const overallScore = document.getElementById('overallScore')?.textContent || '-';
-            document.getElementById('printOverallScore').textContent = overallScore;
-            document.getElementById('printOverallRating').textContent = getRatingText(parseFloat(overallScore) || 0);
+            setText('printOverallScore', overallScore);
+            setText('printOverallRating', getRatingText(parseFloat(overallScore) || 0));
             
             // GP Proximity
-            document.getElementById('printGpScore').textContent = document.getElementById('gpNumber')?.textContent || 'N/A';
+            setText('printGpScore', document.getElementById('gpNumber')?.textContent || 'N/A');
             const gpContent = document.querySelector('.gp-info-content');
             if (gpContent) {
                 const gpName = gpContent.querySelector('.gp-name')?.textContent || '';
@@ -4016,37 +4034,37 @@
                         gpDistance = text.trim();
                     }
                 });
-                document.getElementById('printGpDetails').innerHTML = `<strong>${gpName}</strong><br>${gpAddress}<br>${gpTime} • ${gpDistance}`;
+                setHtml('printGpDetails', `<strong>${gpName}</strong><br>${gpAddress}<br>${gpTime} • ${gpDistance}`);
             } else {
-                document.getElementById('printGpDetails').textContent = 'GP information not available';
+                setText('printGpDetails', 'GP information not available');
             }
             
             // EPC
-            document.getElementById('printEpcScore').textContent = document.getElementById('epcNumber')?.textContent || 'N/A';
+            setText('printEpcScore', document.getElementById('epcNumber')?.textContent || 'N/A');
             const epcInfo = document.querySelector('.epc-info');
             if (epcInfo) {
                 const epcTitle = epcInfo.querySelector('.epc-title')?.textContent || '';
                 const epcDesc = epcInfo.querySelector('.epc-description')?.textContent || '';
-                document.getElementById('printEpcDetails').innerHTML = `<strong>${epcTitle}</strong><br>${epcDesc}`;
+                setHtml('printEpcDetails', `<strong>${epcTitle}</strong><br>${epcDesc}`);
             } else {
-                document.getElementById('printEpcDetails').textContent = 'EPC not found. Contact the estate agent for energy efficiency information.';
+                setText('printEpcDetails', 'EPC not found. Contact the estate agent for energy efficiency information.');
             }
             
             // Public Transport
-            document.getElementById('printTransportScore').textContent = document.getElementById('transportNumber')?.textContent || 'N/A';
+            setText('printTransportScore', document.getElementById('transportNumber')?.textContent || 'N/A');
             const transportStops = document.querySelectorAll('#publicTransportDetails .transport-stop-card');
             if (transportStops.length > 0) {
                 const firstStop = transportStops[0];
                 const stopName = firstStop.querySelector('.transport-stop-name')?.textContent || '';
                 const stopAddress = firstStop.querySelector('.transport-stop-address')?.textContent || '';
                 const stopDistance = firstStop.querySelector('.transport-stop-distance')?.textContent || '';
-                document.getElementById('printTransportDetails').innerHTML = `<strong>Nearest Bus Stop:</strong><br>${stopName}<br>${stopAddress}<br>${stopDistance}`;
+                setHtml('printTransportDetails', `<strong>Nearest Bus Stop:</strong><br>${stopName}<br>${stopAddress}<br>${stopDistance}`);
             } else {
-                document.getElementById('printTransportDetails').textContent = 'Transport information not available';
+                setText('printTransportDetails', 'Transport information not available');
             }
             
             // Accessible Features
-            document.getElementById('printAccessScore').textContent = document.getElementById('accessNumber')?.textContent || 'N/A';
+            setText('printAccessScore', document.getElementById('accessNumber')?.textContent || 'N/A');
             const accessFeatures = document.querySelectorAll('#accessibleFeaturesDetails .room-grid-item');
             let accessHtml = '';
             accessFeatures.forEach(feature => {
@@ -4057,10 +4075,10 @@
                 const icon = hasFeature ? '✓' : '✗';
                 accessHtml += `<div class="print-feature-item ${itemClass}"><span>${icon}</span> ${name}</div>`;
             });
-            document.getElementById('printAccessFeatures').innerHTML = accessHtml || 'No features data available';
+            setHtml('printAccessFeatures', accessHtml || 'No features data available');
             
             // Room Breakdown
-            document.getElementById('printRoomScore').textContent = document.getElementById('roomNumber')?.textContent || 'N/A';
+            setText('printRoomScore', document.getElementById('roomNumber')?.textContent || 'N/A');
             const roomFeatures = document.querySelectorAll('#roomBreakdownDetails .room-grid-item');
             let roomHtml = '';
             roomFeatures.forEach(feature => {
@@ -4071,15 +4089,15 @@
                 const icon = hasFeature ? '✓' : '✗';
                 roomHtml += `<div class="print-feature-item ${itemClass}"><span>${icon}</span> ${name}</div>`;
             });
-            document.getElementById('printRoomFeatures').innerHTML = roomHtml || 'No room data available';
+            setHtml('printRoomFeatures', roomHtml || 'No room data available');
             
             // Room size
             const roomSize = document.querySelector('.size-primary')?.textContent || '';
             const roomSizeFt = document.querySelector('.size-secondary')?.textContent || '';
-            document.getElementById('printRoomSize').textContent = roomSize ? `Total: ${roomSize}${roomSizeFt ? ' (' + roomSizeFt + ')' : ''}` : '';
+            setText('printRoomSize', roomSize ? `Total: ${roomSize}${roomSizeFt ? ' (' + roomSizeFt + ')' : ''}` : '');
             
             // Property Costs
-            document.getElementById('printCostScore').textContent = document.getElementById('costNumber')?.textContent || 'N/A';
+            setText('printCostScore', document.getElementById('costNumber')?.textContent || 'N/A');
             const costCards = document.querySelectorAll('#costDetails .cost-item-card');
             let costHtml = '';
             costCards.forEach(item => {
@@ -4099,24 +4117,56 @@
                     }
                 }
             });
-            document.getElementById('printCostDetails').innerHTML = costHtml || 'Cost information not available';
+            setHtml('printCostDetails', costHtml || 'Cost information not available');
             
             // Summary
-            document.getElementById('printSummary').textContent = document.getElementById('summaryText')?.textContent || '';
+            setText('printSummary', document.getElementById('summaryText')?.textContent || '');
             
             // Property URL
-            document.getElementById('printPropertyUrl').textContent = currentPropertyUrl ? `Property: ${currentPropertyUrl}` : '';
+            setText('printPropertyUrl', currentPropertyUrl ? `Property: ${currentPropertyUrl}` : '');
             
             // Show print report and print
-            document.getElementById('printReport').classList.add('show');
+            const downloadBtn = document.querySelector('[onclick="downloadReport()"]');
             
+            // Disable button and show loading
+            if (downloadBtn) {
+                downloadBtn.disabled = true;
+                downloadBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                    Preparing...
+                `;
+            }
+            
+            printReport.classList.add('show');
+            
+            // Give browser time to render the print report
             setTimeout(() => {
-                window.print();
-                // Hide after printing
+                try {
+                    window.print();
+                } catch (e) {
+                    console.error('Print failed:', e);
+                    alert('Unable to open print dialog. Please try using Ctrl+P (or Cmd+P on Mac).');
+                }
+                
+                // Re-enable button and hide print report
                 setTimeout(() => {
-                    document.getElementById('printReport').classList.remove('show');
+                    printReport.classList.remove('show');
+                    if (downloadBtn) {
+                        downloadBtn.disabled = false;
+                        downloadBtn.innerHTML = `
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            Download Report
+                        `;
+                    }
                 }, 500);
-            }, 100);
+            }, 300);
         }
 
         // Add this new function
