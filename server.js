@@ -645,13 +645,17 @@ app.post('/api/create-checkout', async (req, res) => {
         
         const session = await stripe.checkout.sessions.create({
             mode: 'subscription',
-            customer: customerId,  // Links to existing customer - email locked
+            customer: customerId,
             line_items: [{
                 price: priceId,
                 quantity: 1
             }],
             success_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=success`,
-            cancel_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=cancelled`
+            cancel_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=cancelled`,
+            metadata: {
+                plan: plan,
+                email: user.email
+            }
         });
         
         console.log('💳 Checkout session created for:', user.email);
@@ -662,7 +666,7 @@ app.post('/api/create-checkout', async (req, res) => {
     }
 });
 
-// Stripe webhook - handles successful payments
+// Stripe webhook - handles subscription events
 app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const sig = req.headers['stripe-signature'];
     let event;
@@ -678,59 +682,130 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         return res.status(400).send(`Webhook Error: ${err.message}`);
     }
     
+    console.log('🔔 Webhook received:', event.type);
+    
     // Handle successful subscription
     if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    
-    console.log('💳 Payment successful for customer:', session.customer);
+        const session = event.data.object;
+        
+        console.log('💳 Payment successful for customer:', session.customer);
+        console.log('📧 Customer email:', session.customer_email);
+        console.log('📦 Metadata:', session.metadata);
 
-    // Check if this is a team subscription
-    if (session.metadata?.team_id) {
+        // Check if this is a team subscription
+        if (session.metadata?.team_id) {
+            const { error } = await supabase
+                .from('teams')
+                .update({ 
+                    subscription_status: 'active',
+                    subscription_tier: 'team'
+                })
+                .eq('id', session.metadata.team_id);
+            
+            if (error) {
+                console.log('❌ Error updating team:', error.message);
+            } else {
+                console.log('✅ Team subscription activated:', session.metadata.team_id);
+            }
+            return res.json({ received: true });
+        }
+        
+        // Get tier from metadata (set during checkout), default to monthly
+        const tier = session.metadata?.plan || 'monthly';
+        const email = session.metadata?.email || session.customer_email;
+        
+        console.log('🏷️ Subscription tier:', tier);
+        console.log('📧 User email:', email);
+        
+        // Update user subscription - match on email and set stripe_customer_id
         const { error } = await supabase
-            .from('teams')
+            .from('users')
             .update({ 
                 subscription_status: 'active',
-                subscription_tier: 'team'
+                subscription_tier: tier,
+                stripe_customer_id: session.customer
             })
-            .eq('id', session.metadata.team_id);
-        
-        if (error) {
-            console.log('❌ Error updating team:', error.message);
-        } else {
-            console.log('✅ Team subscription activated:', session.metadata.team_id);
-        }
-        return res.json({ received: true });
-    }
-    
-    // Update user subscription status - match on stripe_customer_id
-    const { error } = await supabase
-        .from('users')
-        .update({ 
-            subscription_status: 'active',
-            subscription_tier: session.amount_total > 5000 ? 'annual' : 'monthly'
-        })
-        .eq('stripe_customer_id', session.customer);
-        
+            .eq('email', email);
+            
         if (error) {
             console.log('❌ Error updating user:', error.message);
         } else {
-            console.log('✅ User subscription activated:', session.customer_email);
+            console.log('✅ User subscription activated:', email, '- Tier:', tier);
         }
     }
     
-    // Handle subscription cancelled
+    // Handle subscription updated (includes scheduled cancellations and plan changes)
+    if (event.type === 'customer.subscription.updated') {
+        const subscription = event.data.object;
+        
+        console.log('🔄 Subscription updated for customer:', subscription.customer);
+        console.log('   Status:', subscription.status);
+        console.log('   Cancel at period end:', subscription.cancel_at_period_end);
+        
+        
+        // Get the price ID to determine tier
+        const priceId = subscription.items?.data[0]?.price?.id;
+        console.log('   Price ID:', priceId);
+        
+        // Determine tier from price ID
+        let tier = 'monthly'; // default
+        if (priceId === process.env.STRIPE_PRICE_ANNUAL) {
+            tier = 'annual';
+        } else if (priceId === process.env.STRIPE_PRICE_TEAM) {
+            tier = 'team';
+        }
+        console.log('   Determined tier:', tier);
+        
+        if (subscription.cancel_at_period_end || subscription.cancel_at) {
+            const cancelDate = new Date(subscription.cancel_at * 1000).toLocaleDateString();
+            console.log('⚠️ Subscription scheduled to cancel on:', cancelDate);
+            
+            const { error } = await supabase
+                .from('users')
+                .update({ subscription_status: 'cancelling' })
+                .eq('stripe_customer_id', subscription.customer);
+            
+            if (error) {
+                console.log('❌ Error updating cancelling status:', error.message);
+            } else {
+                console.log('⚠️ User marked as cancelling:', subscription.customer);
+            }
+        } else if (subscription.status === 'active') {
+            // Update both status AND tier
+            const { error } = await supabase
+                .from('users')
+                .update({ 
+                    subscription_status: 'active',
+                    subscription_tier: tier
+                })
+                .eq('stripe_customer_id', subscription.customer);
+            
+            if (error) {
+                console.log('❌ Error updating subscription:', error.message);
+            } else {
+                console.log('✅ User subscription updated:', subscription.customer, '- Tier:', tier);
+            }
+        }
+    }
+    
+    // Handle subscription actually cancelled/ended
     if (event.type === 'customer.subscription.deleted') {
         const subscription = event.data.object;
         
+        console.log('❌ Subscription ended for customer:', subscription.customer);
+        
         const { error } = await supabase
             .from('users')
-            .update({ subscription_status: 'cancelled' })
+            .update({ 
+                subscription_status: 'free',
+                subscription_tier: null
+            })
             .eq('stripe_customer_id', subscription.customer);
         
         if (error) {
-            console.log('❌ Error cancelling subscription:', error.message);
+            console.log('❌ Error updating cancelled user:', error.message);
         } else {
-            console.log('✅ Subscription cancelled for customer:', subscription.customer);
+            console.log('👤 User reverted to free tier:', subscription.customer);
         }
     }
     
@@ -739,14 +814,36 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
 
 // Customer portal (manage subscription)
 app.post('/api/customer-portal', async (req, res) => {
-    const { customerId } = req.body;
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    console.log('🔧 Portal request for:', user.email);
+    
+    // Get user's Stripe customer ID
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('stripe_customer_id')
+        .eq('email', user.email)
+        .single();
+    
+    console.log('🔧 DB user found:', dbUser);
+    console.log('🔧 Stripe customer ID:', dbUser?.stripe_customer_id);
+    
+    if (!dbUser?.stripe_customer_id) {
+        return res.status(400).json({ error: 'No subscription found' });
+    }
     
     try {
         const session = await stripe.billingPortal.sessions.create({
-            customer: customerId,
-            return_url: `${req.headers.origin || 'http://localhost:3002'}/`
+            customer: dbUser.stripe_customer_id,
+            return_url: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
         });
         
+        console.log('🔧 Portal session created for:', user.email);
         res.json({ url: session.url });
     } catch (error) {
         console.log('❌ Portal error:', error.message);
@@ -947,6 +1044,40 @@ app.get('/api/checkout-complete', async (req, res) => {
     }
 });
 
+// Customer portal for managing subscription
+app.post('/api/customer-portal', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    // Get user's Stripe customer ID
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('stripe_customer_id')
+        .eq('email', user.email)
+        .single();
+    
+    if (!dbUser?.stripe_customer_id) {
+        return res.status(400).json({ error: 'No subscription found' });
+    }
+    
+    try {
+        const session = await stripe.billingPortal.sessions.create({
+            customer: dbUser.stripe_customer_id,
+            return_url: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
+        });
+        
+        console.log('🔧 Portal session created for:', user.email);
+        res.json({ url: session.url });
+    } catch (error) {
+        console.log('❌ Portal error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // =============================================
 // SAVED PROPERTIES ENDPOINTS
 // =============================================
@@ -984,13 +1115,22 @@ app.post('/api/properties/save', async (req, res) => {
 
     // Store property data if provided
     if (propertyData) {
+        // Parse price to number (remove £ and commas)
+        let parsedPrice = null;
+        if (propertyData.price) {
+            const priceMatch = String(propertyData.price).match(/[\d,]+/);
+            if (priceMatch) {
+                parsedPrice = parseInt(priceMatch[0].replace(/,/g, ''));
+            }
+        }
+        
         const { error: upsertError } = await supabase
             .from('properties')
             .upsert({
                 rightmove_id: propertyId,
                 address: propertyData.address || null,
                 title: propertyData.title || null,
-                price: propertyData.price || null,
+                price: parsedPrice,  // Now stores as number
                 overall_score: propertyData.overallScore || null,
                 url: propertyData.url || null,
                 updated_at: new Date().toISOString()

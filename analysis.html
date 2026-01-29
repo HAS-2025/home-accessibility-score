@@ -3124,7 +3124,7 @@
                     <!-- Property Card -->
                     <div class="property-card">
                         <div class="property-image-section">
-                            <button id="savePropertyBtn" class="save-property-btn save" onclick="toggleSaveProperty()">☆ Save Property</button>
+                            <button id="savePropertyBtn" class="save-property-btn save hidden" onclick="toggleSaveProperty()">☆ Save Property</button>
                             <img id="propertyImage" class="property-main-image" style="display: none;" alt="Property image">
                             <div class="property-image-placeholder" id="propertyImagePlaceholder">
                                 <div class="placeholder-icon">🏠</div>
@@ -3518,8 +3518,10 @@
 
         // At the top of your <script> section
         let currentPropertyUrl = '';
-
         let pendingAnalysisData = null;
+        let currentUser = null;           // ADD THIS
+        let currentPropertyId = null;     // ADD THIS
+        let currentPropertyData = null;
 
         // ========== FREE SEARCH TRACKING ==========
         function hasUsedFreeSearch() {
@@ -3956,7 +3958,8 @@
             const existingBtn = document.getElementById('savePropertyBtn');
             if (existingBtn) existingBtn.remove();
             
-            if (currentPropertyId) {
+            // Only show save button for logged-in subscribers
+            if (currentPropertyId && currentUser && currentUser.subscription_status === 'active') {
                 const isSaved = await checkIfPropertySaved(currentPropertyId);
                 const saveBtn = document.createElement('button');
                 saveBtn.id = 'savePropertyBtn';
@@ -5385,7 +5388,7 @@
     // AUTH & USER MANAGEMENT
     // =============================================
 
-    let currentUser = null;
+    
 
     // Check auth on page load
     async function checkAuth() {
@@ -5418,33 +5421,62 @@
         }
     }
 
-    function showLoggedOutState() {
-        document.getElementById('loginBtn').classList.remove('hidden');
-        document.getElementById('userMenu').classList.add('hidden');
-    }
+function showLoggedOutState() {
+    document.getElementById('subscribeBtn').classList.remove('hidden');
+    document.getElementById('loginBtn').classList.remove('hidden');
+    document.getElementById('userMenu').classList.add('hidden');
+    
+    // Hide save button when logged out
+    const saveBtn = document.getElementById('savePropertyBtn');
+    if (saveBtn) saveBtn.classList.add('hidden');
+}
 
-    function showLoggedInState(user) {
-        document.getElementById('loginBtn').classList.add('hidden');
-        document.getElementById('userMenu').classList.remove('hidden');
-        document.getElementById('userEmail').innerHTML = user.email + 
-            (user.subscription_status === 'active' 
-                ? '<span class="subscription-badge badge-pro">PRO</span>' 
-                : '<span class="subscription-badge badge-free">FREE</span>');
-        
-        // Update subscription menu item
-        const subItem = document.getElementById('subscriptionItem');
+function showLoggedInState(user) {
+    document.getElementById('loginBtn').classList.add('hidden');
+    document.getElementById('userMenu').classList.remove('hidden');
+    
+    // Hide subscribe button if user has active subscription
+    if (user.subscription_status === 'active') {
+        document.getElementById('subscribeBtn').classList.add('hidden');
+    } else {
+        document.getElementById('subscribeBtn').classList.remove('hidden');
+    }
+    
+    // Show/hide save property button based on subscription
+    const saveBtn = document.getElementById('savePropertyBtn');
+    if (saveBtn) {
+        if (user.subscription_status === 'active') {
+            saveBtn.classList.remove('hidden');
+        } else {
+            saveBtn.classList.add('hidden');
+        }
+    }
+    
+    document.getElementById('userEmail').innerHTML = user.email + 
+        (user.subscription_status === 'active' 
+            ? '<span class="subscription-badge badge-pro">PRO</span>' 
+            : '<span class="subscription-badge badge-free">FREE</span>');
+    
+    // Update subscription menu item
+    const subItem = document.getElementById('subscriptionItem');
+    if (subItem) {
         if (user.subscription_status === 'active') {
             subItem.innerHTML = '💳 Manage Subscription';
         } else {
             subItem.innerHTML = '💳 Upgrade to Pro';
         }
-        
-        // Load saved count
-        loadSavedCount();
-        
-        // Check team membership
+    }
+    
+    // Load saved count
+    loadSavedCount();
+    
+    // Check team membership (if function exists)
+    if (typeof checkTeamMembership === 'function') {
         checkTeamMembership();
     }
+}
+
+    
 
     function showLoginModal() {
         document.getElementById('loginModal').classList.remove('hidden');
@@ -5521,17 +5553,31 @@
     }
 
     async function manageSubscription() {
-        const token = localStorage.getItem('auth_token');
-        if (!token) return showLoginModal();
-        
-        if (currentUser?.subscription_status === 'active') {
-            // TODO: Open customer portal
-            alert('Subscription management coming soon!');
-        } else {
-            // Show upgrade options
-            showUpgradeModal();
+    const token = localStorage.getItem('auth_token');
+    if (!token) return showLoginModal();
+    
+    if (currentUser?.subscription_status === 'active') {
+        // Open Stripe Customer Portal
+        try {
+            const response = await fetch('/api/customer-portal', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                alert(data.error || 'Failed to open subscription manager');
+            }
+        } catch (error) {
+            alert('Failed to open subscription manager');
         }
+    } else {
+        // Show paywall for non-subscribers
+        showPaywallModal();
     }
+}
 
     function showUpgradeModal() {
         // For now, redirect to monthly checkout
@@ -5889,8 +5935,7 @@ async function removeSavedProperty(propertyId) {
     }
 
     // Save/unsave property
-    let currentPropertyId = null;
-    let currentPropertyData = null;
+    
 
     async function saveProperty() {
         const token = localStorage.getItem('auth_token');
