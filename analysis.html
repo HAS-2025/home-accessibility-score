@@ -13,16 +13,16 @@
         }
 
         body {
-            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            font-family: 'DM Sans', sans-serif;
             background: #f5f3ef;
-            min-height: 100vh;
-            color: #333;
+            color: var(--text);
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 30px 20px;
+            min-height: calc(100vh - 80px);
         }
 
         /* ========== HEADER ========== */
@@ -2063,6 +2063,50 @@
             margin-top: 10px;
         }
 
+        .subscribe-prompt {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+        }
+
+        .subscribe-prompt p {
+            color: #ef4444;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .subscribe-prompt.hidden {
+            display: none;
+        }
+
+        .btn-subscribe {
+            background: #e8985e;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-subscribe:hover {
+            background: #d4874f;
+        }
+
+        .auth-btn-subscribe {
+            background: #e8985e;
+            color: white;
+            border: none;
+            margin-right: 10px;
+        }
+
+        .auth-btn-subscribe:hover {
+            background: #d4874f;
+        }
+
         .subscription-badge {
             display: inline-block;
             padding: 3px 8px;
@@ -2834,7 +2878,7 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 16px;
-            margin-top: 40px;
+            margin-top: auto;
         }
 
         .footer-minimal .footer-left {
@@ -2950,6 +2994,7 @@
     <!-- Auth Container -->
     <div class="auth-container" id="authContainer">
         <!-- Shown when logged out -->
+        <button class="auth-btn auth-btn-subscribe" id="subscribeBtn" onclick="showPaywallModal()">Subscribe</button>
         <button class="auth-btn" id="loginBtn" onclick="showLoginModal()">Sign In</button>
         
         <!-- Shown when logged in -->
@@ -2984,6 +3029,10 @@
             <button class="btn-primary" onclick="sendMagicLink()">Send Magic Link</button>
             <button class="btn-close" onclick="hideLoginModal()">Cancel</button>
             <p id="loginMessage" style="margin-top: 15px; text-align: center; color: #059669;"></p>
+            <div id="subscribePrompt" class="subscribe-prompt hidden">
+                <p>No account found with this email.</p>
+                <button class="btn-subscribe" onclick="hideLoginModal(); showPaywallModal();">Subscribe Now</button>
+            </div>
         </div>
     </div>
 
@@ -5420,6 +5469,11 @@
 
     async function sendMagicLink() {
         const email = document.getElementById('loginEmail').value;
+        const subscribePrompt = document.getElementById('subscribePrompt');
+        
+        // Hide subscribe prompt on new attempt
+        subscribePrompt.classList.add('hidden');
+        
         if (!email) {
             document.getElementById('loginMessage').textContent = 'Please enter your email';
             document.getElementById('loginMessage').style.color = '#ef4444';
@@ -5438,9 +5492,16 @@
             if (response.ok) {
                 document.getElementById('loginMessage').textContent = '✓ Check your email for the login link!';
                 document.getElementById('loginMessage').style.color = '#059669';
+                subscribePrompt.classList.add('hidden');
             } else {
-                document.getElementById('loginMessage').textContent = data.error || 'Failed to send link';
-                document.getElementById('loginMessage').style.color = '#ef4444';
+                // Check if it's a "no account" error
+                if (data.error && data.error.toLowerCase().includes('no account')) {
+                    document.getElementById('loginMessage').textContent = '';
+                    subscribePrompt.classList.remove('hidden');
+                } else {
+                    document.getElementById('loginMessage').textContent = data.error || 'Failed to send link';
+                    document.getElementById('loginMessage').style.color = '#ef4444';
+                }
             }
         } catch (error) {
             document.getElementById('loginMessage').textContent = 'Failed to send link';
