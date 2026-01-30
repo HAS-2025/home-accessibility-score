@@ -1,0 +1,1 @@
+localStorage.removeItem('hasUsedFreeSearch');localStorage.removeItem('captured_email');localStorage.removeItem('auth_token');

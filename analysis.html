@@ -146,17 +146,6 @@
             margin-bottom: 24px;
         }
 
-        .results-main {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
-
-        .results-sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-        }
 
         /* Mini Score Breakdown */
         .score-breakdown {
@@ -550,13 +539,14 @@
             border-radius: 20px;
             border: 1px solid #e5e2dc;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            overflow: hidden;
+            overflow: visible;
             transition: transform 0.3s, box-shadow 0.3s;
         }
 
         .score-card:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            z-index: 100;
         }
 
         /* Blue header with score on right */
@@ -566,6 +556,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            overflow: visible;
             gap: 16px;
         }
 
@@ -607,6 +598,7 @@
         .score-header-right {
             display: flex;
             align-items: center;
+            overflow: visible;
             gap: 12px;
         }
 
@@ -635,6 +627,7 @@
 
         .score-header .tooltip {
             margin-left: 0;
+            z-index: 100;
         }
 
         .score-header .info-icon {
@@ -650,6 +643,7 @@
 
         .score-header .tooltip .tooltiptext {
             color: #333;
+            z-index: 1000;
         }
 
         .score-body {
@@ -909,6 +903,22 @@
         .feature-text {
             font-size: 0.9rem;
             color: #374151;
+        }
+
+        /* Feature tooltip adjustments */
+        .feature-tooltip {
+            margin-left: 4px;
+        }
+
+        .feature-tooltip .info-icon {
+            width: 14px;
+            height: 14px;
+            font-size: 10px;
+        }
+
+        .feature-tooltip .tooltiptext {
+            width: 220px;
+            margin-left: -110px;
         }
 
         @media (max-width: 600px) {
@@ -1184,6 +1194,25 @@
             border-width: 5px;
             border-style: solid;
             border-color: #333 transparent transparent transparent;
+        }
+
+        .tooltip .tooltiptext {
+            color: #fff !important;
+        }
+
+        .tooltip .tooltiptext br {
+            display: block;
+            content: "";
+            margin-top: 4px;
+        }
+
+        .score-card .tooltip .tooltiptext {
+            z-index: 9999;
+        }
+
+
+        .score-overview {
+            z-index: 1;
         }
 
         @media (hover: hover) {
@@ -2671,15 +2700,12 @@
             cursor: not-allowed;
         }
 
-        /* Print report styles (hidden on screen) */
+        /* Print report - hidden on screen */
         .print-report {
             display: none;
         }
 
-        .print-report.show {
-            display: block;
-        }
-
+        
         .print-header {
             display: flex;
             justify-content: space-between;
@@ -2986,6 +3012,36 @@
             .print-report * {
                 visibility: visible !important;
             }
+        }
+
+        /* Ensure tooltips aren't clipped by any parent */
+        .results-main {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow: visible;
+            position: relative;
+            z-index: 10;
+        }
+
+        .detailed-scores {
+            overflow: visible;
+        }
+
+        .score-body {
+            overflow: visible;
+        }
+
+        .results-layout {
+            overflow: visible;
+        }
+
+        .results-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            overflow: visible;
+            z-index: 1;
         }
 
         /* ========== RESPONSIVE ========== */
@@ -3752,9 +3808,9 @@
                         <div class="action-buttons">
                             <button class="action-btn action-btn-primary" onclick="downloadReport()">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                    <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                                 </svg>
-                                Download Report
+                                Print / Save PDF
                             </button>
                             <button class="action-btn action-btn-secondary" onclick="shareResults()">
                                 <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -4409,207 +4465,214 @@
         }
 
         function downloadReport() {
-            // Helper functions to safely set content
-            const setText = (id, text) => {
-                const el = document.getElementById(id);
-                if (el) el.textContent = text;
-            };
-            
-            const setHtml = (id, html) => {
-                const el = document.getElementById(id);
-                if (el) el.innerHTML = html;
-            };
-            
-            // Check if print report exists
-            const printReport = document.getElementById('printReport');
-            if (!printReport) {
-                alert('Print template not found. Please use Ctrl+P (or Cmd+P on Mac) to print.');
-                return;
-            }
-            
-            // Get current date
-            const today = new Date();
-            const dateStr = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-            setText('printDate', 'Generated: ' + dateStr);
-            
-            // Property info
-            setText('printTitle', document.getElementById('propertyLocation')?.textContent || '');
-            setText('printPrice', document.getElementById('propertyPrice')?.textContent || '');
-
-            // Property details (beds, baths, etc.)
-            const detailItems = document.querySelectorAll('#propertyDetails .property-detail-item');
-            let detailsText = [];
-            detailItems.forEach(item => {
-                detailsText.push(item.textContent.trim());
-            });
-            const tenure = document.getElementById('propertyTenure')?.textContent || '';
-            if (tenure) detailsText.push(tenure);
-            setText('printDetails', detailsText.join(' • '));
-
-            // Property image
-            const propertyImg = document.getElementById('propertyImage');
-            if (propertyImg && propertyImg.src) {
-                setHtml('printImage', `<img src="${propertyImg.src}" alt="Property" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">`);
-            } else {
-                setHtml('printImage', '🏡');
-            }
-            
-            // Overall score
-            const overallScore = document.getElementById('overallScore')?.textContent || '-';
-            setText('printOverallScore', overallScore);
-            setText('printOverallRating', getRatingText(parseFloat(overallScore) || 0));
-            
-            // GP Proximity
-            setText('printGpScore', document.getElementById('gpNumber')?.textContent || 'N/A');
-            const gpContent = document.querySelector('.gp-info-content');
-            if (gpContent) {
-                const gpName = gpContent.querySelector('.gp-name')?.textContent || '';
-                const gpAddress = gpContent.querySelector('.gp-address')?.textContent || '';
-                const gpStats = gpContent.querySelectorAll('.gp-stat');
-                let gpTime = '';
-                let gpDistance = '';
-                gpStats.forEach(stat => {
-                    const text = stat.textContent || '';
-                    if (text.includes('mins') || text.includes('walk')) {
-                        gpTime = text.trim();
-                    } else if (text.includes('km')) {
-                        gpDistance = text.trim();
-                    }
-                });
-                setHtml('printGpDetails', `<strong>${gpName}</strong><br>${gpAddress}<br>${gpTime} • ${gpDistance}`);
-            } else {
-                setText('printGpDetails', 'GP information not available');
-            }
-            
-            // EPC
-            setText('printEpcScore', document.getElementById('epcNumber')?.textContent || 'N/A');
-            const epcInfo = document.querySelector('.epc-info');
-            if (epcInfo) {
-                const epcTitle = epcInfo.querySelector('.epc-title')?.textContent || '';
-                const epcDesc = epcInfo.querySelector('.epc-description')?.textContent || '';
-                setHtml('printEpcDetails', `<strong>${epcTitle}</strong><br>${epcDesc}`);
-            } else {
-                setText('printEpcDetails', 'EPC not found. Contact the estate agent for energy efficiency information.');
-            }
-            
-            // Public Transport
-            setText('printTransportScore', document.getElementById('transportNumber')?.textContent || 'N/A');
-            const transportStops = document.querySelectorAll('#publicTransportDetails .transport-stop-card');
-            if (transportStops.length > 0) {
-                const firstStop = transportStops[0];
-                const stopName = firstStop.querySelector('.transport-stop-name')?.textContent || '';
-                const stopAddress = firstStop.querySelector('.transport-stop-address')?.textContent || '';
-                const stopDistance = firstStop.querySelector('.transport-stop-distance')?.textContent || '';
-                setHtml('printTransportDetails', `<strong>Nearest Bus Stop:</strong><br>${stopName}<br>${stopAddress}<br>${stopDistance}`);
-            } else {
-                setText('printTransportDetails', 'Transport information not available');
-            }
-            
-            // Accessible Features
-            setText('printAccessScore', document.getElementById('accessNumber')?.textContent || 'N/A');
-            const accessFeatures = document.querySelectorAll('#accessibleFeaturesDetails .room-grid-item');
-            let accessHtml = '';
-            accessFeatures.forEach(feature => {
-                const name = feature.querySelector('.room-grid-name')?.textContent || '';
-                const statusIcon = feature.querySelector('.room-status-icon');
-                const hasFeature = statusIcon?.classList.contains('found');
-                const itemClass = hasFeature ? 'yes' : 'no';
-                const icon = hasFeature ? '✓' : '✗';
-                accessHtml += `<div class="print-feature-item ${itemClass}"><span>${icon}</span> ${name}</div>`;
-            });
-            setHtml('printAccessFeatures', accessHtml || 'No features data available');
-            
-            // Room Breakdown
-            setText('printRoomScore', document.getElementById('roomNumber')?.textContent || 'N/A');
-            const roomFeatures = document.querySelectorAll('#roomBreakdownDetails .room-grid-item');
-            let roomHtml = '';
-            roomFeatures.forEach(feature => {
-                const name = feature.querySelector('.room-grid-name')?.textContent || '';
-                const statusIcon = feature.querySelector('.room-status-icon');
-                const hasFeature = statusIcon?.classList.contains('found');
-                const itemClass = hasFeature ? 'yes' : 'no';
-                const icon = hasFeature ? '✓' : '✗';
-                roomHtml += `<div class="print-feature-item ${itemClass}"><span>${icon}</span> ${name}</div>`;
-            });
-            setHtml('printRoomFeatures', roomHtml || 'No room data available');
-            
-            // Room size
-            const roomSize = document.querySelector('.size-primary')?.textContent || '';
-            const roomSizeFt = document.querySelector('.size-secondary')?.textContent || '';
-            setText('printRoomSize', roomSize ? `Total: ${roomSize}${roomSizeFt ? ' (' + roomSizeFt + ')' : ''}` : '');
-            
-            // Property Costs
-            setText('printCostScore', document.getElementById('costNumber')?.textContent || 'N/A');
-            const costCards = document.querySelectorAll('#costDetails .cost-item-card');
-            let costHtml = '';
-            costCards.forEach(item => {
-                const labelEl = item.querySelector('.cost-label');
-                const valueEl = item.querySelector('.cost-value');
-                if (labelEl && valueEl) {
-                    const label = labelEl.textContent || '';
-                    let value = valueEl.textContent || '';
-                    // Only include Council Tax, Price per sq m, and Stamp Duty
-                    if (label.includes('Council Tax') || label.includes('Price per sq m') || label.includes('Stamp Duty')) {
-                        const cleanLabel = label.replace(/🏛️|📊|🏠/g, '').trim();
-                        // Replace messy unavailable text with N/A
-                        if (value.toLowerCase().includes('unable') || value.toLowerCase().includes('not available') || value.toLowerCase().includes('not found')) {
-                            value = 'N/A';
-                        }
-                        costHtml += `<div class="print-cost-item"><span class="print-cost-label">${cleanLabel}</span><span class="print-cost-value">${value}</span></div>`;
-                    }
-                }
-            });
-            setHtml('printCostDetails', costHtml || 'Cost information not available');
-            
-            // Summary
-            setText('printSummary', document.getElementById('summaryText')?.textContent || '');
-            
-            // Property URL
-            setText('printPropertyUrl', currentPropertyUrl ? `Property: ${currentPropertyUrl}` : '');
-            
-            // Show print report and print
-            const downloadBtn = document.querySelector('[onclick="downloadReport()"]');
-            
-            // Disable button and show loading
+    // Helper functions to safely set content
+    const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+    
+    const setHtml = (id, html) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    };
+    
+    const printReport = document.getElementById('printReport');
+    if (!printReport) {
+        alert('Print template not found. Please use Ctrl+P (or Cmd+P on Mac) to print.');
+        return;
+    }
+    
+    // Prepare content
+    preparePrintReport();
+    
+    const downloadBtn = document.querySelector('[onclick="downloadReport()"]');
+    
+    if (downloadBtn) {
+        downloadBtn.disabled = true;
+        downloadBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M12 6v6l4 2"></path>
+            </svg>
+            Preparing...
+        `;
+    }
+    
+    printReport.classList.add('show');
+    
+    setTimeout(() => {
+        try {
+            window.print();
+        } catch (e) {
+            console.error('Print failed:', e);
+            alert('Unable to open print dialog. Please try using Ctrl+P (or Cmd+P on Mac).');
+        }
+        
+        setTimeout(() => {
+            printReport.classList.remove('show');
             if (downloadBtn) {
-                downloadBtn.disabled = true;
+                downloadBtn.disabled = false;
                 downloadBtn.innerHTML = `
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <path d="M12 6v6l4 2"></path>
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                     </svg>
-                    Preparing...
+                    Print / Save PDF
                 `;
             }
-            
-            printReport.classList.add('show');
-            
-            // Give browser time to render the print report
-            setTimeout(() => {
-                try {
-                    window.print();
-                } catch (e) {
-                    console.error('Print failed:', e);
-                    alert('Unable to open print dialog. Please try using Ctrl+P (or Cmd+P on Mac).');
+        }, 500);
+    }, 300);
+}
+
+function preparePrintReport() {
+    // Helper functions to safely set content
+    const setText = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = text;
+    };
+    
+    const setHtml = (id, html) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    };
+    
+    // Get current date
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    setText('printDate', 'Generated: ' + dateStr);
+    
+    // Property info
+    setText('printTitle', document.getElementById('propertyLocation')?.textContent || '');
+    setText('printPrice', document.getElementById('propertyPrice')?.textContent || '');
+
+    // Property details (beds, baths, etc.)
+    const detailItems = document.querySelectorAll('#propertyDetails .property-detail-item');
+    let detailsText = [];
+    detailItems.forEach(item => {
+        detailsText.push(item.textContent.trim());
+    });
+    const tenure = document.getElementById('propertyTenure')?.textContent || '';
+    if (tenure) detailsText.push(tenure);
+    setText('printDetails', detailsText.join(' • '));
+
+    // Property image
+    const propertyImg = document.getElementById('propertyImage');
+    if (propertyImg && propertyImg.src) {
+        setHtml('printImage', `<img src="${propertyImg.src}" alt="Property" style="width: 100%; height: 100%; object-fit: cover; border-radius: 6px;">`);
+    } else {
+        setHtml('printImage', '🏡');
+    }
+    
+    // Overall score
+    const overallScore = document.getElementById('overallScore')?.textContent || '-';
+    setText('printOverallScore', overallScore);
+    setText('printOverallRating', getRatingText(parseFloat(overallScore) || 0));
+    
+    // GP Proximity
+    setText('printGpScore', document.getElementById('gpNumber')?.textContent || 'N/A');
+    const gpContent = document.querySelector('.gp-info-content');
+    if (gpContent) {
+        const gpName = gpContent.querySelector('.gp-name')?.textContent || '';
+        const gpAddress = gpContent.querySelector('.gp-address')?.textContent || '';
+        const gpStats = gpContent.querySelectorAll('.gp-stat');
+        let gpTime = '';
+        let gpDistance = '';
+        gpStats.forEach(stat => {
+            const text = stat.textContent || '';
+            if (text.includes('mins') || text.includes('walk')) {
+                gpTime = text.trim();
+            } else if (text.includes('km')) {
+                gpDistance = text.trim();
+            }
+        });
+        setHtml('printGpDetails', `<strong>${gpName}</strong><br>${gpAddress}<br>${gpTime} • ${gpDistance}`);
+    } else {
+        setText('printGpDetails', 'GP information not available');
+    }
+    
+    // EPC
+    setText('printEpcScore', document.getElementById('epcNumber')?.textContent || 'N/A');
+    const epcInfo = document.querySelector('.epc-info');
+    if (epcInfo) {
+        const epcTitle = epcInfo.querySelector('.epc-title')?.textContent || '';
+        const epcDesc = epcInfo.querySelector('.epc-description')?.textContent || '';
+        setHtml('printEpcDetails', `<strong>${epcTitle}</strong><br>${epcDesc}`);
+    } else {
+        setText('printEpcDetails', 'EPC not found. Contact the estate agent for energy efficiency information.');
+    }
+    
+    // Public Transport
+    setText('printTransportScore', document.getElementById('transportNumber')?.textContent || 'N/A');
+    const transportStops = document.querySelectorAll('#publicTransportDetails .transport-stop-card');
+    if (transportStops.length > 0) {
+        const firstStop = transportStops[0];
+        const stopName = firstStop.querySelector('.transport-stop-name')?.textContent || '';
+        const stopAddress = firstStop.querySelector('.transport-stop-address')?.textContent || '';
+        const stopDistance = firstStop.querySelector('.transport-stop-distance')?.textContent || '';
+        setHtml('printTransportDetails', `<strong>Nearest Bus Stop:</strong><br>${stopName}<br>${stopAddress}<br>${stopDistance}`);
+    } else {
+        setText('printTransportDetails', 'Transport information not available');
+    }
+    
+    // Accessible Features
+    setText('printAccessScore', document.getElementById('accessNumber')?.textContent || 'N/A');
+    const accessFeatures = document.querySelectorAll('#accessibleFeaturesDetails .room-grid-item');
+    let accessHtml = '';
+    accessFeatures.forEach(feature => {
+        const name = feature.querySelector('.room-grid-name')?.textContent || '';
+        const statusIcon = feature.querySelector('.room-status-icon');
+        const hasFeature = statusIcon?.classList.contains('found');
+        const itemClass = hasFeature ? 'yes' : 'no';
+        const icon = hasFeature ? '✓' : '✗';
+        accessHtml += `<div class="print-feature-item ${itemClass}"><span>${icon}</span> ${name}</div>`;
+    });
+    setHtml('printAccessFeatures', accessHtml || 'No features data available');
+    
+    // Room Breakdown
+    setText('printRoomScore', document.getElementById('roomNumber')?.textContent || 'N/A');
+    const roomFeatures = document.querySelectorAll('#roomBreakdownDetails .room-grid-item');
+    let roomHtml = '';
+    roomFeatures.forEach(feature => {
+        const name = feature.querySelector('.room-grid-name')?.textContent || '';
+        const statusIcon = feature.querySelector('.room-status-icon');
+        const hasFeature = statusIcon?.classList.contains('found');
+        const itemClass = hasFeature ? 'yes' : 'no';
+        const icon = hasFeature ? '✓' : '✗';
+        roomHtml += `<div class="print-feature-item ${itemClass}"><span>${icon}</span> ${name}</div>`;
+    });
+    setHtml('printRoomFeatures', roomHtml || 'No room data available');
+    
+    // Room size
+    const roomSize = document.querySelector('.size-primary')?.textContent || '';
+    const roomSizeFt = document.querySelector('.size-secondary')?.textContent || '';
+    setText('printRoomSize', roomSize ? `Total: ${roomSize}${roomSizeFt ? ' (' + roomSizeFt + ')' : ''}` : '');
+    
+    // Property Costs
+    setText('printCostScore', document.getElementById('costNumber')?.textContent || 'N/A');
+    const costCards = document.querySelectorAll('#costDetails .cost-item-card');
+    let costHtml = '';
+    costCards.forEach(item => {
+        const labelEl = item.querySelector('.cost-label');
+        const valueEl = item.querySelector('.cost-value');
+        if (labelEl && valueEl) {
+            const label = labelEl.textContent || '';
+            let value = valueEl.textContent || '';
+            if (label.includes('Council Tax') || label.includes('Price per sq m') || label.includes('Stamp Duty')) {
+                const cleanLabel = label.replace(/🏛️|📊|🏠/g, '').trim();
+                if (value.toLowerCase().includes('unable') || value.toLowerCase().includes('not available') || value.toLowerCase().includes('not found')) {
+                    value = 'N/A';
                 }
-                
-                // Re-enable button and hide print report
-                setTimeout(() => {
-                    printReport.classList.remove('show');
-                    if (downloadBtn) {
-                        downloadBtn.disabled = false;
-                        downloadBtn.innerHTML = `
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            Download Report
-                        `;
-                    }
-                }, 500);
-            }, 300);
+                costHtml += `<div class="print-cost-item"><span class="print-cost-label">${cleanLabel}</span><span class="print-cost-value">${value}</span></div>`;
+            }
         }
+    });
+    setHtml('printCostDetails', costHtml || 'Cost information not available');
+    
+    // Summary
+    setText('printSummary', document.getElementById('summaryText')?.textContent || '');
+    
+    // Property URL
+    setText('printPropertyUrl', currentPropertyUrl ? `Property: ${currentPropertyUrl}` : '');
+}
 
         // Add this new function
         function updateMapLegend(analysis) {
@@ -4913,10 +4976,17 @@
                 const displayLabel = (criterion.key === 'stepFreeOrLift' && matchedFeature) 
                     ? matchedFeature : criterion.displayAs;
 
+                const tooltip = criterion.key === 'externalLevelAccess' 
+                    ? `<span class="tooltip feature-tooltip">
+                        <span class="info-icon">i</span>
+                        <span class="tooltiptext">Step-free entry from outside to inside the property (e.g. no steps at front door, ramp access).</span>
+                    </span>` 
+                    : '';
+
                 detailsHtml += `
                     <div class="room-grid-item">
                         <div class="room-icon-circle">${criterion.icon}</div>
-                        <span class="room-grid-name">${displayLabel}</span>
+                        <span class="room-grid-name">${displayLabel}${tooltip}</span>
                         <div class="room-status-icon ${statusClass}">${checkIcon}</div>
                     </div>
                 `;
@@ -6513,4 +6583,3 @@ async function removeSavedProperty(propertyId) {
             </div>
 </body>
 </html>
-  
