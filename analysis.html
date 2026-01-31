@@ -2078,6 +2078,40 @@
             cursor: not-allowed;
         }
 
+        .team-edit-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            margin-left: 8px;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+        }
+
+        .team-edit-btn:hover {
+            opacity: 1;
+        }
+
+        .team-name-edit {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .team-cancel-btn {
+            padding: 8px 16px;
+            background: #e5e7eb;
+            color: #374151;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .team-cancel-btn:hover {
+            background: #d1d5db;
+        }
+
         /* Login Modal */
         .login-modal {
             position: fixed;
@@ -3935,7 +3969,16 @@
                 '</div>' +
                 
                 '<div id="plan-team" class="plan-content">' +
-                '<div class="plan-price">£50.00<span>/month</span></div>' +
+                '<div class="billing-toggle">' +
+                '<span class="billing-label active" id="team-label-monthly" onclick="setTeamBilling(\'monthly\')">Monthly</span>' +
+                '<div class="toggle-switch" id="team-billing-switch" onclick="toggleTeamBilling()"></div>' +
+                '<span class="billing-label" id="team-label-annual" onclick="setTeamBilling(\'annual\')">Annual</span>' +
+                '</div>' +
+                '<div class="plan-price" id="team-price">£49.99<span>/month</span></div>' +
+                '<div class="savings-row" id="team-savings-row" style="display: none;">' +
+                '<span class="plan-price-crossed">£599.88/year</span>' +
+                '<span class="savings-badge">Save £99.89</span>' +
+                '</div>' +
                 '<ul class="plan-features">' +
                 '<li>Everything in Pro</li>' +
                 '<li>Up to 5 team members</li>' +
@@ -3943,7 +3986,7 @@
                 '<li>Team admin dashboard</li>' +
                 '</ul>' +
                 '<input type="email" class="upgrade-input" id="team-email" value="' + savedEmail + '" placeholder="your@email.com" />' +
-                '<button class="btn-subscribe" onclick="handleUpgrade(\'team\')">Get Team Plan</button>' +
+                '<button class="btn-subscribe" id="team-btn" onclick="handleUpgrade(\'team\')">Get Team Plan</button>' +
                 '</div>' +
                 
                 '<p id="upgradeMessage" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></p>' +
@@ -3962,6 +4005,7 @@
         }
 
         var currentBilling = 'monthly';
+        var currentTeamBilling = 'monthly';
 
         function showPlan(plan) {
             document.querySelectorAll('.plan-toggle-btn').forEach(function(btn, index) {
@@ -4012,6 +4056,41 @@
             }
         }
 
+        function toggleTeamBilling() {
+            if (currentTeamBilling === 'monthly') {
+                setTeamBilling('annual');
+            } else {
+                setTeamBilling('monthly');
+            }
+        }
+
+        function setTeamBilling(billing) {
+            currentTeamBilling = billing;
+            
+            var toggleSwitch = document.getElementById('team-billing-switch');
+            var labelMonthly = document.getElementById('team-label-monthly');
+            var labelAnnual = document.getElementById('team-label-annual');
+            var priceEl = document.getElementById('team-price');
+            var savingsRow = document.getElementById('team-savings-row');
+            var btn = document.getElementById('team-btn');
+            
+            if (billing === 'annual') {
+                toggleSwitch.classList.add('active');
+                labelMonthly.classList.remove('active');
+                labelAnnual.classList.add('active');
+                priceEl.innerHTML = '£499.99<span>/year</span>';
+                savingsRow.style.display = 'flex';
+                btn.textContent = 'Get Team Annual';
+            } else {
+                toggleSwitch.classList.remove('active');
+                labelMonthly.classList.add('active');
+                labelAnnual.classList.remove('active');
+                priceEl.innerHTML = '£49.99<span>/month</span>';
+                savingsRow.style.display = 'none';
+                btn.textContent = 'Get Team Plan';
+            }
+        }
+
         async function handleUpgrade(planType) {
             var emailField = planType === 'team' ? 'team-email' : 'individual-email';
             var email = document.getElementById(emailField).value;
@@ -4024,9 +4103,11 @@
             }
             
             // Determine the actual plan based on billing toggle
-            var plan = planType;
-            if (planType === 'individual' && currentBilling === 'annual') {
-                plan = 'annual';
+            var plan;
+            if (planType === 'individual') {
+                plan = currentBilling === 'annual' ? 'annual' : 'monthly';
+            } else {
+                plan = currentTeamBilling === 'annual' ? 'team-annual' : 'team';
             }
             
             messageEl.textContent = 'Redirecting to checkout...';
@@ -5828,16 +5909,300 @@ function showLoggedInState(user) {
             subItem.innerHTML = '💳 Upgrade to Pro';
         }
     }
+}   
+    
     
     // Load saved count
     loadSavedCount();
+    checkTeamMembership();
+
+
+    function showLoginModal() {
+        document.getElementById('loginModal').classList.remove('hidden');
+        document.getElementById('loginEmail').focus();
+    }
+
+    function hideLoginModal() {
+        document.getElementById('loginModal').classList.add('hidden');
+        document.getElementById('loginEmail').value = '';
+        document.getElementById('loginMessage').textContent = '';
+    }
+
+    async function sendMagicLink() {
+        const email = document.getElementById('loginEmail').value;
+        const subscribePrompt = document.getElementById('subscribePrompt');
+        
+        // Hide subscribe prompt on new attempt
+        subscribePrompt.classList.add('hidden');
+        
+        if (!email) {
+            document.getElementById('loginMessage').textContent = 'Please enter your email';
+            document.getElementById('loginMessage').style.color = '#ef4444';
+            return;
+        }
+        
+        try {
+            const response = await fetch('/auth/magic-link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                document.getElementById('loginMessage').textContent = '✓ Check your email for the login link!';
+                document.getElementById('loginMessage').style.color = '#059669';
+                subscribePrompt.classList.add('hidden');
+            } else {
+                // Check if it's a "no account" error
+                if (data.error && data.error.toLowerCase().includes('no account')) {
+                    document.getElementById('loginMessage').textContent = '';
+                    subscribePrompt.classList.remove('hidden');
+                } else {
+                    document.getElementById('loginMessage').textContent = data.error || 'Failed to send link';
+                    document.getElementById('loginMessage').style.color = '#ef4444';
+                }
+            }
+        } catch (error) {
+            document.getElementById('loginMessage').textContent = 'Failed to send link';
+            document.getElementById('loginMessage').style.color = '#ef4444';
+        }
+    }
+
+    function logout() {
+        localStorage.removeItem('auth_token');
+        currentUser = null;
+        showLoggedOutState();
+    }
+
+    async function loadSavedCount() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) return;
+        
+        try {
+            const response = await fetch('/api/properties/saved', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            document.getElementById('savedCount').textContent = `(${data.saved?.length || 0})`;
+        } catch (error) {
+            console.log('Failed to load saved count');
+        }
+    }
+
+    async function manageSubscription() {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return showLoginModal();
     
-    // Check team membership (if function exists)
-    if (typeof checkTeamMembership === 'function') {
-        checkTeamMembership();
+    if (currentUser?.subscription_status === 'active') {
+        // Open Stripe Customer Portal
+        try {
+            const response = await fetch('/api/customer-portal', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            if (data.url) {
+                window.location.href = data.url;
+            } else {
+                alert(data.error || 'Failed to open subscription manager');
+            }
+        } catch (error) {
+            alert('Failed to open subscription manager');
+        }
+    } else {
+        // Show paywall for non-subscribers
+        showPaywallModal();
     }
 }
 
+    function showUpgradeModal() {
+        // For now, redirect to monthly checkout
+        const token = localStorage.getItem('auth_token');
+        fetch('/api/create-checkout', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ plan: 'monthly' })
+        }).then(r => r.json()).then(data => {
+            if (data.url) window.location.href = data.url;
+        });
+    }
+
+    function showSavedProperties() {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+        showLoginModal();
+        return;
+    }
+    document.getElementById('savedPanel').classList.add('open');
+    document.getElementById('savedPanelOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+    loadSavedPropertiesPanel();
+}
+
+function closeSavedPanel() {
+    document.getElementById('savedPanel').classList.remove('open');
+    document.getElementById('savedPanelOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+}
+
+async function loadSavedPropertiesPanel() {
+    const content = document.getElementById('savedPanelContent');
+    content.innerHTML = '<div class="saved-loading"><div class="spinner"></div><p>Loading...</p></div>';
+    
+    const token = localStorage.getItem('auth_token');
+    try {
+        const response = await fetch('/api/properties/saved', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        
+        if (!data.saved || data.saved.length === 0) {
+            content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">⭐</div><h3>No saved properties</h3><p>Properties you save will appear here.</p></div>';
+            return;
+        }
+        
+        let html = `<p style="color: #6b7280; margin-bottom: 16px; font-size: 0.9rem;">${data.saved.length} of 10 saved</p>`;
+        
+        data.saved.forEach(item => {
+            const property = item.properties;
+            if (!property) return;
+            
+            const savedDate = new Date(item.saved_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+            const score = property.overall_score ? property.overall_score.toFixed(1) : '—';
+            
+            html += `
+                <div class="saved-property-card">
+                    <div class="saved-property-address">${property.address || 'Unknown address'}</div>
+                    ${property.title ? `<div style="color: #6b7280; font-size: 0.85rem; margin-bottom: 8px;">${property.title}</div>` : ''}
+                    <div class="saved-property-meta">
+                        <div class="saved-property-score">⭐ ${score}/5</div>
+                        <div class="saved-property-date">Saved ${savedDate}</div>
+                    </div>
+                    ${property.price ? `<div class="saved-property-price">${property.price}</div>` : ''}
+                    <div class="saved-property-actions">
+                        <button class="saved-btn-view" onclick="viewSavedProperty('${property.rightmove_id || item.property_id}')">View Analysis</button>
+                        <button class="saved-btn-remove" onclick="removeSavedProperty('${property.rightmove_id}')">🗑️</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        content.innerHTML = html;
+    } catch (error) {
+        content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">⚠️</div><h3>Failed to load</h3></div>';
+    }
+}
+
+function viewSavedProperty(propertyId) {
+    closeSavedPanel();
+    document.getElementById('propertyUrl').value = `https://www.rightmove.co.uk/properties/${propertyId}`;
+    analyzeProperty();
+}
+
+async function removeSavedProperty(propertyId) {
+    const token = localStorage.getItem('auth_token');
+    if (!token) return;
+    
+    try {
+        await fetch(`/api/properties/save/${propertyId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        loadSavedPropertiesPanel();
+        loadSavedCount();
+        
+        if (currentPropertyId === propertyId) {
+            const saveBtn = document.getElementById('savePropertyBtn');
+            if (saveBtn) {
+                saveBtn.classList.remove('saved');
+                saveBtn.classList.add('save');
+                saveBtn.innerHTML = '☆ Save Property';
+            }
+        }
+    } catch (error) {
+        alert('Failed to remove property');
+    }
+}
+
+    function showSearchHistory() {
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            showLoginModal();
+            return;
+        }
+        document.getElementById('historyPanel').classList.add('open');
+        document.getElementById('historyPanelOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        loadSearchHistoryPanel();
+    }
+
+    function closeHistoryPanel() {
+        document.getElementById('historyPanel').classList.remove('open');
+        document.getElementById('historyPanelOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    async function loadSearchHistoryPanel() {
+        const content = document.getElementById('historyPanelContent');
+        content.innerHTML = '<div class="saved-loading"><div class="spinner"></div><p>Loading...</p></div>';
+        
+        const token = localStorage.getItem('auth_token');
+        try {
+            const response = await fetch('/api/properties/history', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            
+            if (!data.history || data.history.length === 0) {
+                content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">🕐</div><h3>No search history</h3><p>Properties you analyze will appear here.</p></div>';
+                return;
+            }
+            
+            let html = `<p style="color: #6b7280; margin-bottom: 16px; font-size: 0.9rem;">Last ${data.history.length} searches</p>`;
+            
+            data.history.forEach(item => {
+                const property = item.properties;
+                if (!property) return;
+                
+                const searchDate = new Date(item.searched_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                const score = property.overall_score ? property.overall_score.toFixed(1) : '—';
+                
+                html += `
+                    <div class="saved-property-card">
+                        <div class="saved-property-address">${property.address || 'Unknown address'}</div>
+                        <div style="color: #6b7280; font-size: 0.85rem; margin-bottom: 8px;">${property.title || ''}</div>
+                        <div class="saved-property-meta">
+                            <div class="saved-property-score">⭐ ${score}/5</div>
+                            <div class="saved-property-date">Searched ${searchDate}</div>
+                        </div>
+                        ${property.price ? `<div class="saved-property-price">£${Number(property.price).toLocaleString()}</div>` : ''}
+                        <div class="saved-property-actions">
+                            <button class="saved-btn-view" onclick="viewHistoryProperty('${property.rightmove_id || item.property_id}')">
+                                View Analysis
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            content.innerHTML = html;
+        } catch (error) {
+            content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">⚠️</div><h3>Failed to load</h3></div>';
+        }
+    }
+
+    function viewHistoryProperty(propertyId) {
+        closeHistoryPanel();
+        document.getElementById('propertyUrl').value = `https://www.rightmove.co.uk/properties/${propertyId}`;
+        analyzeProperty();
+    }
+    
     
 
     function showLoginModal() {
@@ -6133,6 +6498,43 @@ async function removeSavedProperty(propertyId) {
     let currentTeam = null;
     let currentTeamRole = null;
 
+    async function createTeam() {
+        const teamName = document.getElementById('newTeamName').value.trim();
+        const messageEl = document.getElementById('createTeamMessage');
+        
+        if (!teamName) {
+            messageEl.textContent = 'Please enter a team name';
+            messageEl.style.color = '#dc2626';
+            return;
+        }
+        
+        const token = localStorage.getItem('auth_token');
+        try {
+            const response = await fetch('/api/teams/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ name: teamName })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                messageEl.textContent = '✓ Team created!';
+                messageEl.style.color = '#059669';
+                loadTeamPanel(); // Refresh to show team
+            } else {
+                messageEl.textContent = data.error || 'Failed to create team';
+                messageEl.style.color = '#dc2626';
+            }
+        } catch (error) {
+            messageEl.textContent = 'Failed to create team';
+            messageEl.style.color = '#dc2626';
+        }
+    }
+    
     async function checkTeamMembership() {
         const token = localStorage.getItem('auth_token');
         if (!token) return;
@@ -6147,6 +6549,16 @@ async function removeSavedProperty(propertyId) {
                 currentTeam = data.team;
                 currentTeamRole = data.role;
                 document.getElementById('teamMenuItem').style.display = 'flex';
+            } else {
+                // Check if user has a team subscription tier but no team yet
+                const userResponse = await fetch('/api/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const userData = await userResponse.json();
+                
+                if (userData.subscription_tier === 'team' || userData.subscription_tier === 'team-annual') {
+                    document.getElementById('teamMenuItem').style.display = 'flex';
+                }
             }
         } catch (error) {
             console.log('Team check failed:', error);
@@ -6178,6 +6590,27 @@ async function removeSavedProperty(propertyId) {
             const data = await response.json();
             
             if (!data.team) {
+                // Check if user has team subscription
+                const userResponse = await fetch('/api/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const userData = await userResponse.json();
+                
+                if (userData.subscription_tier === 'team' || userData.subscription_tier === 'team-annual') {
+                    // Has subscription but no team - offer to create one
+                    content.innerHTML = `
+                        <div class="saved-empty">
+                            <div class="saved-empty-icon">🏢</div>
+                            <h3>Set Up Your Team</h3>
+                            <p>You have a team subscription! Create your team to get started.</p>
+                            <input type="text" id="newTeamName" class="team-invite-input" placeholder="Team name" style="margin-top: 16px;" />
+                            <button class="team-invite-btn" style="margin-top: 12px; width: 100%;" onclick="createTeam()">Create Team</button>
+                            <p id="createTeamMessage" style="margin-top: 8px; font-size: 0.85rem;"></p>
+                        </div>
+                    `;
+                    return;
+                }
+                
                 content.innerHTML = '<div class="saved-empty"><div class="saved-empty-icon">🏢</div><h3>No team</h3><p>You are not part of a team.</p></div>';
                 return;
             }
@@ -6188,13 +6621,21 @@ async function removeSavedProperty(propertyId) {
             
             let html = `
                 <div class="team-header">
-                    <div class="team-name">${team.name}</div>
+                    <div class="team-name" id="teamNameDisplay">
+                        ${team.name}
+                        ${isAdmin ? `<button class="team-edit-btn" onclick="showEditTeamName()">✏️</button>` : ''}
+                    </div>
+                    <div class="team-name-edit" id="teamNameEdit" style="display: none;">
+                        <input type="text" id="editTeamNameInput" class="team-invite-input" value="${team.name}" />
+                        <button class="team-invite-btn" onclick="saveTeamName()">Save</button>
+                        <button class="team-cancel-btn" onclick="cancelEditTeamName()">Cancel</button>
+                    </div>
                     <div class="team-status">
                         ${team.subscription_status === 'active' ? '✅ Active subscription' : '⚠️ No active subscription'}
                     </div>
                 </div>
                 
-                <div class="team-section-title">Team Members (${members.length})</div>
+                <div class="team-section-title">Team Members (${members.length}/5)</div>
             `;
             
             members.forEach(member => {
@@ -6293,6 +6734,43 @@ async function removeSavedProperty(propertyId) {
             }
         } catch (error) {
             alert('Failed to remove member');
+        }
+    }
+
+    function showEditTeamName() {
+        document.getElementById('teamNameDisplay').style.display = 'none';
+        document.getElementById('teamNameEdit').style.display = 'flex';
+        document.getElementById('editTeamNameInput').focus();
+    }
+
+    function cancelEditTeamName() {
+        document.getElementById('teamNameDisplay').style.display = 'flex';
+        document.getElementById('teamNameEdit').style.display = 'none';
+    }
+
+    async function saveTeamName() {
+        const newName = document.getElementById('editTeamNameInput').value.trim();
+        if (!newName) return;
+        
+        const token = localStorage.getItem('auth_token');
+        try {
+            const response = await fetch('/api/teams/rename', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ name: newName })
+            });
+            
+            if (response.ok) {
+                loadTeamPanel(); // Refresh
+            } else {
+                const data = await response.json();
+                alert(data.error || 'Failed to rename team');
+            }
+        } catch (error) {
+            alert('Failed to rename team');
         }
     }
 

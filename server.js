@@ -692,7 +692,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         console.log('📧 Customer email:', session.customer_email);
         console.log('📦 Metadata:', session.metadata);
 
-        // Check if this is a team subscription
+        // Check if this is a team subscription (existing team checkout)
         if (session.metadata?.team_id) {
             const { error } = await supabase
                 .from('teams')
@@ -710,80 +710,99 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
             return res.json({ received: true });
         }
         
-        // Get tier from metadata (set during checkout), default to monthly
-        const tier = session.metadata?.plan || 'monthly';
+        // Determine tier from actual price ID (most reliable)
+        let tier = 'monthly'; // default
+        
+        if (session.subscription) {
+            try {
+                const subscription = await stripe.subscriptions.retrieve(session.subscription);
+                const priceId = subscription.items.data[0]?.price?.id;
+                
+                console.log('💰 Price ID from subscription:', priceId);
+                
+                if (priceId === process.env.STRIPE_PRICE_ANNUAL) {
+                    tier = 'annual';
+                } else if (priceId === process.env.STRIPE_PRICE_TEAM_ANNUAL) {
+                    tier = 'team-annual';
+                } else if (priceId === process.env.STRIPE_PRICE_TEAM) {
+                    tier = 'team';
+                } else {
+                    tier = 'monthly';
+                }
+            } catch (err) {
+                console.log('⚠️ Could not retrieve subscription, using default tier:', err.message);
+            }
+        }
+        
         const email = session.metadata?.email || session.customer_email;
+        const isTeamPlan = tier === 'team' || tier === 'team-annual';
         
         console.log('🏷️ Subscription tier:', tier);
         console.log('📧 User email:', email);
+        console.log('👥 Is team plan:', isTeamPlan);
         
-        // Update user subscription - match on email and set stripe_customer_id
-        const { error } = await supabase
+        // Update user subscription
+        const { data: updatedUser, error } = await supabase
             .from('users')
             .update({ 
                 subscription_status: 'active',
                 subscription_tier: tier,
-                stripe_customer_id: session.customer
+                stripe_customer_id: session.customer,
+                user_type: isTeamPlan ? 'agent' : 'individual'
             })
-            .eq('email', email);
+            .eq('email', email)
+            .select('id')
+            .single();
             
         if (error) {
             console.log('❌ Error updating user:', error.message);
         } else {
             console.log('✅ User subscription activated:', email, '- Tier:', tier);
-        }
-    }
-    
-    // Handle subscription updated (includes scheduled cancellations and plan changes)
-    if (event.type === 'customer.subscription.updated') {
-        const subscription = event.data.object;
-        
-        console.log('🔄 Subscription updated for customer:', subscription.customer);
-        console.log('   Status:', subscription.status);
-        console.log('   Cancel at period end:', subscription.cancel_at_period_end);
-        
-        
-        // Get the price ID to determine tier
-        const priceId = subscription.items?.data[0]?.price?.id;
-        console.log('   Price ID:', priceId);
-        
-        // Determine tier from price ID
-        let tier = 'monthly'; // default
-        if (priceId === process.env.STRIPE_PRICE_ANNUAL) {
-            tier = 'annual';
-        } else if (priceId === process.env.STRIPE_PRICE_TEAM) {
-            tier = 'team';
-        }
-        console.log('   Determined tier:', tier);
-        
-        if (subscription.cancel_at_period_end || subscription.cancel_at) {
-            const cancelDate = new Date(subscription.cancel_at * 1000).toLocaleDateString();
-            console.log('⚠️ Subscription scheduled to cancel on:', cancelDate);
             
-            const { error } = await supabase
-                .from('users')
-                .update({ subscription_status: 'cancelling' })
-                .eq('stripe_customer_id', subscription.customer);
-            
-            if (error) {
-                console.log('❌ Error updating cancelling status:', error.message);
-            } else {
-                console.log('⚠️ User marked as cancelling:', subscription.customer);
-            }
-        } else if (subscription.status === 'active') {
-            // Update both status AND tier
-            const { error } = await supabase
-                .from('users')
-                .update({ 
-                    subscription_status: 'active',
-                    subscription_tier: tier
-                })
-                .eq('stripe_customer_id', subscription.customer);
-            
-            if (error) {
-                console.log('❌ Error updating subscription:', error.message);
-            } else {
-                console.log('✅ User subscription updated:', subscription.customer, '- Tier:', tier);
+            // If team plan, create a team for the user
+            if (isTeamPlan && updatedUser) {
+                // Check if user already has a team
+                const { data: existingMembership } = await supabase
+                    .from('team_members')
+                    .select('team_id')
+                    .eq('user_id', updatedUser.id)
+                    .single();
+                
+                if (!existingMembership) {
+                    // Create a new team
+                    const { data: newTeam, error: teamError } = await supabase
+                        .from('teams')
+                        .insert({
+                            name: `${email.split('@')[0]}'s Team`,
+                            owner_id: updatedUser.id,
+                            subscription_status: 'active',
+                            subscription_tier: tier,
+                            stripe_customer_id: session.customer
+                        })
+                        .select('id')
+                        .single();
+                    
+                    if (teamError) {
+                        console.log('❌ Error creating team:', teamError.message);
+                    } else {
+                        // Add user as team owner
+                        const { error: memberError } = await supabase
+                            .from('team_members')
+                            .insert({
+                                team_id: newTeam.id,
+                                user_id: updatedUser.id,
+                                role: 'owner'
+                            });
+                        
+                        if (memberError) {
+                            console.log('❌ Error adding team member:', memberError.message);
+                        } else {
+                            console.log('✅ Team created for user:', email, '- Team ID:', newTeam.id);
+                        }
+                    }
+                } else {
+                    console.log('ℹ️ User already has a team:', existingMembership.team_id);
+                }
             }
         }
     }
@@ -860,6 +879,8 @@ app.post('/api/create-team-checkout', async (req, res) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
     
+    const { plan } = req.body; // 'team' or 'team-annual'
+    
     // Get user's team
     const { data: dbUser } = await supabase
         .from('users')
@@ -887,6 +908,11 @@ app.post('/api/create-team-checkout', async (req, res) => {
         return res.status(400).json({ error: 'Team seat limit reached (5 members)' });
     }
     
+    // Select price based on plan
+    const priceId = plan === 'team-annual' 
+        ? process.env.STRIPE_PRICE_TEAM_ANNUAL 
+        : process.env.STRIPE_PRICE_TEAM;
+    
     try {
         // Get or create Stripe customer for team
         let customerId = membership.teams.stripe_customer_id;
@@ -908,20 +934,139 @@ app.post('/api/create-team-checkout', async (req, res) => {
             mode: 'subscription',
             customer: customerId,
             line_items: [{
-                price: process.env.STRIPE_PRICE_TEAM,
+                price: priceId,
                 quantity: 1
             }],
             success_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=success`,
             cancel_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=cancelled`,
-            metadata: { team_id: membership.team_id }
+            metadata: { 
+                team_id: membership.team_id,
+                plan: plan
+            }
         });
         
-        console.log('💳 Team checkout for:', membership.teams.name);
+        console.log('💳 Team checkout for:', membership.teams.name, '- Plan:', plan);
         res.json({ url: session.url });
     } catch (error) {
         console.log('❌ Stripe error:', error.message);
         res.status(500).json({ error: error.message });
     }
+});
+
+// Create team (for users with team subscription but no team)
+app.post('/api/teams/create', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Team name required' });
+    
+    // Get user from database
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id, subscription_tier, stripe_customer_id')
+        .eq('email', user.email)
+        .single();
+    
+    if (!dbUser) return res.status(404).json({ error: 'User not found' });
+    
+    // Check user has team subscription
+    if (dbUser.subscription_tier !== 'team' && dbUser.subscription_tier !== 'team-annual') {
+        return res.status(403).json({ error: 'Team subscription required' });
+    }
+    
+    // Check user doesn't already have a team
+    const { data: existingMembership } = await supabase
+        .from('team_members')
+        .select('team_id')
+        .eq('user_id', dbUser.id)
+        .single();
+    
+    if (existingMembership) {
+        return res.status(400).json({ error: 'You already have a team' });
+    }
+    
+    try {
+        // Create team
+        const { data: newTeam, error: teamError } = await supabase
+            .from('teams')
+            .insert({
+                name: name,
+                owner_id: dbUser.id,
+                subscription_status: 'active',
+                subscription_tier: dbUser.subscription_tier,
+                stripe_customer_id: dbUser.stripe_customer_id
+            })
+            .select('id')
+            .single();
+        
+        if (teamError) throw teamError;
+        
+        // Add user as owner
+        const { error: memberError } = await supabase
+            .from('team_members')
+            .insert({
+                team_id: newTeam.id,
+                user_id: dbUser.id,
+                role: 'owner'
+            });
+        
+        if (memberError) throw memberError;
+        
+        console.log('✅ Team created:', name, '- Owner:', user.email);
+        res.json({ success: true, team_id: newTeam.id });
+        
+    } catch (error) {
+        console.log('❌ Error creating team:', error.message);
+        res.status(500).json({ error: 'Failed to create team' });
+    }
+});
+
+// Rename team
+app.post('/api/teams/rename', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
+    
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+    
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Team name required' });
+    
+    // Get user's team membership
+    const { data: dbUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', user.email)
+        .single();
+    
+    const { data: membership } = await supabase
+        .from('team_members')
+        .select('team_id, role')
+        .eq('user_id', dbUser.id)
+        .single();
+    
+    if (!membership || !['owner', 'admin'].includes(membership.role)) {
+        return res.status(403).json({ error: 'Only team owner or admin can rename the team' });
+    }
+    
+    const { error } = await supabase
+        .from('teams')
+        .update({ name: name.trim() })
+        .eq('id', membership.team_id);
+    
+    if (error) {
+        console.log('❌ Error renaming team:', error.message);
+        return res.status(500).json({ error: 'Failed to rename team' });
+    }
+    
+    console.log('✅ Team renamed to:', name.trim());
+    res.json({ success: true });
 });
 
 // Guest checkout (no auth required)
@@ -934,13 +1079,18 @@ app.post('/api/create-checkout-guest', async (req, res) => {
     
     // Select price based on plan type
     let priceId;
-    if (plan === 'team') {
+    if (plan === 'team-annual') {
+        priceId = process.env.STRIPE_PRICE_TEAM_ANNUAL;
+    } else if (plan === 'team') {
         priceId = process.env.STRIPE_PRICE_TEAM;
     } else if (plan === 'annual') {
         priceId = process.env.STRIPE_PRICE_ANNUAL;
     } else {
         priceId = process.env.STRIPE_PRICE_MONTHLY;
     }
+    
+    // Determine user type
+    const isTeam = plan === 'team' || plan === 'team-annual';
     
     try {
         // Create or find user
@@ -953,7 +1103,7 @@ app.post('/api/create-checkout-guest', async (req, res) => {
         if (!user) {
             const { data: newUser } = await supabase
                 .from('users')
-                .insert({ email: email, user_type: plan === 'team' ? 'agent' : 'individual' })
+                .insert({ email: email, user_type: isTeam ? 'agent' : 'individual' })
                 .select('id')
                 .single();
             user = newUser;
