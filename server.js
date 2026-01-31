@@ -495,7 +495,7 @@ function calculateStampDutyScore(propertyPrice) {
  * @param {Object} property - Property object with description and title
  * @returns {{score: number, roomsFound: string[], rawScore: number, maxPossible: number}}
  */
-function calculateRoomScore(property) {
+async function calculateRoomScore(property) {
     let score = 0;
     let foundRooms = [];
     
@@ -503,18 +503,42 @@ function calculateRoomScore(property) {
     const title = (property.title || '').toLowerCase();
     const combinedText = `${title} ${description}`;
     
+    // Check for living room and kitchen in text first
+    let hasLivingFromText = (combinedText.includes('living room') || 
+                            combinedText.includes('lounge') || 
+                            combinedText.includes('sitting room') ||
+                            combinedText.includes('reception')) 
+                            && !combinedText.includes('open plan');
+    
+    let hasKitchenFromText = combinedText.includes('kitchen');
+    
+    // If living room or kitchen not found in description, try floor plan
+    let floorPlanRooms = null;
+    if ((!hasLivingFromText || !hasKitchenFromText) && property.floorplan) {
+        floorPlanRooms = await analyzeFloorPlanForRooms(property.floorplan);
+    }
+    
     // Living room - must be separate from kitchen (1 point)
     let hasSeparateLivingRoom = false;
-    if ((combinedText.includes('living room') || combinedText.includes('lounge') || combinedText.includes('reception')) 
-        && !combinedText.includes('open plan')) {
+    if (hasLivingFromText) {
         score += 1;
         foundRooms.push('Living room (separate from kitchen)');
         hasSeparateLivingRoom = true;
+    } else if (floorPlanRooms?.hasLivingRoom) {
+        score += 1;
+        foundRooms.push('Living room (separate from kitchen)');
+        hasSeparateLivingRoom = true;
+        console.log('✓ Living room detected from floor plan');
     }
 
     // Kitchen or kitchen diner (1 point)
-    let hasKitchen = combinedText.includes('kitchen');
+    let hasKitchen = hasKitchenFromText;
+    if (!hasKitchen && floorPlanRooms?.hasKitchen) {
+        hasKitchen = true;
+        console.log('✓ Kitchen detected from floor plan');
+    }
     if (!hasKitchen && hasSeparateLivingRoom) {
+        // If we have a living room, assume kitchen exists
         hasKitchen = true;
     }
     if (hasKitchen) {
@@ -2191,6 +2215,103 @@ Be conservative - only say BALCONY_FOUND if you're confident.`;
     }
 }
 
+async function analyzeFloorPlanForRooms(floorplanUrl) {
+    if (!floorplanUrl || !process.env.CLAUDE_API_KEY) {
+        return null;
+    }
+    
+    try {
+        console.log('👁️ Analyzing floor plan for rooms:', floorplanUrl);
+        
+        // Download and convert image
+        const response = await axios.get(floorplanUrl, { 
+            responseType: 'arraybuffer',
+            timeout: 10000
+        });
+        
+        const base64Data = Buffer.from(response.data, 'binary').toString('base64');
+        
+        // Determine media type from URL
+        const extension = floorplanUrl.split('.').pop().toLowerCase();
+        let mediaType = 'image/jpeg';
+        if (extension === 'png') mediaType = 'image/png';
+        else if (extension === 'gif') mediaType = 'image/gif';
+        else if (extension === 'webp') mediaType = 'image/webp';
+        
+        console.log('🔍 Floor plan image size:', response.data.byteLength, 'bytes, type:', mediaType);
+        
+        const apiResponse = await axios.post(
+            'https://api.anthropic.com/v1/messages',
+            {
+                model: 'claude-sonnet-4-20250514',
+                max_tokens: 300,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'image',
+                            source: {
+                                type: 'base64',
+                                media_type: mediaType,
+                                data: base64Data
+                            }
+                        },
+                        {
+                            type: 'text',
+                            text: `Look at this floor plan and list which of these rooms are present. Only list rooms you can clearly see labeled or identify:
+
+- Living room
+- Lounge
+- Sitting room
+- Kitchen (separate)
+- Kitchen/Diner or Kitchen/Dining
+- Dining room (separate)
+- Reception room
+
+Respond in this exact format:
+LIVING: YES or NO
+LOUNGE: YES or NO
+SITTING: YES or NO
+KITCHEN: YES or NO
+KITCHEN_DINER: YES or NO
+DINING: YES or NO
+RECEPTION: YES or NO
+
+Only say YES if you can clearly see the room labeled or identified on the floor plan.`
+                        }
+                    ]
+                }]
+            },
+            {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': process.env.CLAUDE_API_KEY,
+                    'anthropic-version': '2023-06-01'
+                },
+                timeout: 15000
+            }
+        );
+        
+        const result = apiResponse.data.content[0].text.toUpperCase();
+        console.log('👁️ Floor plan room analysis:', result);
+        
+        return {
+            hasLivingRoom: result.includes('LIVING: YES') || 
+                           result.includes('LOUNGE: YES') || 
+                           result.includes('SITTING: YES') || 
+                           result.includes('RECEPTION: YES'),
+            hasKitchen: result.includes('KITCHEN: YES') || result.includes('KITCHEN_DINER: YES'),
+            hasKitchenDiner: result.includes('KITCHEN_DINER: YES'),
+            hasDiningRoom: result.includes('DINING: YES'),
+            hasReception: result.includes('RECEPTION: YES')
+        };
+        
+    } catch (error) {
+        console.error('Floor plan room analysis failed:', error.message);
+        return null;
+    }
+}
+
 
 
 async function extractDimensions(propertyDescription, title, features) {
@@ -3370,6 +3491,9 @@ async function analyzePublicTransport(lat, lng) {
                 console.log(`🚌 Found distant bus stop: ${nearestBus.displayName?.text} at ${distance.toFixed(2)}km`);
             }
         }
+
+        // Sort bus stops by walking time (shortest first)
+        busStops.sort((a, b) => (a.walkingTime || 999) - (b.walkingTime || 999));
         
         // Search for train stations within 2500m using new Places API
         console.log('🚂 Searching for train stations within 2500m...');
@@ -3484,6 +3608,9 @@ async function analyzePublicTransport(lat, lng) {
                 console.log(`🚂 Found distant train station: ${nearestTrain.displayName?.text} at ${distance.toFixed(2)}km`);
             }
         }
+
+        // Sort train stations by walking time (shortest first)
+        trainStations.sort((a, b) => (a.walkingTime || 999) - (b.walkingTime || 999));
         
         // Calculate score based ONLY on bus stops (doubled thresholds)
         let score = 0;
@@ -5114,7 +5241,7 @@ const epcDetails = epcAnalysis.description;
 
     // Step 5b: Calculate Room Score
     console.log('🏠 Calculating room accommodation score...');
-    const roomScore = calculateRoomScore(property);
+    const roomScore = await calculateRoomScore(property);
     console.log(`🏠 Room Score: ${roomScore.rawScore}/${roomScore.maxPossible} → ${roomScore.score}/5`);
     console.log('✅ Rooms found:', roomScore.roomsFound);
 
