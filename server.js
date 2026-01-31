@@ -522,18 +522,21 @@ function calculateRoomScore(property) {
         foundRooms.push('Kitchen or kitchen diner');
     }
     
-    // Count bathrooms from description
+    // Count bathrooms - prefer Rightmove's count from property details panel
     let bathroomCount = 0;
-    const bathroomMatch = combinedText.match(/(\d+)\s*bathroom/);
-    if (bathroomMatch) {
-        bathroomCount = parseInt(bathroomMatch[1]);
-    } else if (combinedText.includes('bathroom') || combinedText.includes('toilet') || combinedText.includes('wc')) {
-        bathroomCount = 1;
-    }
-    
-    // Check for en-suite (adds to bathroom count)
-    if (combinedText.includes('en suite') || combinedText.includes('ensuite')) {
-        bathroomCount += 1;
+    if (property.bathrooms) {
+        bathroomCount = property.bathrooms;
+        console.log('🚿 Using Rightmove bathroom count:', bathroomCount);
+    } else {
+        // Fallback to description parsing
+        const bathroomMatch = combinedText.match(/(\d+)\s*bathroom/);
+        if (bathroomMatch) {
+            bathroomCount = parseInt(bathroomMatch[1]);
+        } else if (combinedText.includes('bathroom') || combinedText.includes('toilet') || combinedText.includes('wc') || 
+                combinedText.includes('en suite') || combinedText.includes('ensuite')) {
+            bathroomCount = 1;
+        }
+        console.log('🚿 Parsed bathroom count from description:', bathroomCount);
     }
     
     // Award points and list bathrooms
@@ -1611,10 +1614,25 @@ const hasSingleLevelKeywords = lateralLivingKeywords.some(keyword => fullText.in
 const isUpperFloor = upperFloorIndicators.some(indicator => fullText.includes(indicator));
 const hasMultipleLevels = multiLevelIndicators.some(indicator => fullText.includes(indicator));
 
-// If property has a lift but no single-level keywords, assume it's multi-level
-const isMultiLevel = hasMultipleLevels || (hasAnyLift && !hasSingleLevelKeywords);
+// Additional check for multi-level evidence in description
+const hasMultiFloorEvidence = 
+    /first floor/i.test(fullText) ||
+    /second floor/i.test(fullText) ||
+    /loft conversion/i.test(fullText) ||
+    /loft bedroom/i.test(fullText) ||
+    /upstairs/i.test(fullText) ||
+    /upper floor/i.test(fullText) ||
+    /ground floor.*first floor/i.test(fullText) ||
+    /bedroom.*(first|upper|top) floor/i.test(fullText) ||
+    /(first|upper|top) floor.*bedroom/i.test(fullText);
 
-const isSingleLevel = hasSingleLevelKeywords || (!isMultiLevel && !isUpperFloor);
+// If property has a lift but no single-level keywords, assume it's multi-level
+const isMultiLevel = hasMultipleLevels || hasMultiFloorEvidence || (hasAnyLift && !hasSingleLevelKeywords);
+
+// A property is only single-level if it has single-level keywords AND no multi-level evidence
+const isSingleLevel = hasSingleLevelKeywords && !hasMultiFloorEvidence && !hasMultipleLevels;
+
+console.log('🏠 Multi-floor evidence:', hasMultiFloorEvidence);
 const isGroundFloor = hasSingleLevelKeywords && !isUpperFloor;
 
 console.log('🏠 Property type: Single level =', isSingleLevel, '| Ground floor =', isGroundFloor, '| Multi-level =', isMultiLevel);
@@ -1724,47 +1742,78 @@ if (!isUpperFloorFlat) {
     console.log('✗ Upper floor flat - downstairs bedroom not applicable');
 }
 
-// CRITERIA 3: Downstairs bathroom/WC (only relevant for houses or ground floor flats, not upper floor flats)
+// CRITERIA 3: Downstairs bathroom/WC 
+// For accessibility: can someone access a bathroom without climbing internal stairs?
 let hasDownstairsBathroom = false;
 
-if (!isUpperFloorFlat) {
-    const downstairsBathroomKeywords = [
-        'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
-        'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
-        'downstairs toilet', 'ground floor toilet', 'downstairs shower room',
-        'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom',
-        'shower room'
-    ];
+// Check for explicit downstairs bathroom mentions first
+const downstairsBathroomKeywords = [
+    'downstairs bathroom', 'ground floor bathroom', 'bathroom downstairs',
+    'bathroom on ground floor', 'ground floor wc', 'downstairs wc',
+    'downstairs toilet', 'ground floor toilet', 'downstairs shower room',
+    'ground floor shower room', 'ground floor cloakroom', 'downstairs cloakroom',
+    'cloakroom'
+];
 
-    const groundFloorBathroomPatterns = [
-        /ground floor[:\s\S]{0,500}?\b(bathroom|shower room|wc|toilet|cloakroom)\b/gi,
-        /\b(bathroom|shower room|wc|toilet)\b[:\s\S]{0,200}?ground floor/gi
-    ];
+const groundFloorBathroomPatterns = [
+    /ground floor[:\s\S]{0,500}?\b(bathroom|shower room|wc|toilet|cloakroom)\b/gi,
+    /\b(bathroom|shower room|wc|toilet)\b[:\s\S]{0,200}?ground floor/gi
+];
 
-    hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
+hasDownstairsBathroom = downstairsBathroomKeywords.some(keyword => fullText.includes(keyword));
 
-    if (!hasDownstairsBathroom) {
-        hasDownstairsBathroom = groundFloorBathroomPatterns.some(pattern => pattern.test(fullText));
+if (!hasDownstairsBathroom) {
+    hasDownstairsBathroom = groundFloorBathroomPatterns.some(pattern => pattern.test(fullText));
+}
+
+// If single-level living detected (regardless of property type), bathroom must be accessible
+if (!hasDownstairsBathroom && isSingleLevel) {
+    const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
+                            fullText.includes('toilet') || fullText.includes('wc') || 
+                            fullText.includes('en suite') || fullText.includes('ensuite');
+    if (hasBathroomMention) {
+        hasDownstairsBathroom = true;
+        console.log('✓ Inferred downstairs bathroom from single level living');
     }
+}
 
-    // Infer for single level properties
-    if (!hasDownstairsBathroom && isSingleLevel) {
-        const hasBathroomMention = fullText.includes('bathroom') || fullText.includes('shower') || 
-                                fullText.includes('toilet') || fullText.includes('wc') || 
-                                fullText.includes('en suite') || fullText.includes('ensuite');
-        if (hasBathroomMention) {
-            hasDownstairsBathroom = true;
-            console.log('✓ Inferred downstairs bathroom from single level property');
+// Infer for multi-level properties with 2+ bathrooms and only 1 bedroom upstairs
+if (!hasDownstairsBathroom && !isSingleLevel && property.bathrooms >= 2) {
+    const upstairsBedroomPatterns = [
+        /(\d+|one|a)\s*bedroom[s]?\s*(on|to|at)?\s*(the)?\s*(first|upper|top)\s*floor/i,
+        /(first|upper|top)\s*floor\s*bedroom/i,
+        /bedroom[s]?\s*upstairs/i,
+        /master\s*bedroom\s*(on|to|at)?\s*(the)?\s*(first|upper)\s*floor/i,
+        /bedroom\s*(on|to)\s*(the)?\s*first\s*floor/i
+    ];
+    
+    let hasOnlyOneUpstairsBedroom = upstairsBedroomPatterns.some(pattern => {
+        const match = fullText.match(pattern);
+        if (match) {
+            // Check it's singular (not "2 bedrooms on first floor")
+            const numMatch = match[0].match(/(\d+|two|three|four)/i);
+            return !numMatch || numMatch[1] === '1' || numMatch[1].toLowerCase() === 'one' || numMatch[1].toLowerCase() === 'a';
         }
+        return false;
+    });
+    
+    // Also check for ground floor bedrooms mentioned
+    const hasGroundFloorBedrooms = /(\d+|one|two)\s*bedroom[s]?\s*(on|to|at)?\s*(the)?\s*ground\s*floor/i.test(fullText) ||
+                                   /ground\s*floor.*bedroom/i.test(fullText) ||
+                                   /bedroom[s]?\s*downstairs/i.test(fullText);
+    
+    if (hasOnlyOneUpstairsBedroom && hasGroundFloorBedrooms) {
+        hasDownstairsBathroom = true;
+        console.log('✓ Inferred downstairs bathroom: ground floor bedrooms with 2+ bathrooms, only 1 upstairs');
     }
+}
 
-    if (hasDownstairsBathroom) {
-        score += 1;
-        features.push('Downstairs bathroom/WC');
-        console.log('✓ Downstairs bathroom/WC');
-    }
+if (hasDownstairsBathroom) {
+    score += 1;
+    features.push('Downstairs bathroom/WC');
+    console.log('✓ Downstairs bathroom/WC');
 } else {
-    console.log('✗ Upper floor flat - downstairs bathroom not applicable');
+    console.log('✗ No downstairs bathroom detected');
 }
 
 // CRITERIA 4: Ground floor entry
@@ -4222,9 +4271,12 @@ async function scrapeRightmoveProperty(url) {
             });
         }
 
-        // Extract basic features
-        const bedroomMatch = pageText.match(/(\d+)\s*bedroom/i);
-        const bathroomMatch = pageText.match(/(\d+)\s*bathroom/i);
+        // Extract from Rightmove property details panel (format: "BEDROOMS  3" and "BATHROOMS  2")
+        const bedroomMatch = pageText.match(/BEDROOMS\s*(\d+)/i);
+        const bathroomMatch = pageText.match(/BATHROOMS\s*(\d+)/i);
+
+        console.log('🛏️ Bedroom match from panel:', bedroomMatch ? bedroomMatch[1] : 'not found');
+        console.log('🚿 Bathroom match from panel:', bathroomMatch ? bathroomMatch[1] : 'not found');
 
         const features = [];
         if (bedroomMatch) features.push(`${bedroomMatch[1]} bedroom${bedroomMatch[1] > 1 ? 's' : ''}`);
@@ -4968,7 +5020,8 @@ if (epcResult && epcResult.rating) {
             tenure: tenure,
             leaseholdDetails: leaseholdDetails,
             councilTaxBand: councilTaxBand,
-            dimensions: await extractDimensions(description, title, features)
+            dimensions: await extractDimensions(description, title, features),
+            bathrooms: bathroomMatch ? parseInt(bathroomMatch[1]) : null
         };
 
     } catch (error) {
@@ -5359,9 +5412,7 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     const overallRating = getScoreRating(overallScore);
     summary += ` has achieved an overall accessibility score of ${Math.round(overallScore * 10) / 10}/5 (${overallRating}). `;
 
-    console.log('💷 DEBUG Stamp Duty Description:', stampDutyAnalysis.description);
-
-    // 2. FIXED: Match "Low stamp duty cost" pattern
+    // 2. FIXED: Simplified stamp duty - just state the amount
     if (cost && cost.price) {
         const priceComponents = [];
         priceComponents.push(`The property is priced at ${cost.price}`);
@@ -5370,56 +5421,79 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         const taxName = stampDutyAnalysis.taxName || 'stamp duty';
         
         if (stampDutyAnalysis && stampDutyAnalysis.amount && stampDutyAnalysis.amount !== '£0') {
-            let dutyDescriptor = 'moderate cost';
-            
-            if (stampDutyAnalysis.description) {
-                const descLower = stampDutyAnalysis.description.toLowerCase();
-                // Match patterns: "low stamp duty cost", "low cost", etc.
-                if (descLower.includes('low')) {
-                    dutyDescriptor = 'low cost';
-                } else if (descLower.includes('moderate')) {
-                    dutyDescriptor = 'moderate cost';
-                } else if (descLower.includes('high')) {
-                    dutyDescriptor = 'high cost';
-                }
-            }
-            
             const formattedAmount = String(stampDutyAnalysis.amount).startsWith('£') ? 
                 stampDutyAnalysis.amount : `£${stampDutyAnalysis.amount}`;
             
-            priceComponents.push(`with ${dutyDescriptor} ${taxName} of ${formattedAmount}`);
+            priceComponents.push(`with a ${taxName} of ${formattedAmount}`);
         }
         
         summary += priceComponents.join(' ') + '. ';
     }
     
-    // 3. FIXED: Combined rooms and features with proper "and" before last item
+    // 3. FIXED: Rooms with bonus room logic
     const foundFeatures = accessibleFeatures.features || [];
     const totalFeatures = 8;
     
     let combinedSentence = '';
     
-    // Add room count if available
+    // Add room count with bonus room logic
     if (roomAccommodation && roomAccommodation.roomsFound) {
-        const essentialRooms = roomAccommodation.roomsFound.filter(r => 
-            !r.toLowerCase().includes('bedroom 3') && 
-            !r.toLowerCase().includes('additional')
-        );
-        combinedSentence += `This property has ${essentialRooms.length}/6 essential rooms`;
+        const allRooms = roomAccommodation.roomsFound;
+        
+        // DEBUG - remove later
+        console.log('🏠 DEBUG Rooms found:', allRooms);
+        
+        // Count bedrooms and bathrooms
+        const bedroomCount = allRooms.filter(r => r.toLowerCase().includes('bedroom')).length;
+        const bathroomCount = allRooms.filter(r => 
+            r.toLowerCase().includes('bathroom') || 
+            r.toLowerCase().includes('en-suite') ||
+            r.toLowerCase().includes('ensuite')
+        ).length;
+        
+        // DEBUG - remove later
+        console.log('🛏️ DEBUG Bedroom count:', bedroomCount);
+        console.log('🚿 DEBUG Bathroom count:', bathroomCount);
+        
+        // Calculate bonus rooms: extra bedrooms after 2nd, extra bathrooms after 1st
+        const bonusBedrooms = Math.max(0, bedroomCount - 2);
+        const bonusBathrooms = Math.max(0, bathroomCount - 1);
+        const totalBonus = bonusBedrooms + bonusBathrooms;
+        
+        // Essential rooms = total - bonus (capped at 6)
+        const essentialCount = Math.min(6, allRooms.length - totalBonus);
+        
+        combinedSentence += `This property has ${essentialCount}/6 essential rooms`;
+        
+        if (totalBonus > 0) {
+            combinedSentence += ` and ${totalBonus} bonus ${totalBonus === 1 ? 'room' : 'rooms'}`;
+        }
     } else {
         combinedSentence += `This property has`;
     }
     
-    // Add feature count
+    // Add feature count with proper "a" before downstairs bedroom/bathroom
     if (foundFeatures.length > 0) {
         if (combinedSentence.includes('rooms')) {
-            combinedSentence += ` and ${foundFeatures.length}/${totalFeatures} accessible features including `;
+            combinedSentence += `, and ${foundFeatures.length}/${totalFeatures} accessible features including `;
         } else {
             combinedSentence += ` ${foundFeatures.length}/${totalFeatures} accessible features including `;
         }
         
-        // Format list with "and" before last item
-        const featureList = foundFeatures.slice(0, 4).map(f => f.toLowerCase());
+        // Format features with "a" before downstairs bedroom/bathroom
+        const formatFeature = (feature) => {
+            const lower = feature.toLowerCase();
+            // Add "a" before these specific features
+            if (lower === 'downstairs bedroom' || 
+                lower === 'downstairs bathroom' || 
+                lower === 'downstairs bathroom/wc' ||
+                lower === 'downstairs wc') {
+                return 'a ' + lower;
+            }
+            return lower;
+        };
+        
+        const featureList = foundFeatures.slice(0, 4).map(formatFeature);
         if (featureList.length > 1) {
             const lastFeature = featureList.pop();
             combinedSentence += featureList.join(', ') + ' and ' + lastFeature;
@@ -5454,9 +5528,6 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         summary += ` due to no GP surgeries found in the area`;
     }
     summary += '. ';
-    
-    // DEBUG: Check public transport data structure
-    console.log('🚌 DEBUG Public Transport Data:', JSON.stringify(publicTransport, null, 2));
 
     // 6. Public transport with improved readability
     const transportRating = getScoreRating(publicTransport.score || 0);
@@ -5471,22 +5542,18 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     const trainDistance = nearestTrain?.distance;
 
     if (busWalkable && trainWalkable) {
-        // Both walkable
         summary += ` with the nearest bus stop ${busWalkable} mins walk and train station ${trainWalkable} mins walk away`;
     } else if (busWalkable && !trainWalkable) {
-        // Only bus walkable
         summary += ` with the nearest bus stop ${busWalkable} mins walk away`;
         if (trainDistance) {
             summary += `. The nearest train station is ${trainDistance} away`;
         }
     } else if (!busWalkable && trainWalkable) {
-        // Only train walkable
         summary += ` with the nearest train station ${trainWalkable} mins walk away`;
         if (busDistance) {
             summary += `. The nearest bus stop is ${busDistance} away`;
         }
     } else {
-        // Neither walkable
         if (busDistance || trainDistance) {
             summary += ` but public transport requires additional travel`;
             const distances = [];
@@ -5540,14 +5607,11 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
     const criticalMissing = [];
     const transportNeeds = [];
 
-    // Check if property has internal stairs (multi-level without lift)
-    // Don't flag flats as lacking single-level living - they're single-level by definition
     const hasInternalStairs = !isSingleLevel && !isFlat && !hasAnyLift;
     if (hasInternalStairs) {
         criticalMissing.push("single-level living");
     }
 
-    // Check for level access entry (this is about external access to the property)
     const hasLevelAccessEntry = foundFeatures.some(f => 
         f.toLowerCase().includes('level') || 
         f.toLowerCase().includes('ramp') ||
@@ -5558,7 +5622,6 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         criticalMissing.push("level access entry");
     }
 
-    // Check if transport will be needed for essential services
     if (gpProximity.score === 0 || (gpProximity.nearestGPs?.[0]?.tooFar)) {
         transportNeeds.push("medical appointments");
     }
@@ -5572,7 +5635,6 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         if (criticalMissing.length > 0) {
             summary += `the property lacks ${criticalMissing.join(' and ')}`;
             
-            // Add specific context for upper floor flats
             if (isUpperFloorFlat && criticalMissing.includes("level access entry")) {
                 summary += " (first floor location requires stairs or lift access)";
             } else if (isFlat && floorLevel && floorLevel !== 'ground' && criticalMissing.includes("level access entry")) {
@@ -5592,18 +5654,80 @@ function generateComprehensiveSummary(gpProximity, epcScore, accessibleFeatures,
         }
     }
 
-    // 10. Final recommendation
+    // 10. FIXED: Specific final recommendation based on actual features
     summary += "Overall, this property is ";
+    
+    // Build specific recommendation based on what the property has
+    const positives = [];
+    const considerations = [];
+    
+    // Check key features
+    const hasDownstairsBedroom = foundFeatures.some(f => f.toLowerCase().includes('downstairs bedroom'));
+    const hasDownstairsBathroom = foundFeatures.some(f => 
+        f.toLowerCase().includes('downstairs bathroom') || 
+        f.toLowerCase().includes('downstairs wc')
+    );
+    const hasStepFreeAccess = foundFeatures.some(f => 
+        f.toLowerCase().includes('step-free') || 
+        f.toLowerCase().includes('level access')
+    );
+    const hasGarden = foundFeatures.some(f => f.toLowerCase().includes('garden'));
+    const hasParking = foundFeatures.some(f => f.toLowerCase().includes('parking'));
+    
+    // Build positives
+    if (isSingleLevel || isFlat) positives.push("single-level living");
+    if (hasDownstairsBedroom && hasDownstairsBathroom) positives.push("ground floor sleeping and bathing");
+    else if (hasDownstairsBedroom) positives.push("a downstairs bedroom");
+    else if (hasDownstairsBathroom) positives.push("a downstairs bathroom");
+    if (hasStepFreeAccess) positives.push("step-free access");
+    if (gpProximity.score >= 4) positives.push("excellent GP proximity");
+    if (publicTransport.score >= 4) positives.push("great transport links");
+    if (epcScore >= 4) positives.push("low running costs");
+    
+    // Build considerations
+    if (hasInternalStairs) considerations.push("internal stairs");
+    if (!hasLevelAccessEntry) considerations.push("steps at entry");
+    if (gpProximity.score <= 1) considerations.push("distant GP");
+    if (publicTransport.score <= 1) considerations.push("limited transport");
+    if (epcScore <= 2) considerations.push("higher energy costs");
+    
+    // Generate specific recommendation
     if (overallScore >= 4.5) {
-        summary += "highly suitable for seniors planning to age in place, with excellent accessibility features throughout.";
+        summary += "excellent for aging in place";
+        if (positives.length > 0) {
+            summary += `, offering ${positives.slice(0, 3).join(', ')}`;
+        }
+        summary += ".";
     } else if (overallScore >= 3.5) {
-        summary += "very suitable for active seniors and those planning long-term residence.";
+        summary += "well-suited for long-term residence";
+        if (positives.length > 0) {
+            summary += ` with ${positives.slice(0, 2).join(' and ')}`;
+        }
+        if (considerations.length > 0) {
+            summary += `, though ${considerations[0]} may require consideration`;
+        }
+        summary += ".";
     } else if (overallScore >= 2.5) {
-        summary += "well-suited for seniors with good mobility and some adaptability.";
+        summary += "suitable for those with moderate mobility";
+        if (positives.length > 0) {
+            summary += `, benefiting from ${positives[0]}`;
+        }
+        if (considerations.length > 0) {
+            summary += `. Note that ${considerations.slice(0, 2).join(' and ')} may present challenges`;
+        }
+        summary += ".";
     } else if (overallScore >= 1.5) {
-        summary += "suitable for those with minimal mobility requirements or willingness to make modifications.";
+        summary += "best suited for those with good mobility";
+        if (considerations.length > 0) {
+            summary += ` as ${considerations.slice(0, 2).join(' and ')} will need to be managed`;
+        }
+        summary += ".";
     } else {
-        summary += "best suited for those able to undertake significant accessibility modifications.";
+        summary += "likely to require significant adaptations for accessibility";
+        if (considerations.length > 0) {
+            summary += `, particularly addressing ${considerations.slice(0, 2).join(' and ')}`;
+        }
+        summary += ".";
     }
 
     return summary;
