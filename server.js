@@ -7,6 +7,8 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 require('dotenv').config();
 
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3002';
+
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const { createClient } = require('@supabase/supabase-js');
@@ -677,8 +679,8 @@ app.post('/api/create-checkout', async (req, res) => {
                 price: priceId,
                 quantity: 1
             }],
-            success_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=success`,
-            cancel_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=cancelled`,
+            success_url: `${BASE_URL}/?payment=success`,
+            cancel_url: `${BASE_URL}/?payment=cancelled`,
             metadata: {
                 plan: plan,
                 email: user.email
@@ -886,7 +888,7 @@ app.post('/api/customer-portal', async (req, res) => {
     try {
         const session = await stripe.billingPortal.sessions.create({
             customer: dbUser.stripe_customer_id,
-            return_url: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
+            return_url: `${BASE_URL}/analysis.html`
         });
         
         console.log('🔧 Portal session created for:', user.email);
@@ -964,8 +966,8 @@ app.post('/api/create-team-checkout', async (req, res) => {
                 price: priceId,
                 quantity: 1
             }],
-            success_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=success`,
-            cancel_url: `${req.headers.origin || 'http://localhost:3002'}/?payment=cancelled`,
+            success_url: `${BASE_URL}/?payment=success`,
+            cancel_url: `${BASE_URL}/?payment=cancelled`,
             metadata: { 
                 team_id: membership.team_id,
                 plan: plan
@@ -1146,8 +1148,8 @@ app.post('/api/create-checkout-guest', async (req, res) => {
                 quantity: 1
             }],
             mode: 'subscription',
-            success_url: `${req.headers.origin}/analysis.html?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
-            cancel_url: `${req.headers.origin}/analysis.html?checkout=cancelled`,
+            success_url: `${BASE_URL}/analysis.html?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${BASE_URL}/analysis.html?checkout=cancelled`,
             metadata: {
                 user_id: user.id,
                 email: email,
@@ -1213,7 +1215,7 @@ app.get('/api/checkout-complete', async (req, res) => {
         await supabase.auth.signInWithOtp({
             email: session.customer_email,
             options: {
-                emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
+                emailRedirectTo: `${BASE_URL}/analysis.html`
             }
         });
         console.log('📧 Fallback: Magic link sent to:', session.customer_email);
@@ -1244,7 +1246,7 @@ app.post('/api/customer-portal', async (req, res) => {
     try {
         const session = await stripe.billingPortal.sessions.create({
             customer: dbUser.stripe_customer_id,
-            return_url: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
+            return_url: `${BASE_URL}/analysis.html`
         });
         
         console.log('🔧 Portal session created for:', user.email);
@@ -6052,7 +6054,7 @@ app.post('/auth/magic-link', async (req, res) => {
     const { data, error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
-            emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/analysis.html`
+            emailRedirectTo: BASE_URL
         }
     });
     
@@ -6377,10 +6379,10 @@ app.post('/api/teams/invite', async (req, res) => {
         });
     
     // Send magic link to invitee
-    await supabase.auth.signInWithOtp({
-        email: email,
+        await supabase.auth.signInWithOtp({
+        email: session.customer_email,
         options: {
-            emailRedirectTo: `${req.headers.origin || 'http://localhost:3002'}/auth/callback`
+            emailRedirectTo: `${BASE_URL}/analysis.html`
         }
     });
     
