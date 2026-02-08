@@ -3466,7 +3466,10 @@
     
     <div class="container">
         <div class="header">
-            <a href="index.html" style="text-decoration: none; color: inherit;"><h1>🏠 Home Accessibility Score</h1></a>
+            <a href="index.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px; justify-content: center;">
+                <img src="/HAS_logo.png" alt="HAS" style="height: 36px; border-radius: 6px;">
+                <h1 style="margin: 0;">Home Accessibility Score</h1>
+            </a>
             <p>Analyse properties for older adults and those with mobility needs</p>
         </div>
 
@@ -3940,68 +3943,77 @@
                 modal.appendChild(container);
             }
             
-            box.innerHTML = '<h2>You\'ve Used Your Free Analysis 🏠</h2>' +
+            box.innerHTML = '<h2 style="margin-bottom: 12px; font-size: 1.3rem;">You\'ve Used Your Free Analysis</h2>' +
                 
-                '<div class="plan-toggle">' +
+                '<div class="plan-toggle" style="margin-bottom: 12px;">' +
                 '<button class="plan-toggle-btn active" onclick="showPlan(\'individual\')">Individual</button>' +
                 '<button class="plan-toggle-btn" onclick="showPlan(\'team\')">Estate Agents</button>' +
                 '</div>' +
                 
                 '<div id="plan-individual" class="plan-content active">' +
-                '<div class="billing-toggle">' +
+                '<div class="billing-toggle" style="margin-bottom: 8px;">' +
                 '<span class="billing-label active" id="label-monthly" onclick="setBilling(\'monthly\')">Monthly</span>' +
                 '<div class="toggle-switch" id="billing-switch" onclick="toggleBilling()"></div>' +
                 '<span class="billing-label" id="label-annual" onclick="setBilling(\'annual\')">Annual</span>' +
                 '</div>' +
-                '<div class="plan-price" id="individual-price">£19.99<span>/month</span></div>' +
-                '<div class="savings-row" id="savings-row" style="display: none;">' +
+                '<div class="plan-price" id="individual-price" style="margin-bottom: 4px;">£19.99<span>/month</span></div>' +
+                '<div class="savings-row" id="savings-row" style="display: none; margin-bottom: 8px;">' +
                 '<span class="plan-price-crossed">£239.88/year</span>' +
                 '<span class="savings-badge">Save £39.89</span>' +
                 '</div>' +
-                '<ul class="plan-features">' +
+                '<ul class="plan-features" style="margin: 8px 0; padding-left: 20px; font-size: 0.85rem;">' +
                 '<li>Unlimited property analyses</li>' +
                 '<li>Save up to 50 properties</li>' +
                 '<li>Full search history</li>' +
                 '<li>Download & print PDF reports</li>' +
                 '</ul>' +
-                '<input type="email" class="upgrade-input" id="individual-email" value="' + savedEmail + '" placeholder="your@email.com" />' +
-                '<button class="btn-subscribe" id="individual-btn" onclick="handleUpgrade(\'individual\')">Get Pro</button>' +
+                '<input type="email" class="upgrade-input" id="individual-email" value="' + savedEmail + '" placeholder="your@email.com" style="padding: 10px; margin-bottom: 8px;" />' +
+                '<button class="btn-subscribe" id="individual-btn" onclick="handleUpgrade(\'individual\')" style="padding: 10px;">Get Pro</button>' +
                 '</div>' +
                 
                 '<div id="plan-team" class="plan-content">' +
-                '<div class="billing-toggle">' +
+                '<div class="billing-toggle" style="margin-bottom: 8px;">' +
                 '<span class="billing-label active" id="team-label-monthly" onclick="setTeamBilling(\'monthly\')">Monthly</span>' +
                 '<div class="toggle-switch" id="team-billing-switch" onclick="toggleTeamBilling()"></div>' +
                 '<span class="billing-label" id="team-label-annual" onclick="setTeamBilling(\'annual\')">Annual</span>' +
                 '</div>' +
-                '<div class="plan-price" id="team-price">£49.99<span>/month</span></div>' +
-                '<div class="savings-row" id="team-savings-row" style="display: none;">' +
+                '<div class="plan-price" id="team-price" style="margin-bottom: 4px;">£49.99<span>/month</span></div>' +
+                '<div class="savings-row" id="team-savings-row" style="display: none; margin-bottom: 8px;">' +
                 '<span class="plan-price-crossed">£599.88/year</span>' +
                 '<span class="savings-badge">Save £99.89</span>' +
                 '</div>' +
-                '<ul class="plan-features">' +
+                '<ul class="plan-features" style="margin: 8px 0; padding-left: 20px; font-size: 0.85rem;">' +
                 '<li>Everything in Pro</li>' +
                 '<li>Up to 5 team members</li>' +
                 '<li>Shared property lists</li>' +
                 '<li>Team admin dashboard</li>' +
                 '</ul>' +
-                '<input type="email" class="upgrade-input" id="team-email" value="' + savedEmail + '" placeholder="your@email.com" />' +
-                '<button class="btn-subscribe" id="team-btn" onclick="handleUpgrade(\'team\')">Get Team Plan</button>' +
+                '<input type="email" class="upgrade-input" id="team-email" value="' + savedEmail + '" placeholder="your@email.com" style="padding: 10px; margin-bottom: 8px;" />' +
+                '<button class="btn-subscribe" id="team-btn" onclick="handleUpgrade(\'team\')" style="padding: 10px;">Get Team Plan</button>' +
                 '</div>' +
                 
-                '<p id="upgradeMessage" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></p>' +
+                '<p id="upgradeMessage" style="margin-top: 8px; font-size: 0.85rem; text-align: center;"></p>' +
                 
-                '<div class="divider" style="margin: 24px 0; text-align: center; color: #9ca3af; font-size: 0.85rem;">— or —</div>' +
+                '<p onclick="toggleSignIn()" style="margin-top: 16px; font-size: 0.9rem; color: #2563eb; cursor: pointer; text-align: center; text-decoration: underline;">Already have an account? Sign in</p>' +
                 
-                '<p style="font-size: 0.95rem; color: #374151; margin-bottom: 12px; text-align: center;">Already have an account? Enter your email to sign in.</p>' +
-                '<div style="max-width: 300px; margin: 0 auto;">' +
-                '<input type="email" id="paywallEmail" value="' + savedEmail + '" placeholder="your@email.com" style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; margin-bottom: 12px; box-sizing: border-box;" />' +
-                '<button onclick="sendPaywallMagicLink()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">Send Sign-in Link</button>' +
-                '<p id="paywallMessage" style="margin-top: 10px; font-size: 0.9rem;"></p>' +
+                '<div id="signInBox" style="display: none; max-width: 300px; margin: 12px auto 0;">' +
+                '<input type="email" id="paywallEmail" value="' + savedEmail + '" placeholder="your@email.com" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; margin-bottom: 8px; box-sizing: border-box;" />' +
+                '<button onclick="sendPaywallMagicLink()" style="width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">Send Sign-in Link</button>' +
+                '<p id="paywallMessage" style="margin-top: 8px; font-size: 0.85rem;"></p>' +
                 '</div>' +
-                '<button class="btn-close-paywall" onclick="hidePaywallModal()">Maybe later</button>';
+                
+                '<button class="btn-close-paywall" onclick="hidePaywallModal()" style="margin-top: 12px; padding: 8px; font-size: 0.85rem;">Maybe later</button>';
             
             modal.classList.remove('hidden');
+        }
+
+        function toggleSignIn() {
+            var signInBox = document.getElementById('signInBox');
+            if (signInBox.style.display === 'none') {
+                signInBox.style.display = 'block';
+            } else {
+                signInBox.style.display = 'none';
+            }
         }
 
         var currentBilling = 'monthly';
@@ -5560,10 +5572,6 @@ function preparePrintReport() {
 
             // Stamp Duty Card
             if (propertyCost && propertyCost.stampDutyAmount !== null) {
-                const stampTagClass = getCostTagClass('stampDuty', propertyCost.stampDutyAmount);
-                const stampTagText = propertyCost.stampDutyAmount === 0 || propertyCost.stampDutyAmount <= 10000 ? 'Low' : 
-                    propertyCost.stampDutyAmount <= 20000 ? 'Medium' : 'High';
-
                 html += `
                     <div class="cost-item-card">
                         <div class="cost-main">
@@ -5571,7 +5579,6 @@ function preparePrintReport() {
                             <span class="cost-label">Stamp Duty (England)</span>
                         </div>
                         <div class="cost-result">
-                            <span class="cost-tag ${stampTagClass}">${stampTagText}</span>
                             <span class="cost-value">£${propertyCost.stampDutyAmount.toLocaleString()}</span>
                         </div>
                     </div>
@@ -6973,8 +6980,7 @@ async function removeSavedProperty(propertyId) {
             <div class="print-report" id="printReport">
                 <div class="print-header">
                     <div class="print-brand">
-                        <span class="print-brand-icon">🏠</span>
-                        <span class="print-brand-name">Home Accessibility Score</span>
+                        <img src="/HAS_logo.png" alt="HAS" class="print-brand-icon" style="height: 24px; border-radius: 4px;">
                     </div>
                     <div class="print-date" id="printDate"></div>
                 </div>
