@@ -16,7 +16,7 @@ const { createClient } = require('@supabase/supabase-js');
 // Supabase client
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 // Admin client for generating auth tokens
@@ -6380,11 +6380,11 @@ app.post('/api/teams/invite', async (req, res) => {
     
     // Send magic link to invitee
         await supabase.auth.signInWithOtp({
-        email: session.customer_email,
-        options: {
-            emailRedirectTo: `${BASE_URL}/analysis.html`
-        }
-    });
+            email: email,
+            options: {
+                emailRedirectTo: `${BASE_URL}/analysis.html`
+            }
+        });
     
     console.log('📧 Team invite sent to:', email);
     res.json({ message: `Invite sent to ${email}` });
