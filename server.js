@@ -1666,9 +1666,9 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
 
  // Detect property type first
 const isFlat = /\b(flat|apartment)\b/i.test(fullText);
-const floorLevelMatch = fullText.match(/\b(ground|first|second|third|top)[\s-]?floor\s+(flat|apartment|independent living apartment)/i);
+const floorLevelMatch = fullText.match(/\b(ground|lower ground|basement|garden level|first|second|third|top)[\s-]?floor\s+(flat|apartment|maisonette|studio|conversion)/i) || /garden (flat|apartment)/i.test(fullText);
 const floorLevel = floorLevelMatch ? floorLevelMatch[1].toLowerCase() : null;
-const isGroundFloorFlat = isFlat && floorLevel === 'ground';
+const isGroundFloorFlat = isFlat && (floorLevel === 'ground' || /garden flat/i.test(fullText) ||/lower ground/i.test(fullText));
 const isUpperFloorFlat = isFlat && floorLevel && floorLevel !== 'ground';
 
 console.log(`🏠 Property type: Flat=${isFlat}, Floor level=${floorLevel}, Ground floor flat=${isGroundFloorFlat}, Upper floor=${isUpperFloorFlat}`);
@@ -1707,12 +1707,12 @@ const hasUpperFloorEvidence = upperFloorKeywords.some(keyword =>
     fullText.toLowerCase().includes(keyword)
 );
 
-// Single-level property
-if (isSingleLevel && !hasMultipleLevels) {
+// Single-level property OR ground floor flat
+if ((isSingleLevel && !hasMultipleLevels) || isGroundFloorFlat) {
     hasStepFreeInternal = true;
     score += 1;
     features.push('Step-free internal access');
-    console.log('✓ Step-free internal access (single level property)');
+    console.log('✓ Step-free internal access (single level / ground floor flat)');
 } else if (isSingleLevel && isRetirementProperty && !hasUpperFloorEvidence) {
     // Single-level retirement property with no mention of upper floors - infer step-free
     hasStepFreeInternal = true;
@@ -6051,10 +6051,14 @@ app.post('/auth/magic-link', async (req, res) => {
     }
     
     // User has active subscription - send magic link
+    const redirectBase = process.env.NODE_ENV === 'development' 
+        ? 'http://localhost:3002' 
+        : process.env.BASE_URL;
+
     const { data, error } = await supabase.auth.signInWithOtp({
         email: email,
         options: {
-            emailRedirectTo: BASE_URL
+            emailRedirectTo: `${redirectBase}/auth/callback`
         }
     });
     

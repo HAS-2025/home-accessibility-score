@@ -5111,14 +5111,14 @@ function preparePrintReport() {
             
             // Define the 8 criteria with icons
             const criteriaMapping = [
-                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: 'Step-free access', icon: '🚶' },
+                { key: 'stepFreeOrLift', labels: ['Step-free internal access', 'Lift', 'Stairlift'], displayAs: 'Step-free internal access',icon: '🚶' },
                 { key: 'downstairsBedroom', labels: ['Downstairs bedroom'], displayAs: 'Downstairs bedroom', icon: '🛏️' },
                 { key: 'downstairsBathroom', labels: ['Downstairs bathroom/WC'], displayAs: 'Downstairs bathroom', icon: '🚿' },
                 { key: 'groundFloorEntry', labels: ['Ground floor entry'], displayAs: 'Ground floor entry', icon: '🚪' },
                 { key: 'privateParking', labels: ['Off-street/private parking'], displayAs: 'Private parking', icon: '🚗' },
                 { key: 'garden', labels: ['Garden access'], displayAs: 'Garden access', icon: '🌱' },
                 { key: 'balcony', labels: ['Balcony/terrace'], displayAs: 'Balcony/terrace', icon: '🌿' },
-                { key: 'externalLevelAccess', labels: ['External level/ramp access'], displayAs: 'Level access', icon: '♿' }
+                { key: 'externalLevelAccess',labels: ['External level/ramp access'],displayAs: 'External level access', icon: '♿' }            
             ];
 
             let detailsHtml = '<div class="features-grid">';
@@ -5142,6 +5142,11 @@ function preparePrintReport() {
                         <span class="info-icon">i</span>
                         <span class="tooltiptext">Step-free entry from outside to inside the property (e.g. no steps at front door, ramp access).</span>
                     </span>` 
+                    : criterion.key === 'stepFreeOrLift'
+                    ? `<span class="tooltip feature-tooltip">
+                        <span class="info-icon">i</span>
+                        <span class="tooltiptext">No stairs or internal steps between rooms within the property.</span>
+                    </span>`
                     : '';
 
                 detailsHtml += `
