@@ -1668,7 +1668,15 @@ console.log('🏠 Lift detected:', hasLift, '| Stairlift detected:', hasStairlif
 const isFlat = /\b(flat|apartment)\b/i.test(fullText);
 const floorLevelMatch = fullText.match(/\b(ground|lower ground|basement|garden level|first|second|third|top)[\s-]?floor\s+(flat|apartment|maisonette|studio|conversion)/i) || /garden (flat|apartment)/i.test(fullText);
 const floorLevel = floorLevelMatch ? floorLevelMatch[1].toLowerCase() : null;
-const isGroundFloorFlat = isFlat && (floorLevel === 'ground' || /garden flat/i.test(fullText) ||/lower ground/i.test(fullText));
+const isGroundFloorFlat = isFlat && (
+    floorLevel === 'ground' ||
+    /garden (flat|apartment)/i.test(fullText) ||
+    /lower ground floor (flat|apartment|maisonette|studio|conversion)/i.test(fullText) ||
+    /basement (flat|apartment|maisonette|studio)/i.test(fullText) ||
+    /garden level (flat|apartment)/i.test(fullText) ||
+    /ground level (flat|apartment)/i.test(fullText) ||
+    /ground floor (conversion|studio|annexe|maisonette)/i.test(fullText)
+);
 const isUpperFloorFlat = isFlat && floorLevel && floorLevel !== 'ground';
 
 console.log(`🏠 Property type: Flat=${isFlat}, Floor level=${floorLevel}, Ground floor flat=${isGroundFloorFlat}, Upper floor=${isUpperFloorFlat}`);
