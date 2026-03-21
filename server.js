@@ -6071,7 +6071,7 @@ app.post('/auth/magic-link', async (req, res) => {
     });
     
     if (error) {
-        console.log('❌ Magic link error:', error.message);
+        console.log('❌ Magic link error:', JSON.stringify(error));
         return res.status(400).json({ error: error.message });
     }
     
