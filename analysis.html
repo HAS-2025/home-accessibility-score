@@ -1682,6 +1682,9 @@
             top: 20px;
             right: 20px;
             z-index: 1000;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
         }
 
         .auth-btn {
@@ -1699,58 +1702,197 @@
             background: #1d4ed8;
         }
 
+        /* Logged-in user menu wrapper */
         .user-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
             position: relative;
         }
 
-        .user-email {
-            font-weight: 600;
-            color: #1f2937;
-            padding: 12px 16px;
-            cursor: pointer;
-            border-radius: 8px;
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            display: inline-block;
-        }
-
-        .user-menu-dropdown {
-            visibility: hidden;
-            opacity: 0;
-            position: absolute;
-            top: calc(100% - 5px);
-            right: 0;
+        /* Vertical sidebar icons */
+        .sidebar-icons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
             background: white;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            padding: 8px;
-            min-width: 250px;
-            z-index: 1001;
-            transition: opacity 0.2s, visibility 0.2s;
-            padding-top: 15px;
+            padding: 8px 6px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
         }
 
-        .user-menu:hover .user-menu-dropdown {
-            visibility: visible;
+        .sidebar-icon-btn {
+            position: relative;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+
+        .sidebar-icon-btn::after {
+            content: attr(title);
+            position: absolute;
+            right: 46px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #1e3a5f;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .sidebar-icon-btn:hover::after {
             opacity: 1;
         }
 
-        .user-menu-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 12px 15px;
-            border-radius: 8px;
-            cursor: pointer;
-            color: #4b5563;
-            transition: background 0.2s;
-            font-size: 14px;
-            font-weight: 500;
+        .sidebar-icon-btn:hover {
+            background: #f3f4f6;
         }
 
-        .user-menu-item:hover {
+        .sidebar-badge {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #ef4444;
+            color: white;
+            font-size: 9px;
+            font-weight: 700;
+            border-radius: 999px;
+            padding: 1px 4px;
+            min-width: 14px;
+            text-align: center;
+            display: none;
+        }
+
+        .sidebar-badge.has-items {
+            display: block;
+        }
+
+        /* Avatar circle button */
+        .avatar-btn {
+            position: relative;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #1e3a5f;
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: background 0.2s;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .avatar-btn::after {
+            content: 'Settings';
+            position: absolute;
+            right: 46px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #1e3a5f;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+
+        .avatar-btn:hover::after {
+            opacity: 1;
+        }
+
+        .avatar-btn:hover {
+            background: #2a4f7f;
+        }
+
+        /* Avatar dropdown */
+        .avatar-dropdown {
+            position: absolute;
+            top: 0;
+            right: 46px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            min-width: 220px;
+            z-index: 1001;
+        }
+
+        .avatar-dropdown-email {
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .avatar-dropdown-badge {
+            display: inline-block;
+            background: #1e3a5f;
+            color: white;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+            vertical-align: middle;
+            letter-spacing: 0.5px;
+        }
+
+        .avatar-dropdown-divider {
+            height: 1px;
             background: #f3f4f6;
-            color: #1f2937;
+            margin: 4px 0;
+        }
+
+        .avatar-dropdown-item {
+            padding: 10px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.15s;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar-dropdown-item:hover {
+            background: #f9fafb;
+        }
+
+        .avatar-dropdown-item.signout {
+            color: #ef4444;
+        }
+
+        .avatar-dropdown-section-label {
+            padding: 6px 16px 2px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .toast {
@@ -3085,31 +3227,43 @@
             }
         }
 
+        /* ========== MOBILE ========== */
         @media (max-width: 768px) {
-            /* 1. Push header down to avoid auth overlap */
             .container {
                 padding: 70px 15px 20px 15px;
             }
-            
-            /* Auth container adjustments for mobile */
+
             .auth-container {
                 top: 10px;
                 right: 10px;
             }
-            
-            .user-email {
-                padding: 8px 12px;
-                font-size: 12px;
-                max-width: 180px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-            
+
             .auth-btn {
                 padding: 8px 12px;
                 font-size: 12px;
             }
+
+            .sidebar-icons {
+                padding: 6px 4px;
+                gap: 4px;
+            }
+
+            .sidebar-icon-btn {
+                width: 30px;
+                height: 30px;
+                font-size: 15px;
+            }
+
+            .avatar-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 13px;
+            }
+
+            .avatar-dropdown {
+                min-width: 180px;
+            }
+        
 
             /* 2. Optimise header title and subtext */
             .header {
@@ -3367,29 +3521,55 @@
         <!-- Shown when logged out -->
         <button class="auth-btn auth-btn-subscribe" id="subscribeBtn" onclick="showPaywallModal()">Subscribe</button>
         <button class="auth-btn" id="loginBtn" onclick="showLoginModal()">Sign In</button>
-        
+
         <!-- Shown when logged in -->
         <div class="user-menu hidden" id="userMenu">
-            <div class="user-email" id="userEmail"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a7d2d4c2d5e7c2dfc6cad7cbc289c4c8ca">[email&#160;protected]</a></div>
-            <div class="user-menu-dropdown">
-                <div class="user-menu-item" onclick="showSavedProperties()">
-                    ⭐ Saved Properties <span id="savedCount">(0)</span>
+
+            <!-- Avatar button — now at top -->
+            <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()">
+                <span id="avatarInitial">?</span>
+            </div>
+
+            <!-- Avatar dropdown -->
+            <div class="avatar-dropdown hidden" id="avatarDropdown">
+                <div class="avatar-dropdown-email">
+                    <span id="userEmail"></span>
+                    <span class="avatar-dropdown-badge" id="planBadge">PRO</span>
                 </div>
-                <div class="user-menu-item" onclick="showSearchHistory()">
-                    🕐 Search History
+                <div class="avatar-dropdown-divider"></div>
+                <div class="avatar-dropdown-section-label">Account</div>
+                <div class="avatar-dropdown-item" onclick="manageSubscription()" id="subscriptionItem">
+                    💳 Manage Subscription
                 </div>
-                <div class="user-menu-item" id="teamMenuItem" style="display: none;" onclick="showTeamPanel()">
-                    🏢 My Team
+                <div id="teamDropdownSection" style="display: none;">
+                    <div class="avatar-dropdown-divider"></div>
+                    <div class="avatar-dropdown-section-label">Team</div>
+                    <div class="avatar-dropdown-item" onclick="showTeamPanel()">
+                        🏢 Team Settings
+                    </div>
                 </div>
-                <div class="user-menu-item" onclick="manageSubscription()" id="subscriptionItem">
-                    💳 Upgrade to Pro
-                </div>
-                <div class="user-menu-item" onclick="logout()" style="color: #ef4444;">
+                <div class="avatar-dropdown-divider"></div>
+                <div class="avatar-dropdown-item signout" onclick="logout()">
                     🚪 Sign Out
                 </div>
             </div>
-        </div>
-    </div>
+
+            <!-- Vertical sidebar icons — now below avatar -->
+            <div class="sidebar-icons">
+                <div class="sidebar-icon-btn" onclick="showSavedProperties()" title="Saved Properties">
+                    ⭐
+                    <span class="sidebar-badge" id="savedCount">0</span>
+                </div>
+                <div class="sidebar-icon-btn" onclick="showSearchHistory()" title="Search History">
+                    🕐
+                </div>
+                <div class="sidebar-icon-btn" id="teamIconBtn" style="display: none;" onclick="showTeamPanel()" title="My Team">
+                    🏢
+                </div>
+            </div>
+
+        </div> <!-- end user-menu -->
+    </div> <!-- end auth-container -->
 
     <!-- Login Modal -->
     <div class="login-modal hidden" id="loginModal">
@@ -3466,10 +3646,10 @@
     
     <div class="container">
         <div class="header">
-            <a href="index.html" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: 10px; justify-content: center;">
+            <div style="display: flex; align-items: center; gap: 10px; justify-content: center;">
                 <img src="/HAS_logo.png" alt="HAS" style="height: 36px; border-radius: 6px;">
                 <h1 style="margin: 0;">Home Accessibility Score</h1>
-            </a>
+            </div>
             <p>Analyse properties for older adults and those with mobility needs</p>
         </div>
 
@@ -6009,15 +6189,15 @@ function showLoggedOutState() {
 function showLoggedInState(user) {
     document.getElementById('loginBtn').classList.add('hidden');
     document.getElementById('userMenu').classList.remove('hidden');
-    
-    // Hide subscribe button if user has active subscription
+
+    // Hide subscribe button if active subscriber
     if (user.subscription_status === 'active') {
         document.getElementById('subscribeBtn').classList.add('hidden');
     } else {
         document.getElementById('subscribeBtn').classList.remove('hidden');
     }
-    
-    // Show/hide save property button based on subscription
+
+    // Show/hide save property button
     const saveBtn = document.getElementById('savePropertyBtn');
     if (saveBtn) {
         if (user.subscription_status === 'active') {
@@ -6026,22 +6206,44 @@ function showLoggedInState(user) {
             saveBtn.classList.add('hidden');
         }
     }
-    
-    document.getElementById('userEmail').innerHTML = user.email + 
-        (user.subscription_status === 'active' 
-            ? '<span class="subscription-badge badge-pro">PRO</span>' 
-            : '<span class="subscription-badge badge-free">FREE</span>');
-    
-    // Update subscription menu item
+
+    // Set avatar initial
+    document.getElementById('avatarInitial').textContent = user.email.charAt(0).toUpperCase();
+
+    // Set email in dropdown
+    document.getElementById('userEmail').textContent = user.email;
+
+    // Set plan badge
+    const badge = document.getElementById('planBadge');
+    const tier = user.subscription_tier;
+    if (tier === 'team' || tier === 'team-annual') {
+        badge.textContent = 'TEAM';
+    } else if (user.subscription_status === 'active') {
+        badge.textContent = 'PRO';
+    } else {
+        badge.textContent = 'FREE';
+    }
+
+    // Update manage subscription item
     const subItem = document.getElementById('subscriptionItem');
     if (subItem) {
-        if (user.subscription_status === 'active') {
-            subItem.innerHTML = '💳 Manage Subscription';
-        } else {
-            subItem.innerHTML = '💳 Upgrade to Pro';
-        }
+        subItem.innerHTML = user.subscription_status === 'active'
+            ? '💳 Manage Subscription'
+            : '💳 Upgrade to Pro';
     }
 }   
+
+function toggleAvatarMenu() {
+    document.getElementById('avatarDropdown').classList.toggle('hidden');
+}
+
+document.addEventListener('click', function(e) {
+    const avatarBtn = document.getElementById('avatarBtn');
+    const dropdown = document.getElementById('avatarDropdown');
+    if (dropdown && avatarBtn && !avatarBtn.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.classList.add('hidden');
+    }
+});
     
     
     // Load saved count
@@ -6216,7 +6418,7 @@ async function loadSavedPropertiesPanel() {
                         <div class="saved-property-score">⭐ ${score}/5</div>
                         <div class="saved-property-date">Saved ${savedDate}</div>
                     </div>
-                    ${property.price ? `<div class="saved-property-price">${property.price}</div>` : ''}
+                    ${property.price ? `<div class="saved-property-price">£${Number(property.price).toLocaleString()}</div>` : ''}
                     <div class="saved-property-actions">
                         <button class="saved-btn-view" onclick="viewSavedProperty('${property.rightmove_id || item.property_id}')">View Analysis</button>
                         <button class="saved-btn-remove" onclick="removeSavedProperty('${property.rightmove_id}')">🗑️</button>
@@ -6399,13 +6601,18 @@ async function removeSavedProperty(propertyId) {
     async function loadSavedCount() {
         const token = localStorage.getItem('auth_token');
         if (!token) return;
-        
+
         try {
             const response = await fetch('/api/properties/saved', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            document.getElementById('savedCount').textContent = `(${data.saved?.length || 0})`;
+            const count = data.saved?.length || 0;
+            const badge = document.getElementById('savedCount');
+            if (badge) {
+                badge.textContent = count;
+                badge.classList.toggle('has-items', count > 0);
+            }
         } catch (error) {
             console.log('Failed to load saved count');
         }
@@ -6504,7 +6711,7 @@ async function loadSavedPropertiesPanel() {
                         <div class="saved-property-score">⭐ ${score}/5</div>
                         <div class="saved-property-date">Saved ${savedDate}</div>
                     </div>
-                    ${property.price ? `<div class="saved-property-price">${property.price}</div>` : ''}
+                    ${property.price ? `<div class="saved-property-price">£${Number(property.price).toLocaleString()}</div>` : ''}
                     <div class="saved-property-actions">
                         <button class="saved-btn-view" onclick="viewSavedProperty('${property.rightmove_id || item.property_id}')">View Analysis</button>
                         <button class="saved-btn-remove" onclick="removeSavedProperty('${property.rightmove_id}')">🗑️</button>
@@ -6670,32 +6877,44 @@ async function removeSavedProperty(propertyId) {
     async function checkTeamMembership() {
         const token = localStorage.getItem('auth_token');
         if (!token) return;
-        
+
         try {
             const response = await fetch('/api/teams/me', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            
-            if (data.team) {
-                currentTeam = data.team;
-                currentTeamRole = data.role;
-                document.getElementById('teamMenuItem').style.display = 'flex';
-            } else {
-                // Check if user has a team subscription tier but no team yet
+
+            const isTeam = data.team || false;
+            let hasTeamTier = false;
+
+            if (!data.team) {
+                // Check subscription tier directly
                 const userResponse = await fetch('/api/me', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const userData = await userResponse.json();
-                
-                if (userData.subscription_tier === 'team' || userData.subscription_tier === 'team-annual') {
-                    document.getElementById('teamMenuItem').style.display = 'flex';
-                }
+                hasTeamTier = userData.subscription_tier === 'team' || userData.subscription_tier === 'team-annual';
+            }
+
+            const showTeam = isTeam || hasTeamTier;
+
+            // Update sidebar icon
+            const teamIconBtn = document.getElementById('teamIconBtn');
+            if (teamIconBtn) teamIconBtn.style.display = showTeam ? 'flex' : 'none';
+
+            // Update avatar dropdown team section
+            const teamDropdownSection = document.getElementById('teamDropdownSection');
+            if (teamDropdownSection) teamDropdownSection.style.display = showTeam ? 'block' : 'none';
+
+            if (data.team) {
+                currentTeam = data.team;
+                currentTeamRole = data.role;
             }
         } catch (error) {
             console.log('Team check failed:', error);
         }
     }
+
 
     function showTeamPanel() {
         document.getElementById('teamPanel').classList.add('open');
