@@ -4045,10 +4045,10 @@
                 '<div class="toggle-switch" id="team-billing-switch" onclick="toggleTeamBilling()"></div>' +
                 '<span class="billing-label" id="team-label-annual" onclick="setTeamBilling(\'annual\')">Annual</span>' +
                 '</div>' +
-                '<div class="plan-price" id="team-price" style="margin-bottom: 4px;">£49.99<span>/month</span></div>' +
+                '<div class="plan-price" id="team-price" style="margin-bottom: 4px;">£89.99<span>/month</span></div>' +
                 '<div class="savings-row" id="team-savings-row" style="display: none; margin-bottom: 8px;">' +
-                '<span class="plan-price-crossed">£599.88/year</span>' +
-                '<span class="savings-badge">Save £99.89</span>' +
+                '<span class="plan-price-crossed">£1,079.88/year</span>' +
+                '<span class="savings-badge">Save £79.89</span>' +
                 '</div>' +
                 '<ul class="plan-features" style="margin: 8px 0; padding-left: 20px; font-size: 0.85rem;">' +
                 '<li>Everything in Pro</li>' +
@@ -4158,14 +4158,14 @@
                 toggleSwitch.classList.add('active');
                 labelMonthly.classList.remove('active');
                 labelAnnual.classList.add('active');
-                priceEl.innerHTML = '£499.99<span>/year</span>';
+                priceEl.innerHTML = '£999.99<span>/year</span>';
                 savingsRow.style.display = 'flex';
                 btn.textContent = 'Get Team Annual';
             } else {
                 toggleSwitch.classList.remove('active');
                 labelMonthly.classList.add('active');
                 labelAnnual.classList.remove('active');
-                priceEl.innerHTML = '£49.99<span>/month</span>';
+                priceEl.innerHTML = '£89.99<span>/month</span>';
                 savingsRow.style.display = 'none';
                 btn.textContent = 'Get Team Plan';
             }
