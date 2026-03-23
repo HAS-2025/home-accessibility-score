@@ -6215,24 +6215,41 @@ app.post('/auth/magic-link', async (req, res) => {
         return res.status(400).json({ error: 'Email is required' });
     }
     
-    // Check if user exists and has active subscription
     const { data: user, error: userError } = await supabase
         .from('users')
         .select('id, subscription_status')
         .eq('email', email)
         .single();
     
+    console.log(`🔍 Sign-in attempt: ${email} | found: ${!!user} | status: ${user?.subscription_status}`);
+    
     if (userError || !user) {
-        console.log('❌ Sign-in attempt for unregistered email:', email);
         return res.status(404).json({ error: 'No account found with this email. Please subscribe to create an account.' });
     }
-    
-    if (user.subscription_status !== 'active') {
+
+    // Check if active subscriber
+    let hasAccess = user.subscription_status === 'active';
+
+    // If not a direct subscriber, check team membership
+    if (!hasAccess) {
+        const { data: teamMembership } = await supabase
+            .from('team_members')
+            .select('role, teams(subscription_status)')
+            .eq('user_id', user.id)
+            .single();
+        
+        if (teamMembership && teamMembership.teams?.subscription_status === 'active') {
+            hasAccess = true;
+            console.log(`👥 Team member access granted: ${email}`);
+        }
+    }
+
+    if (!hasAccess) {
         console.log('❌ Sign-in attempt for non-subscriber:', email);
         return res.status(403).json({ error: 'No active subscription found. Please subscribe to access your account.' });
     }
     
-    // User has active subscription - send magic link
+    // Send magic link
     const redirectBase = process.env.NODE_ENV === 'development' 
         ? 'http://localhost:3002' 
         : process.env.BASE_URL;
@@ -6245,7 +6262,7 @@ app.post('/auth/magic-link', async (req, res) => {
     });
     
     if (error) {
-        console.log('❌ Magic link error:', JSON.stringify(error));
+        console.log('❌ Magic link error:', error.message);
         return res.status(400).json({ error: error.message });
     }
     
@@ -6253,7 +6270,6 @@ app.post('/auth/magic-link', async (req, res) => {
     res.json({ message: 'Check your email for the login link' });
 });
 
-// Get current user
 app.get('/auth/user', async (req, res) => {
     const authHeader = req.headers.authorization;
     
@@ -6274,8 +6290,26 @@ app.get('/auth/user', async (req, res) => {
         .select('*')
         .eq('email', user.email)
         .single();
+
+    // Check team membership
+    const { data: teamMembership } = await supabase
+        .from('team_members')
+        .select('role, teams(subscription_status)')
+        .eq('user_id', userData.id)
+        .single();
+
+    // If user is a team member and team has active subscription, treat as active
+    let enrichedUser = { ...userData };
+    if (teamMembership && teamMembership.teams?.subscription_status === 'active') {
+        enrichedUser.subscription_status = 'active';
+        enrichedUser.is_team_member = true;
+        enrichedUser.team_role = teamMembership.role;
+        if (!enrichedUser.subscription_tier) {
+            enrichedUser.subscription_tier = 'team';
+        }
+    }
     
-    res.json({ user: userData });
+    res.json({ user: enrichedUser });
 });
 
 // Handle auth callback (exchange code for session)

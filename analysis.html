@@ -6136,52 +6136,49 @@ function preparePrintReport() {
     }
 
     async function checkAuth() {
-        const token = localStorage.getItem('auth_token');
-        
-        if (!token) {
-            showLoggedOutState();
-            return null;
-        }
-        
-        try {
-            const response = await fetch('/auth/user', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            
-            if (response.ok) {
-                const data = await response.json();
-                currentUser = data.user;
-                // Store email for re-auth
-                if (data.user?.email) {
-                    localStorage.setItem('user_email', data.user.email);
-                }
-                showLoggedInState(data.user);
-                return data.user;
-            } else {
-                // Token expired - check if we have email for re-auth
-                const email = localStorage.getItem('user_email');
-                localStorage.removeItem('auth_token');
-                
-                if (email) {
-                    showReauthModal(email);
-                } else {
-                    showLoggedOutState();
-                }
-                return null;
-            }
-        } catch (error) {
-            console.log('Auth check failed:', error);
-            showLoggedOutState();
-            return null;
-        }
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token) {
+        showLoggedOutState();
+        return null;
     }
+    
+    try {
+        const response = await fetch('/auth/user', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            currentUser = data.user;
+            if (data.user?.email) {
+                localStorage.setItem('user_email', data.user.email);
+            }
+            showLoggedInState(data.user);
+            return data.user;
+        } else {
+            const email = localStorage.getItem('user_email');
+            localStorage.removeItem('auth_token');
+            
+            if (email) {
+                showReauthModal(email);
+            } else {
+                showLoggedOutState();
+            }
+            return null;
+        }
+    } catch (error) {
+        console.log('Auth check failed:', error);
+        showLoggedOutState();
+        return null;
+    }
+}
 
 function showLoggedOutState() {
     document.getElementById('subscribeBtn').classList.remove('hidden');
     document.getElementById('loginBtn').classList.remove('hidden');
     document.getElementById('userMenu').classList.add('hidden');
     
-    // Hide save button when logged out
     const saveBtn = document.getElementById('savePropertyBtn');
     if (saveBtn) saveBtn.classList.add('hidden');
 }
@@ -6190,14 +6187,13 @@ function showLoggedInState(user) {
     document.getElementById('loginBtn').classList.add('hidden');
     document.getElementById('userMenu').classList.remove('hidden');
 
-    // Hide subscribe button if active subscriber
-    if (user.subscription_status === 'active') {
+    // Hide subscribe button if active subscriber or team member
+    if (user.subscription_status === 'active' || user.is_team_member) {
         document.getElementById('subscribeBtn').classList.add('hidden');
     } else {
         document.getElementById('subscribeBtn').classList.remove('hidden');
     }
 
-    // Show/hide save property button
     const saveBtn = document.getElementById('savePropertyBtn');
     if (saveBtn) {
         if (user.subscription_status === 'active') {
@@ -6207,13 +6203,9 @@ function showLoggedInState(user) {
         }
     }
 
-    // Set avatar initial
     document.getElementById('avatarInitial').textContent = user.email.charAt(0).toUpperCase();
-
-    // Set email in dropdown
     document.getElementById('userEmail').textContent = user.email;
 
-    // Set plan badge
     const badge = document.getElementById('planBadge');
     const tier = user.subscription_tier;
     if (tier === 'team' || tier === 'team-annual') {
@@ -6224,14 +6216,16 @@ function showLoggedInState(user) {
         badge.textContent = 'FREE';
     }
 
-    // Update manage subscription item
     const subItem = document.getElementById('subscriptionItem');
     if (subItem) {
         subItem.innerHTML = user.subscription_status === 'active'
             ? '💳 Manage Subscription'
             : '💳 Upgrade to Pro';
     }
-}   
+
+    // Run team check after UI is ready
+    checkTeamMembership();
+}
 
 function toggleAvatarMenu() {
     document.getElementById('avatarDropdown').classList.toggle('hidden');
