@@ -11,6 +11,9 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:3002';
 
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+const { Resend } = require('resend');
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const { createClient } = require('@supabase/supabase-js');
 
 // Supabase client
@@ -624,6 +627,171 @@ app.use((req, res, next) => {
 });
 app.use(express.static('.'));
 
+async function sendSubscriptionConfirmation(email, tier) {
+    const planNames = {
+        'monthly': 'Individual Monthly — £19.99/month',
+        'annual': 'Individual Annual — £199.99/year',
+        'team': 'Team Monthly — £89.99/month',
+        'team-annual': 'Team Annual — £999.99/year'
+    };
+
+    const planName = planNames[tier] || 'Pro Subscription';
+    const date = new Date().toLocaleDateString('en-GB', { 
+        day: 'numeric', month: 'long', year: 'numeric' 
+    });
+
+    const isTeam = tier === 'team' || tier === 'team-annual';
+    
+    const includedItems = isTeam ? `
+        <li>Up to 5 team members</li>
+        <li>Unlimited property analyses for all members</li>
+        <li>GP proximity, energy efficiency &amp; accessibility scoring</li>
+        <li>Save up to 10 properties &amp; full search history per member</li>
+        <li>Team management panel</li>
+    ` : `
+        <li>Unlimited property accessibility analyses</li>
+        <li>GP proximity, energy efficiency &amp; accessibility scoring</li>
+        <li>Save up to 10 properties &amp; full search history</li>
+    `;
+
+    const teamNote = isTeam ? `
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+            <h3 style="color: #166534; margin: 0 0 8px 0; font-size: 14px;">Setting up your team</h3>
+            <p style="color: #15803d; font-size: 13px; margin: 0;">Sign in and click <strong>Team Settings</strong> in your account menu to create your team and invite members.</p>
+        </div>
+    ` : '';
+
+    try {
+        await resend.emails.send({
+            from: 'Home Accessibility Score <noreply@homeaccessibilityscore.co.uk>',
+            to: email,
+            subject: 'Your Home Accessibility Score Subscription Confirmation',
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
+                    
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        <h1 style="color: #1e3a5f; margin-bottom: 4px;">Home Accessibility Score</h1>
+                        <p style="color: #6b7280; margin: 0;">Subscription Confirmation</p>
+                    </div>
+
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h2 style="color: #166534; margin: 0 0 8px 0;">✅ Payment Successful</h2>
+                        <p style="color: #15803d; margin: 0;">Thank you for subscribing to Home Accessibility Score.</p>
+                    </div>
+
+                    <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="color: #1e3a5f; margin: 0 0 16px 0;">Order Details</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Date</td>
+                                <td style="padding: 8px 0; font-weight: 600; text-align: right;">${date}</td>
+                            </tr>
+                            <tr style="border-top: 1px solid #e5e7eb;">
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Account</td>
+                                <td style="padding: 8px 0; font-weight: 600; text-align: right;">${email}</td>
+                            </tr>
+                            <tr style="border-top: 1px solid #e5e7eb;">
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Plan</td>
+                                <td style="padding: 8px 0; font-weight: 600; text-align: right;">${planName}</td>
+                            </tr>
+                            <tr style="border-top: 1px solid #e5e7eb;">
+                                <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Status</td>
+                                <td style="padding: 8px 0; font-weight: 600; text-align: right; color: #059669;">Active</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    ${teamNote}
+
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="color: #1e3a5f; margin: 0 0 12px 0;">Managing Your Subscription</h3>
+                        <p style="color: #374151; font-size: 14px; margin: 0 0 8px 0;">You can manage or cancel your subscription at any time by signing in and clicking <strong>Manage Subscription</strong> in your account menu.</p>
+                        <p style="color: #374151; font-size: 14px; margin: 0;">Cancellations take effect at the end of your current billing period.</p>
+                    </div>
+
+                    <div style="border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px; font-size: 12px; color: #6b7280;">
+                        <h3 style="color: #374151; margin: 0 0 12px 0; font-size: 14px;">Subscriptions &amp; Payments</h3>
+                        <p style="margin: 0 0 6px 0;">• Subscription fees are charged in advance on a recurring basis.</p>
+                        <p style="margin: 0 0 6px 0;">• All payments are processed securely through Stripe.</p>
+                        <p style="margin: 0 0 6px 0;">• You may cancel your subscription at any time through your account settings.</p>
+                        <p style="margin: 0 0 6px 0;">• Cancellation takes effect at the end of your current billing period.</p>
+                        <p style="margin: 0 0 6px 0;">• We do not offer refunds for partial subscription periods.</p>
+                        <p style="margin: 0 0 6px 0;">• This tool provides information for informational purposes only and does not constitute professional advice.</p>
+                        <p style="margin: 6px 0 0 0;">Full terms: <a href="https://www.homeaccessibilityscore.co.uk/terms.html" style="color: #1e3a5f;">homeaccessibilityscore.co.uk/terms</a></p>
+                    </div>
+
+                    <div style="text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                        <p style="margin: 0 0 4px 0;">Home Accessibility Score · homeaccessibilityscore.co.uk</p>
+                        <p style="margin: 0 0 4px 0;">For support contact us at <a href="mailto:HAS@mhaltd.com" style="color: #1e3a5f;">HAS@mhaltd.com</a></p>
+                        <p style="margin: 0;">This is an automated confirmation email.</p>
+                    </div>
+
+                </body>
+                </html>
+            `
+        });
+        console.log('📧 Confirmation email sent to:', email);
+    } catch (error) {
+        console.log('❌ Failed to send confirmation email:', error.message);
+    }
+}
+
+
+async function sendCancellationEmail(email) {
+    const date = new Date().toLocaleDateString('en-GB', {
+        day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    try {
+        await resend.emails.send({
+            from: 'Home Accessibility Score <noreply@homeaccessibilityscore.co.uk>',
+            to: email,
+            subject: 'Your Home Accessibility Score Subscription Has Been Cancelled',
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
+
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        <h1 style="color: #1e3a5f; margin-bottom: 4px;">Home Accessibility Score</h1>
+                        <p style="color: #6b7280; margin: 0;">Subscription Cancellation</p>
+                    </div>
+
+                    <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h2 style="color: #991b1b; margin: 0 0 8px 0;">Subscription Cancelled</h2>
+                        <p style="color: #7f1d1d; margin: 0;">Your Home Accessibility Score subscription has been cancelled as of ${date}.</p>
+                    </div>
+
+                    <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="color: #1e3a5f; margin: 0 0 12px 0;">What happens now?</h3>
+                        <p style="color: #374151; font-size: 14px; margin: 0 0 8px 0;">Your access will continue until the end of your current billing period. After that, you will no longer be able to run property analyses.</p>
+                        <p style="color: #374151; font-size: 14px; margin: 0;">Your saved properties and search history will be retained should you choose to resubscribe in the future.</p>
+                    </div>
+
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="color: #1e3a5f; margin: 0 0 12px 0;">Changed your mind?</h3>
+                        <p style="color: #374151; font-size: 14px; margin: 0 0 8px 0;">You can resubscribe at any time before or after your current billing period ends using the same email address.</p>
+                        <p style="color: #374151; font-size: 14px; margin: 0;">Simply visit <a href="https://www.homeaccessibilityscore.co.uk" style="color: #1e3a5f;">homeaccessibilityscore.co.uk</a>, sign in with your email and select a plan to continue your access without losing any saved data.</p>
+                    </div>
+
+                    <div style="text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                        <p style="margin: 0 0 4px 0;">Home Accessibility Score · homeaccessibilityscore.co.uk</p>
+                        <p style="margin: 0 0 4px 0;">For support contact us at <a href="mailto:HAS@mhaltd.com" style="color: #1e3a5f;">HAS@mhaltd.com</a></p>
+                        <p style="margin: 0;">This is an automated notification email.</p>
+                    </div>
+
+                </body>
+                </html>
+            `
+        });
+        console.log('📧 Cancellation email sent to:', email);
+    } catch (error) {
+        console.log('❌ Failed to send cancellation email:', error.message);
+    }
+}
+
 // =============================================
 // STRIPE PAYMENT ENDPOINTS
 // =============================================
@@ -787,6 +955,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
             console.log('❌ Error updating user:', error.message);
         } else {
             console.log('✅ User subscription activated:', email, '- Tier:', tier);
+            await sendSubscriptionConfirmation(email, tier);
             
             // If team plan, create a team for the user
             if (isTeamPlan && updatedUser) {
@@ -842,18 +1011,23 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         
         console.log('❌ Subscription ended for customer:', subscription.customer);
         
-        const { error } = await supabase
+        const { data: updatedUser, error } = await supabase
             .from('users')
             .update({ 
                 subscription_status: 'free',
                 subscription_tier: null
             })
-            .eq('stripe_customer_id', subscription.customer);
+            .eq('stripe_customer_id', subscription.customer)
+            .select('email')
+            .single();
         
         if (error) {
             console.log('❌ Error updating cancelled user:', error.message);
         } else {
             console.log('👤 User reverted to free tier:', subscription.customer);
+            if (updatedUser?.email) {
+                await sendCancellationEmail(updatedUser.email);
+            }
         }
     }
     
@@ -6323,7 +6497,7 @@ app.post('/api/teams/invite', async (req, res) => {
     
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
-    
+
     // Get inviter's user and team
     const { data: dbUser } = await supabase
         .from('users')
@@ -6389,14 +6563,68 @@ app.post('/api/teams/invite', async (req, res) => {
             role: 'member',
             email: email
         });
-    
-    // Send magic link to invitee
-        await supabase.auth.signInWithOtp({
-            email: email,
-            options: {
-                emailRedirectTo: `${BASE_URL}/analysis.html`
-            }
+
+    // Send invite email via Resend
+    try {
+        const teamName = membership.teams?.name || 'a team';
+        await resend.emails.send({
+            from: 'Home Accessibility Score <noreply@homeaccessibilityscore.co.uk>',
+            to: email,
+            subject: `You've been invited to join ${teamName} on Home Accessibility Score`,
+            html: `
+                <!DOCTYPE html>
+                <html>
+                <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
+
+                    <div style="text-align: center; margin-bottom: 32px;">
+                        <h1 style="color: #1e3a5f; margin-bottom: 4px;">Home Accessibility Score</h1>
+                        <p style="color: #6b7280; margin: 0;">Team Invitation</p>
+                    </div>
+
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h2 style="color: #1e3a5f; margin: 0 0 8px 0;">🏢 You've been invited</h2>
+                        <p style="color: #374151; margin: 0;">${user.email} has invited you to join <strong>${teamName}</strong> on Home Accessibility Score.</p>
+                    </div>
+
+                    <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="color: #1e3a5f; margin: 0 0 12px 0;">What is Home Accessibility Score?</h3>
+                        <p style="color: #374151; font-size: 14px; margin: 0 0 12px 0;">Home Accessibility Score analyses properties for older adults and those with mobility needs, scoring them across key factors:</p>
+                        <ul style="margin: 0; padding-left: 20px; color: #374151; font-size: 14px; line-height: 2;">
+                            <li>GP surgery proximity &amp; walking time</li>
+                            <li>Energy efficiency ratings</li>
+                            <li>Internal accessibility features</li>
+                            <li>Public transport links</li>
+                        </ul>
+                    </div>
+
+                    <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="color: #1e3a5f; margin: 0 0 12px 0;">Getting started</h3>
+                        <p style="color: #374151; font-size: 14px; margin: 0 0 8px 0;">A sign-in link has been sent to this email address. Click it to access your account — no password needed.</p>
+                        <p style="color: #374151; font-size: 14px; margin: 0;">If you don't see it, check your spam folder or visit <a href="https://homeaccessibilityscore.co.uk" style="color: #1e3a5f;">homeaccessibilityscore.co.uk</a> and sign in with this email address.</p>
+                    </div>
+
+                    <div style="text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
+                        <p style="margin: 0 0 4px 0;">Home Accessibility Score · homeaccessibilityscore.co.uk</p>
+                        <p style="margin: 0 0 4px 0;">For support contact us at <a href="mailto:HAS@mhaltd.com" style="color: #1e3a5f;">HAS@mhaltd.com</a></p>
+                        <p style="margin: 0;">This is an automated invitation email.</p>
+                    </div>
+
+                </body>
+                </html>
+            `
         });
+        console.log('📧 Invite email sent to:', email);
+    } catch (emailError) {
+        console.log('❌ Failed to send invite email:', emailError.message);
+    }
+
+    // Send magic link to invitee
+    await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+            emailRedirectTo: `${BASE_URL}/analysis.html`
+        }
+    });
     
     console.log('📧 Team invite sent to:', email);
     res.json({ message: `Invite sent to ${email}` });
