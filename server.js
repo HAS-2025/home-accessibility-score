@@ -1339,61 +1339,38 @@ app.post('/api/create-checkout-guest', async (req, res) => {
     }
 });
 
-// Complete checkout and auto-sign in
 app.get('/api/checkout-complete', async (req, res) => {
     const { session_id } = req.query;
-    
-    if (!session_id) {
-        return res.status(400).json({ error: 'Session ID required' });
-    }
-    
+    if (!session_id) return res.status(400).json({ error: 'Session ID required' });
+
     try {
-        // Get session from Stripe
         const session = await stripe.checkout.sessions.retrieve(session_id);
-        const email = session.customer_email;
-        
+        const email = session.customer_email.toLowerCase().trim();
+
         console.log('✅ Checkout complete for:', email);
-        
-        // Update user subscription status
+
+        // Update subscription status
         await supabase
             .from('users')
             .update({ subscription_status: 'active' })
             .eq('email', email);
-        
-        // Generate a magic link token using admin API
-        const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-            type: 'magiclink',
-            email: email
-        });
-        
-        if (error) throw error;
-        
-        // Verify the token to get a session
-        const { data: sessionData, error: verifyError } = await supabaseAdmin.auth.verifyOtp({
-            token_hash: data.properties.hashed_token,
-            type: 'magiclink'
-        });
-        
-        if (verifyError) throw verifyError;
-        
-        console.log('🎫 Auto-signed in new subscriber:', email);
-        res.json({ 
-            token: sessionData.session.access_token,
-            user: sessionData.user
-        });
-        
-    } catch (error) {
-        console.error('❌ Checkout complete error:', error.message);
-        // Fallback - send magic link email
-        const session = await stripe.checkout.sessions.retrieve(session_id);
+
+        // Send magic link via Supabase
         await supabase.auth.signInWithOtp({
-            email: session.customer_email,
+            email: email,
             options: {
                 emailRedirectTo: `${BASE_URL}/analysis.html`
             }
         });
-        console.log('📧 Fallback: Magic link sent to:', session.customer_email);
-        res.json({ success: true, fallback: true });
+
+        console.log('📧 Sign-in link sent to new subscriber:', email);
+        
+        // Redirect to analysis page with success param
+        res.redirect(`${BASE_URL}/analysis.html?checkout=success&email=${encodeURIComponent(email)}`);
+
+    } catch (error) {
+        console.error('❌ Checkout complete error:', error.message);
+        res.redirect(`${BASE_URL}/analysis.html?checkout=error`);
     }
 });
 

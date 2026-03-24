@@ -4399,7 +4399,7 @@
         }
 
         
-        function showToast(message) {
+        function showToast(message, duration = 5000) {
             const existing = document.querySelector('.toast');
             if (existing) existing.remove();
             
@@ -4408,7 +4408,7 @@
             toast.textContent = message;
             document.body.appendChild(toast);
             
-            setTimeout(() => toast.remove(), 5000);
+            setTimeout(() => toast.remove(), duration);
         }
 
         async function sendPaywallMagicLink() {
@@ -7216,7 +7216,6 @@ async function removeSavedProperty(propertyId) {
 
     
 
-    // Run on page load
     document.addEventListener('DOMContentLoaded', async function() {
         console.log('🔍 Page loaded');
         console.log('🔍 Full URL:', window.location.href);
@@ -7232,21 +7231,18 @@ async function removeSavedProperty(propertyId) {
             const accessToken = hashParams.get('access_token');
             
             if (accessToken) {
-            console.log('🔑 Got token from hash fragment');
-            localStorage.setItem('auth_token', accessToken);
-            // Fetch and store user email
-            fetch('/auth/user', {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            }).then(r => r.json()).then(data => {
-                if (data.user?.email) {
-                    localStorage.setItem('user_email', data.user.email);
-                }
-            }).catch(() => {});
-            
-            // Clean up URL
-            window.history.replaceState({}, '', '/analysis.html');
+                console.log('🔑 Got token from hash fragment');
+                localStorage.setItem('auth_token', accessToken);
+                fetch('/auth/user', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                }).then(r => r.json()).then(data => {
+                    if (data.user?.email) {
+                        localStorage.setItem('user_email', data.user.email);
+                    }
+                }).catch(() => {});
                 
-                // Check subscription and show paywall if needed
+                window.history.replaceState({}, '', '/analysis.html');
+                    
                 try {
                     const response = await fetch('/auth/user', {
                         headers: { 'Authorization': 'Bearer ' + accessToken }
@@ -7258,7 +7254,6 @@ async function removeSavedProperty(propertyId) {
                         showToast('🎉 Welcome back! You have unlimited access.');
                     } else {
                         console.log('🆓 Free user signed in');
-                        // Don't show paywall on sign-in, only when they try to analyze
                     }
                 } catch (e) {
                     console.log('Error checking subscription:', e);
@@ -7271,7 +7266,6 @@ async function removeSavedProperty(propertyId) {
         const token = urlParams.get('token');
         if (token) {
             localStorage.setItem('auth_token', token);
-            // Fetch and store user email
             fetch('/auth/user', {
                 headers: { 'Authorization': `Bearer ${token}` }
             }).then(r => r.json()).then(data => {
@@ -7284,32 +7278,37 @@ async function removeSavedProperty(propertyId) {
         // Check auth
         checkAuth();
 
-        // Handle successful checkout
-        var checkoutStatus = urlParams.get('checkout');
-        var sessionId = urlParams.get('session_id');
+        // Handle post-checkout redirect
+        const checkoutStatus = urlParams.get('checkout');
+        const sessionId = urlParams.get('session_id');
+        const checkoutEmail = urlParams.get('email');
 
-        if (checkoutStatus === 'success' && sessionId) {
+        if (checkoutStatus === 'success') {
+            const emailDisplay = checkoutEmail ? decodeURIComponent(checkoutEmail) : 'your inbox';
+            showToast(`🎉 Payment successful! We've sent a sign-in link to ${emailDisplay}. Please check your inbox — and your spam folder if you don't see it within a minute.`, 8000);
+        
+        } else if (checkoutStatus === 'success' && sessionId) {
+            // Legacy fallback for old flow
             fetch('/api/checkout-complete?session_id=' + sessionId)
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.token) {
-                        // Auto sign in!
                         localStorage.setItem('auth_token', data.token);
                         checkAuth();
                         showToast('🎉 Welcome to Pro! You now have unlimited access.');
                     } else if (data.fallback) {
-                        showToast('🎉 Payment successful! Check your email to sign in.');
+                        showToast('🎉 Payment successful! Check your email to sign in — and your spam folder if you don\'t see it within a minute.');
                     }
                 })
                 .catch(function(e) {
                     console.log('Checkout complete error:', e);
-                    showToast('🎉 Payment successful! Check your email to sign in.');
+                    showToast('🎉 Payment successful! Check your email to sign in — and your spam folder if you don\'t see it within a minute.');
                 });
-            
-            // Clean URL
-            window.history.replaceState({}, '', '/analysis.html');
+
+        } else if (checkoutStatus === 'error') {
+            showToast('⚠️ Something went wrong after payment. Please contact HAS@mhaltd.com and we\'ll get you sorted.', 8000);
         }
-        
+
         // Check for property URL from landing page
         const propertyUrl = urlParams.get('url');
         if (propertyUrl) {
