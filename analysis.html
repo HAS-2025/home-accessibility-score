@@ -1129,6 +1129,140 @@
             color: #444;
         }
 
+        /* Checkout success modal */
+        .checkout-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 3000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .checkout-modal-box {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+            padding: 32px;
+            max-width: 420px;
+            width: 100%;
+        }
+
+        .checkout-modal-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #f0fdf4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+        }
+
+        .checkout-modal-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 8px 0;
+        }
+
+        .checkout-modal-subtitle {
+            text-align: center;
+            font-size: 15px;
+            color: #6b7280;
+            margin: 0 0 16px 0;
+            line-height: 1.6;
+        }
+
+        .checkout-modal-email {
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .checkout-modal-items {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 16px;
+        }
+
+        .checkout-modal-item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .checkout-modal-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .checkout-modal-item-num {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #1e3a5f;
+            color: white;
+            font-size: 11px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .checkout-modal-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1f2937;
+            margin: 0 0 2px 0;
+        }
+
+        .checkout-modal-item-desc {
+            font-size: 13px;
+            color: #6b7280;
+            margin: 0;
+        }
+
+        .checkout-modal-spam {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 24px;
+        }
+
+        .checkout-modal-spam p {
+            font-size: 13px;
+            color: #92400e;
+            margin: 0;
+            font-style: italic;
+            line-height: 1.5;
+        }
+
+        .checkout-modal-btn {
+            width: 100%;
+            padding: 12px;
+            background: #1e3a5f;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .checkout-modal-btn:hover {
+            background: #0f2744;
+        }
         
 
         /* ========== TOOLTIP ========== */
@@ -4255,6 +4389,15 @@
             modal.classList.remove('hidden');
         }
 
+        function showCheckoutModal(email) {
+            document.getElementById('checkoutModalEmail').textContent = email || 'your inbox';
+            document.getElementById('checkoutSuccessModal').classList.remove('hidden');
+        }
+
+        function closeCheckoutModal() {
+            document.getElementById('checkoutSuccessModal').classList.add('hidden');
+        }
+
         function toggleSignIn() {
             var signInBox = document.getElementById('signInBox');
             if (signInBox.style.display === 'none') {
@@ -7280,31 +7423,11 @@ async function removeSavedProperty(propertyId) {
 
         // Handle post-checkout redirect
         const checkoutStatus = urlParams.get('checkout');
-        const sessionId = urlParams.get('session_id');
         const checkoutEmail = urlParams.get('email');
 
         if (checkoutStatus === 'success') {
-            const emailDisplay = checkoutEmail ? decodeURIComponent(checkoutEmail) : 'your inbox';
-            showToast(`🎉 Payment successful! We've sent a sign-in link to ${emailDisplay}. Please check your inbox — and your spam folder if you don't see it within a minute.`, 8000);
-        
-        } else if (checkoutStatus === 'success' && sessionId) {
-            // Legacy fallback for old flow
-            fetch('/api/checkout-complete?session_id=' + sessionId)
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.token) {
-                        localStorage.setItem('auth_token', data.token);
-                        checkAuth();
-                        showToast('🎉 Welcome to Pro! You now have unlimited access.');
-                    } else if (data.fallback) {
-                        showToast('🎉 Payment successful! Check your email to sign in — and your spam folder if you don\'t see it within a minute.');
-                    }
-                })
-                .catch(function(e) {
-                    console.log('Checkout complete error:', e);
-                    showToast('🎉 Payment successful! Check your email to sign in — and your spam folder if you don\'t see it within a minute.');
-                });
-
+            const emailDisplay = checkoutEmail ? decodeURIComponent(checkoutEmail) : '';
+            showCheckoutModal(emailDisplay);
         } else if (checkoutStatus === 'error') {
             showToast('⚠️ Something went wrong after payment. Please contact HAS@mhaltd.com and we\'ll get you sorted.', 8000);
         }
@@ -7418,5 +7541,37 @@ async function removeSavedProperty(propertyId) {
                     Generated by Home Accessibility Score · homeaccessibilityscore.com
                 </div>
             </div>
+
+            <!-- Checkout Success Modal -->
+            <div class="checkout-modal-overlay hidden" id="checkoutSuccessModal">
+                <div class="checkout-modal-box">
+                    <div class="checkout-modal-icon">
+                        <svg width="22" height="18" viewBox="0 0 22 18"><path d="M2 9l5.5 5.5L20 2" stroke="#059669" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <h2 class="checkout-modal-title">Payment successful!</h2>
+                    <p class="checkout-modal-subtitle">We've sent two emails to <span class="checkout-modal-email" id="checkoutModalEmail"></span>:</p>
+                    <div class="checkout-modal-items">
+                        <div class="checkout-modal-item">
+                            <div class="checkout-modal-item-num">1</div>
+                            <div>
+                                <p class="checkout-modal-item-title">Subscription confirmation</p>
+                                <p class="checkout-modal-item-desc">Your receipt and membership details</p>
+                            </div>
+                        </div>
+                        <div class="checkout-modal-item">
+                            <div class="checkout-modal-item-num">2</div>
+                            <div>
+                                <p class="checkout-modal-item-title">Sign-in link</p>
+                                <p class="checkout-modal-item-desc">Click this to access your account</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="checkout-modal-spam">
+                        <p>Can't find the emails? Check your spam or junk folder — sign-in emails occasionally get filtered.</p>
+                    </div>
+                    <button class="checkout-modal-btn" onclick="closeCheckoutModal()">Got it</button>
+                </div>
+            </div>
+
 </body>
 </html>

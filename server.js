@@ -792,6 +792,7 @@ async function sendCancellationEmail(email) {
     }
 }
 
+
 // =============================================
 // STRIPE PAYMENT ENDPOINTS
 // =============================================
@@ -1322,7 +1323,7 @@ app.post('/api/create-checkout-guest', async (req, res) => {
                 quantity: 1
             }],
             mode: 'subscription',
-            success_url: `${BASE_URL}/analysis.html?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
+            success_url: `${BASE_URL}/api/checkout-complete?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${BASE_URL}/analysis.html?checkout=cancelled`,
             metadata: {
                 user_id: user.id,
@@ -1366,11 +1367,17 @@ app.get('/api/checkout-complete', async (req, res) => {
         console.log('📧 Sign-in link sent to new subscriber:', email);
         
         // Redirect to analysis page with success param
-        res.redirect(`${BASE_URL}/analysis.html?checkout=success&email=${encodeURIComponent(email)}`);
+        const redirectBase = process.env.NODE_ENV === 'development'
+            ? 'http://localhost:3002'
+            : process.env.BASE_URL;
+        res.redirect(`${redirectBase}/analysis.html?checkout=success&email=${encodeURIComponent(email)}`);
 
     } catch (error) {
         console.error('❌ Checkout complete error:', error.message);
-        res.redirect(`${BASE_URL}/analysis.html?checkout=error`);
+        const redirectBase = process.env.NODE_ENV === 'development'
+            ? 'http://localhost:3002'
+            : process.env.BASE_URL;
+        res.redirect(`${redirectBase}/analysis.html?checkout=error`);
     }
 });
 
