@@ -932,7 +932,7 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
             }
         }
         
-        const email = session.metadata?.email || session.customer_email;
+        const email = (session.metadata?.email || session.customer_email).toLowerCase().trim();
         const isTeamPlan = tier === 'team' || tier === 'team-annual';
         
         console.log('🏷️ Subscription tier:', tier);
@@ -1035,7 +1035,6 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     res.json({ received: true });
 });
 
-// Customer portal (manage subscription)
 app.post('/api/customer-portal', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
@@ -1043,18 +1042,14 @@ app.post('/api/customer-portal', async (req, res) => {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
+
+    const normalizedEmail = user.email.toLowerCase().trim();
     
-    console.log('🔧 Portal request for:', user.email);
-    
-    // Get user's Stripe customer ID
     const { data: dbUser } = await supabase
         .from('users')
         .select('stripe_customer_id')
-        .eq('email', user.email)
+        .eq('email', normalizedEmail)
         .single();
-    
-    console.log('🔧 DB user found:', dbUser);
-    console.log('🔧 Stripe customer ID:', dbUser?.stripe_customer_id);
     
     if (!dbUser?.stripe_customer_id) {
         return res.status(400).json({ error: 'No subscription found' });
@@ -1066,7 +1061,7 @@ app.post('/api/customer-portal', async (req, res) => {
             return_url: `${BASE_URL}/analysis.html`
         });
         
-        console.log('🔧 Portal session created for:', user.email);
+        console.log('🔧 Portal session created for:', normalizedEmail);
         res.json({ url: session.url });
     } catch (error) {
         console.log('❌ Portal error:', error.message);
@@ -1276,11 +1271,13 @@ app.post('/api/teams/rename', async (req, res) => {
 // Guest checkout (no auth required)
 app.post('/api/create-checkout-guest', async (req, res) => {
     const { email, plan } = req.body;
-    
+
     if (!email) {
         return res.status(400).json({ error: 'Email is required' });
     }
-    
+
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Select price based on plan type
     let priceId;
     if (plan === 'team-annual') {
@@ -1292,47 +1289,41 @@ app.post('/api/create-checkout-guest', async (req, res) => {
     } else {
         priceId = process.env.STRIPE_PRICE_MONTHLY;
     }
-    
-    // Determine user type
+
     const isTeam = plan === 'team' || plan === 'team-annual';
-    
+
     try {
-        // Create or find user
         let { data: user } = await supabase
             .from('users')
             .select('id')
-            .eq('email', email)
+            .eq('email', normalizedEmail)
             .single();
-        
+
         if (!user) {
             const { data: newUser } = await supabase
                 .from('users')
-                .insert({ email: email, user_type: isTeam ? 'agent' : 'individual' })
+                .insert({ email: normalizedEmail, user_type: isTeam ? 'agent' : 'individual' })
                 .select('id')
                 .single();
             user = newUser;
-            console.log('👤 New user created for checkout:', email);
+            console.log('👤 New user created for checkout:', normalizedEmail);
         }
-        
-        // Create Stripe checkout session
+
         const session = await stripe.checkout.sessions.create({
-            customer_email: email,
+            customer_email: normalizedEmail,
             payment_method_types: ['card'],
-            line_items: [{
-                price: priceId,
-                quantity: 1
-            }],
+            line_items: [{ price: priceId, quantity: 1 }],
             mode: 'subscription',
             success_url: `${BASE_URL}/api/checkout-complete?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: `${BASE_URL}/analysis.html?checkout=cancelled`,
             metadata: {
                 user_id: user.id,
-                email: email,
+                email: normalizedEmail,
                 plan: plan
             }
         });
-        
-        console.log('💳 Checkout session created for:', email, '- Plan:', plan);
+
+        console.log('💳 Checkout session created for:', normalizedEmail, '- Plan:', plan);
         res.json({ url: session.url });
     } catch (error) {
         console.error('Checkout error:', error);
@@ -6194,18 +6185,20 @@ app.post('/api/analyze', async (req, res) => {
 // Send magic link (only for users with active subscriptions)
 app.post('/auth/magic-link', async (req, res) => {
     const { email } = req.body;
-    
+
     if (!email) {
         return res.status(400).json({ error: 'Email is required' });
     }
+
+    const normalizedEmail = email.toLowerCase().trim();
     
     const { data: user, error: userError } = await supabase
         .from('users')
         .select('id, subscription_status')
-        .eq('email', email)
+        .eq('email', normalizedEmail)
         .single();
     
-    console.log(`🔍 Sign-in attempt: ${email} | found: ${!!user} | status: ${user?.subscription_status}`);
+    console.log(`🔍 Sign-in attempt: ${normalizedEmail} | found: ${!!user} | status: ${user?.subscription_status}`);
     
     if (userError || !user) {
         return res.status(404).json({ error: 'No account found with this email. Please subscribe to create an account.' });
@@ -6224,12 +6217,12 @@ app.post('/auth/magic-link', async (req, res) => {
         
         if (teamMembership && teamMembership.teams?.subscription_status === 'active') {
             hasAccess = true;
-            console.log(`👥 Team member access granted: ${email}`);
+            console.log(`👥 Team member access granted: ${normalizedEmail}`);
         }
     }
 
     if (!hasAccess) {
-        console.log('❌ Sign-in attempt for non-subscriber:', email);
+        console.log('❌ Sign-in attempt for non-subscriber:', normalizedEmail);
         return res.status(403).json({ error: 'No active subscription found. Please subscribe to access your account.' });
     }
     
@@ -6239,7 +6232,7 @@ app.post('/auth/magic-link', async (req, res) => {
         : process.env.BASE_URL;
 
     const { data, error } = await supabase.auth.signInWithOtp({
-        email: email,
+        email: normalizedEmail,
         options: {
             emailRedirectTo: `${redirectBase}/auth/callback`
         }
@@ -6250,7 +6243,7 @@ app.post('/auth/magic-link', async (req, res) => {
         return res.status(400).json({ error: error.message });
     }
     
-    console.log('📧 Magic link sent to subscriber:', email);
+    console.log('📧 Magic link sent to subscriber:', normalizedEmail);
     res.json({ message: 'Check your email for the login link' });
 });
 
@@ -6267,12 +6260,14 @@ app.get('/auth/user', async (req, res) => {
     if (error || !user) {
         return res.status(401).json({ error: 'Invalid token' });
     }
+
+    const normalizedEmail = user.email.toLowerCase().trim();
     
     // Get user details from our table
     const { data: userData } = await supabase
         .from('users')
         .select('*')
-        .eq('email', user.email)
+        .eq('email', normalizedEmail)
         .single();
 
     // Check team membership
@@ -6300,59 +6295,54 @@ app.get('/auth/user', async (req, res) => {
 app.get('/auth/callback', async (req, res) => {
     console.log('🔔 AUTH CALLBACK HIT');
     console.log('🔔 Full query:', req.query);
-    
+
     const { code } = req.query;
-    
+
     if (!code) {
         console.log('❌ No code in query params');
         return res.redirect('/analysis.html?error=no_code');
     }
-    
+
     console.log('🔔 Got code, exchanging...');
-    
+
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    
+
     if (error) {
         console.log('❌ Exchange error:', error.message);
         return res.redirect('/analysis.html?error=auth_failed');
     }
-    
-    console.log('✅ User authenticated:', data.user.email);
-    
-    // Check if user exists in our users table, if not create them
+
+    const normalizedEmail = data.user.email.toLowerCase().trim();
+    console.log('✅ User authenticated:', normalizedEmail);
+
     let { data: existingUser } = await supabase
         .from('users')
         .select('id, subscription_status')
-        .eq('email', data.user.email)
+        .eq('email', normalizedEmail)
         .single();
-    
+
     if (!existingUser) {
         const { data: newUser } = await supabase
             .from('users')
             .insert({
-                email: data.user.email,
+                email: normalizedEmail,
                 user_type: 'individual'
             })
             .select('id, subscription_status')
             .single();
-        
+
         existingUser = newUser;
-        console.log('👤 New user created:', data.user.email);
+        console.log('👤 New user created:', normalizedEmail);
     }
-    
-    // Check subscription status
+
     const hasSubscription = existingUser?.subscription_status === 'active';
-    
-    // Get the token
     const token = data.session.access_token;
-    
+
     if (hasSubscription) {
-        // Subscriber - go straight to analysis
-        console.log('🎫 Subscriber login:', data.user.email);
+        console.log('🎫 Subscriber login:', normalizedEmail);
         res.redirect(`/analysis.html?token=${token}`);
     } else {
-        // Non-subscriber - show paywall
-        console.log('🆓 Free user login:', data.user.email);
+        console.log('🆓 Free user login:', normalizedEmail);
         res.redirect(`/analysis.html?token=${token}&showPaywall=true`);
     }
 });
@@ -6360,42 +6350,43 @@ app.get('/auth/callback', async (req, res) => {
 // Create user after OAuth callback
 app.post('/auth/create-user', async (req, res) => {
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
         return res.status(401).json({ error: 'No authorization header' });
     }
-    
+
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    
+
     if (error || !user) {
         return res.status(401).json({ error: 'Invalid token' });
     }
-    
-    // Check if user exists, if not create them
+
+    const normalizedEmail = user.email.toLowerCase().trim();
+
     const { data: existingUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', normalizedEmail)
         .single();
-    
+
     if (!existingUser) {
         const { data: newUser, error: insertError } = await supabase
             .from('users')
-            .insert({ email: user.email, user_type: 'individual' })
+            .insert({ email: normalizedEmail, user_type: 'individual' })
             .select()
             .single();
-        
+
         if (insertError) {
             console.log('❌ Error creating user:', insertError.message);
             return res.status(500).json({ error: insertError.message });
         }
-        
-        console.log('👤 New user created:', user.email);
+
+        console.log('👤 New user created:', normalizedEmail);
         return res.json({ user: newUser, isNew: true });
     }
-    
-    console.log('👤 Existing user logged in:', user.email);
+
+    console.log('👤 Existing user logged in:', normalizedEmail);
     res.json({ user: existingUser, isNew: false });
 });
 
@@ -6508,32 +6499,33 @@ app.get('/api/teams/me', async (req, res) => {
 app.post('/api/teams/invite', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
-    
+
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
-    
+
     const { email } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
+
+    const normalizedEmail = email.toLowerCase().trim();
 
     // Get inviter's user and team
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
-    
+
     const { data: membership } = await supabase
         .from('team_members')
         .select('team_id, role, teams(name)')
         .eq('user_id', dbUser.id)
         .single();
-    
+
     if (!membership || !['owner', 'admin'].includes(membership.role)) {
         return res.status(403).json({ error: 'Not authorized to invite' });
     }
-    
-    // Check team member limit (max 5)
+
     const { count } = await supabase
         .from('team_members')
         .select('*', { count: 'exact', head: true })
@@ -6542,44 +6534,40 @@ app.post('/api/teams/invite', async (req, res) => {
     if (count >= 5) {
         return res.status(400).json({ error: 'Team is full (maximum 5 members)' });
     }
-    
-    // Check if invitee already has account
+
     let { data: invitee } = await supabase
         .from('users')
         .select('id')
-        .eq('email', email)
+        .eq('email', normalizedEmail)
         .single();
-    
-    // If no account, create one
+
     if (!invitee) {
         const { data: newUser } = await supabase
             .from('users')
-            .insert({ email: email, user_type: 'agent' })
+            .insert({ email: normalizedEmail, user_type: 'agent' })
             .select()
             .single();
         invitee = newUser;
     }
-    
-    // Check if already a member
+
     const { data: existingMember } = await supabase
         .from('team_members')
         .select('id')
         .eq('team_id', membership.team_id)
         .eq('user_id', invitee.id)
         .single();
-    
+
     if (existingMember) {
         return res.status(400).json({ error: 'Already a team member' });
     }
-    
-    // Add to team
+
     await supabase
         .from('team_members')
         .insert({
             team_id: membership.team_id,
             user_id: invitee.id,
             role: 'member',
-            email: email
+            email: normalizedEmail
         });
 
     // Send invite email via Resend
@@ -6587,23 +6575,20 @@ app.post('/api/teams/invite', async (req, res) => {
         const teamName = membership.teams?.name || 'a team';
         await resend.emails.send({
             from: 'Home Accessibility Score <noreply@homeaccessibilityscore.co.uk>',
-            to: email,
+            to: normalizedEmail,
             subject: `You've been invited to join ${teamName} on Home Accessibility Score`,
             html: `
                 <!DOCTYPE html>
                 <html>
                 <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #1f2937;">
-
                     <div style="text-align: center; margin-bottom: 32px;">
                         <h1 style="color: #1e3a5f; margin-bottom: 4px;">Home Accessibility Score</h1>
                         <p style="color: #6b7280; margin: 0;">Team Invitation</p>
                     </div>
-
                     <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
                         <h2 style="color: #1e3a5f; margin: 0 0 8px 0;">🏢 You've been invited</h2>
-                        <p style="color: #374151; margin: 0;">${user.email} has invited you to join <strong>${teamName}</strong> on Home Accessibility Score.</p>
+                        <p style="color: #374151; margin: 0;">${user.email.toLowerCase()} has invited you to join <strong>${teamName}</strong> on Home Accessibility Score.</p>
                     </div>
-
                     <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
                         <h3 style="color: #1e3a5f; margin: 0 0 12px 0;">What is Home Accessibility Score?</h3>
                         <p style="color: #374151; font-size: 14px; margin: 0 0 12px 0;">Home Accessibility Score analyses properties for older adults and those with mobility needs, scoring them across key factors:</p>
@@ -6614,38 +6599,34 @@ app.post('/api/teams/invite', async (req, res) => {
                             <li>Public transport links</li>
                         </ul>
                     </div>
-
                     <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
                         <h3 style="color: #1e3a5f; margin: 0 0 12px 0;">Getting started</h3>
                         <p style="color: #374151; font-size: 14px; margin: 0 0 8px 0;">A sign-in link has been sent to this email address. Click it to access your account — no password needed.</p>
                         <p style="color: #374151; font-size: 14px; margin: 0;">If you don't see it, check your spam folder or visit <a href="https://homeaccessibilityscore.co.uk" style="color: #1e3a5f;">homeaccessibilityscore.co.uk</a> and sign in with this email address.</p>
                     </div>
-
                     <div style="text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                         <p style="margin: 0 0 4px 0;">Home Accessibility Score · homeaccessibilityscore.co.uk</p>
                         <p style="margin: 0 0 4px 0;">For support contact us at <a href="mailto:HAS@mhaltd.com" style="color: #1e3a5f;">HAS@mhaltd.com</a></p>
                         <p style="margin: 0;">This is an automated invitation email.</p>
                     </div>
-
                 </body>
                 </html>
             `
         });
-        console.log('📧 Invite email sent to:', email);
+        console.log('📧 Invite email sent to:', normalizedEmail);
     } catch (emailError) {
         console.log('❌ Failed to send invite email:', emailError.message);
     }
 
-    // Send magic link to invitee
     await supabase.auth.signInWithOtp({
-        email: email,
+        email: normalizedEmail,
         options: {
             emailRedirectTo: `${BASE_URL}/analysis.html`
         }
     });
-    
-    console.log('📧 Team invite sent to:', email);
-    res.json({ message: `Invite sent to ${email}` });
+
+    console.log('📧 Team invite sent to:', normalizedEmail);
+    res.json({ message: `Invite sent to ${normalizedEmail}` });
 });
 
 // Remove team member
