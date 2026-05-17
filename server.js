@@ -823,14 +823,14 @@ app.post('/api/create-checkout', async (req, res) => {
         let { data: dbUser } = await supabase
             .from('users')
             .select('stripe_customer_id')
-            .eq('email', user.email)
+            .eq('email', user.email.toLowerCase().trim())
             .single();
         
         let customerId = dbUser?.stripe_customer_id;
         
         if (!customerId) {
             const customer = await stripe.customers.create({
-                email: user.email
+                email: user.email.toLowerCase().trim()
             });
             customerId = customer.id;
             
@@ -838,7 +838,7 @@ app.post('/api/create-checkout', async (req, res) => {
             await supabase
                 .from('users')
                 .update({ stripe_customer_id: customerId })
-                .eq('email', user.email);
+                .eq('email', user.email.toLowerCase().trim());
         }
         
         const session = await stripe.checkout.sessions.create({
@@ -852,7 +852,7 @@ app.post('/api/create-checkout', async (req, res) => {
             cancel_url: `${BASE_URL}/?payment=cancelled`,
             metadata: {
                 plan: plan,
-                email: user.email
+                email: user.email.toLowerCase().trim()
             }
         });
         
@@ -1035,39 +1035,6 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
     res.json({ received: true });
 });
 
-app.post('/api/customer-portal', async (req, res) => {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: 'Not authenticated' });
-    
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) return res.status(401).json({ error: 'Invalid token' });
-
-    const normalizedEmail = user.email.toLowerCase().trim();
-    
-    const { data: dbUser } = await supabase
-        .from('users')
-        .select('stripe_customer_id')
-        .eq('email', normalizedEmail)
-        .single();
-    
-    if (!dbUser?.stripe_customer_id) {
-        return res.status(400).json({ error: 'No subscription found' });
-    }
-    
-    try {
-        const session = await stripe.billingPortal.sessions.create({
-            customer: dbUser.stripe_customer_id,
-            return_url: `${BASE_URL}/analysis.html`
-        });
-        
-        console.log('🔧 Portal session created for:', normalizedEmail);
-        res.json({ url: session.url });
-    } catch (error) {
-        console.log('❌ Portal error:', error.message);
-        res.status(500).json({ error: error.message });
-    }
-});
 
 // Team checkout
 app.post('/api/create-team-checkout', async (req, res) => {
@@ -1084,7 +1051,7 @@ app.post('/api/create-team-checkout', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     const { data: membership } = await supabase
@@ -1118,7 +1085,7 @@ app.post('/api/create-team-checkout', async (req, res) => {
         
         if (!customerId) {
             const customer = await stripe.customers.create({
-                email: user.email,
+                email: user.email.toLowerCase().trim(),
                 metadata: { team_id: membership.team_id }
             });
             customerId = customer.id;
@@ -1168,7 +1135,7 @@ app.post('/api/teams/create', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id, subscription_tier, stripe_customer_id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     if (!dbUser) return res.status(404).json({ error: 'User not found' });
@@ -1241,7 +1208,7 @@ app.post('/api/teams/rename', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     const { data: membership } = await supabase
@@ -1385,7 +1352,7 @@ app.post('/api/customer-portal', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('stripe_customer_id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     if (!dbUser?.stripe_customer_id) {
@@ -1428,7 +1395,7 @@ app.post('/api/properties/save', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     // Check saved limit (max 10)
@@ -1506,7 +1473,7 @@ app.delete('/api/properties/save/:propertyId', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     await supabase
@@ -1531,7 +1498,7 @@ app.get('/api/properties/saved', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     // Get saved properties
@@ -1577,7 +1544,7 @@ app.get('/api/properties/history', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     // Get search history
@@ -2781,6 +2748,11 @@ function extractPriceNumber(priceString) {
 
 // Enhanced coordinate extraction using Geocoding API as fallback
 async function getPropertyCoordinates(address, existingCoords) {
+    // Add these debug lines
+    console.log('🗺️ getPropertyCoordinates called with:');
+    console.log('🗺️ existingCoords:', existingCoords);
+    console.log('🗺️ address:', address);
+
     if (existingCoords && existingCoords.lat && existingCoords.lng) {
         console.log('Using coordinates from property scraping:', existingCoords);
         return existingCoords;
@@ -2797,13 +2769,14 @@ async function getPropertyCoordinates(address, existingCoords) {
             
             const response = await axios.get(geocodeUrl, { timeout: 8000 });
             
+            // Add this
+            console.log('🗺️ Geocoding API status:', response.data.status);
+            console.log('🗺️ Geocoding results count:', response.data.results?.length);
+            
             if (response.data.results && response.data.results.length > 0) {
                 const location = response.data.results[0].geometry.location;
                 console.log('Geocoding API found coordinates:', location);
-                return {
-                    lat: location.lat,
-                    lng: location.lng
-                };
+                return { lat: location.lat, lng: location.lng };
             }
         } catch (error) {
             console.error('Geocoding API error:', error.message);
@@ -5328,49 +5301,56 @@ if (epcResult && epcResult.rating) {
 async function analyzePropertyAccessibility(property) {
     console.log('Starting comprehensive property analysis...');
     
-    // Step 1: Analyze GP proximity
+    // Step 1: Analyze GP proximity + store coords for use throughout
     let gpProximity = null;
-    if (property.coordinates) {
-        try {
-            const gpResult = await analyzeGPProximity(property.coordinates.lat, property.coordinates.lng);
-            
-            // Transform new structure to match what frontend expects
+    try {
+        const coords = await getPropertyCoordinates(property.location, property.coordinates);
+        
+        if (coords && coords.lat && coords.lng) {
+            property.coordinates = coords; // ← fixes map pin and transport
+            const gpResult = await analyzeGPProximity(coords.lat, coords.lng);
             gpProximity = {
                 score: gpResult.score,
                 rating: gpResult.rating,
                 details: gpResult.details,
-                nearestGPs: gpResult.nearestGPs  // Pass the array through
+                nearestGPs: gpResult.nearestGPs
             };
-        } catch (error) {
-            console.error('GP proximity analysis failed:', error.message);
+        } else {
+            console.log('⚠️ No coordinates available, skipping GP search');
             gpProximity = {
-                score: 0,
-                rating: 'Very Poor',
+                score: null,
+                rating: 'N/A',
                 nearestGPs: [],
-                details: 'Unable to analyze GP proximity'
+                details: 'Location could not be determined'
             };
         }
+    } catch (error) {
+        console.error('GP proximity analysis failed:', error.message);
+        gpProximity = {
+            score: null,
+            rating: 'N/A',
+            nearestGPs: [],
+            details: 'Unable to analyze GP proximity'
+        };
     }
 
-    
     // Step 2: Get EPC rating from property data
-let epcRating = null;
-if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
-    epcRating = property.epc.rating;
-} else if (property.epcRating) {
-    epcRating = property.epcRating;
-}
+    let epcRating = null;
+    if (property.epc && property.epc.rating && property.epc.confidence >= 50) {
+        epcRating = property.epc.rating;
+    } else if (property.epcRating) {
+        epcRating = property.epcRating;
+    }
 
-// Calculate score and details
-const epcAnalysis = calculateEPCScore(epcRating);
-const epcScore = epcAnalysis.score;
-const epcDetails = epcAnalysis.description;
+    const epcAnalysis = calculateEPCScore(epcRating);
+    const epcScore = epcAnalysis.score;
+    const epcDetails = epcAnalysis.description;
     
-    // Step 3: NEW - Analyze Accessible Features (replaces internal facilities)
+    // Step 3: Analyze Accessible Features
     console.log('🏠 Analyzing accessible features...');
     const accessibleFeatures = await calculateAccessibleFeaturesScore(property);
     
-    // Step 4: NEW - Analyze Public Transport
+    // Step 4: Analyze Public Transport (now uses property.coordinates set in Step 1)
     let publicTransport = null;
     if (property.coordinates) {
         console.log('🚌 Analyzing public transport...');
@@ -5386,6 +5366,7 @@ const epcDetails = epcAnalysis.description;
             };
         }
     } else {
+        console.log('⚠️ No coordinates for public transport analysis');
         publicTransport = {
             score: 2,
             busStops: [],
@@ -5394,7 +5375,7 @@ const epcDetails = epcAnalysis.description;
         };
     }
 
-    // Step 5: NEW - Analyze Property Dimensions  
+    // Step 5: Analyze Property Dimensions  
     console.log('📐 Analyzing property dimensions...');
     const dimensions = property.dimensions || null;
 
@@ -5404,187 +5385,170 @@ const epcDetails = epcAnalysis.description;
     console.log(`🏠 Room Score: ${roomScore.rawScore}/${roomScore.maxPossible} → ${roomScore.score}/5`);
     console.log('✅ Rooms found:', roomScore.roomsFound);
 
-    
-
-    // ADD THIS NEW STEP 6:
-    // Step 6: NEW - Analyze Cost Information
+    // Step 6: Analyze Cost Information
     console.log('💷 Analyzing cost information...');
     const cost = analyzeCostInformation(property, dimensions);
     
-    // Step 6b: Calculate Council Tax Score
-console.log('💷 Calculating council tax score...');
-console.log('💷 DEBUG: cost.councilTax value:', cost.councilTax);
-const councilTaxAnalysis = calculateCouncilTaxScore(cost.councilTax);
+    // Step 6b: Council Tax Score
+    console.log('💷 Calculating council tax score...');
+    console.log('💷 DEBUG: cost.councilTax value:', cost.councilTax);
+    const councilTaxAnalysis = calculateCouncilTaxScore(cost.councilTax);
 
+    // Step 6c: Price Per Sq M Score
+    console.log('💷 Calculating price per sq m score...');
+    let pricePerSqMAnalysis = { score: null, rating: 'Unknown', description: 'Not available' };
 
-// Step 6c: Calculate Price Per Sq M Score
-console.log('💷 Calculating price per sq m score...');
-let pricePerSqMAnalysis = { score: null, rating: 'Unknown', description: 'Not available' };
-
-if (cost.pricePerSqM && !cost.pricePerSqM.includes('Unable')) {
-    // Extract numeric value from "£4,412 per sq m"
-    const priceMatch = cost.pricePerSqM.match(/£([\d,]+)/);
-    if (priceMatch) {
-        const priceNumber = parseInt(priceMatch[1].replace(/,/g, ''));
-        pricePerSqMAnalysis = calculatePricePerSqMScore(priceNumber);
-    }
-}
-
-// Step 6d: Calculate Property Tax Score (SDLT/LTT/LBTT based on location)
-console.log('💷 Calculating property tax score...');
-
-// Extract postcode from location string (e.g., "Knights Green, Flint, CH6")
-let postcode = null;
-if (property.location) {
-    const postcodeMatch = property.location.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?)(?:\s*\d[A-Z]{2})?\b/i);
-    if (postcodeMatch) {
-        postcode = postcodeMatch[1].toUpperCase();
-        console.log('📮 Extracted postcode from location:', postcode);
-    }
-}
-
-// Fallback: reverse geocode from coordinates to get postcode
-if (!postcode && property.coordinates) {
-    try {
-        const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${property.coordinates.lat},${property.coordinates.lng}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
-        const geocodeResponse = await axios.get(geocodeUrl);
-        
-        if (geocodeResponse.data.results && geocodeResponse.data.results[0]) {
-            const components = geocodeResponse.data.results[0].address_components;
-            const postcodeComponent = components.find(c => c.types.includes('postal_code'));
-            if (postcodeComponent) {
-                postcode = postcodeComponent.short_name.split(' ')[0].toUpperCase();
-                console.log('📮 Extracted postcode from reverse geocoding:', postcode);
-            }
+    if (cost.pricePerSqM && !cost.pricePerSqM.includes('Unable')) {
+        const priceMatch = cost.pricePerSqM.match(/£([\d,]+)/);
+        if (priceMatch) {
+            const priceNumber = parseInt(priceMatch[1].replace(/,/g, ''));
+            pricePerSqMAnalysis = calculatePricePerSqMScore(priceNumber);
         }
+    }
+
+    // Step 6d: Property Tax Score
+    console.log('💷 Calculating property tax score...');
+
+    let postcode = null;
+    if (property.location) {
+        const postcodeMatch = property.location.match(/\b([A-Z]{1,2}\d{1,2}[A-Z]?)(?:\s*\d[A-Z]{2})?\b/i);
+        if (postcodeMatch) {
+            postcode = postcodeMatch[1].toUpperCase();
+            console.log('📮 Extracted postcode from location:', postcode);
+        }
+    }
+
+    if (!postcode && property.coordinates) {
+        try {
+            const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${property.coordinates.lat},${property.coordinates.lng}&key=${process.env.GOOGLE_MAPS_API_KEY}`;
+            const geocodeResponse = await axios.get(geocodeUrl);
+            
+            if (geocodeResponse.data.results && geocodeResponse.data.results[0]) {
+                const components = geocodeResponse.data.results[0].address_components;
+                const postcodeComponent = components.find(c => c.types.includes('postal_code'));
+                if (postcodeComponent) {
+                    postcode = postcodeComponent.short_name.split(' ')[0].toUpperCase();
+                    console.log('📮 Extracted postcode from reverse geocoding:', postcode);
+                }
+            }
+        } catch (error) {
+            console.log('📮 Reverse geocoding failed:', error.message);
+        }
+    }
+
+    if (!postcode) {
+        console.log('📮 No postcode found, defaulting to England');
+    }
+
+    let stampDutyAnalysis = { 
+        score: null, 
+        rating: 'Unknown', 
+        description: 'Not available', 
+        amount: null, 
+        percentage: null,
+        taxName: 'Stamp Duty',
+        taxNameFull: 'Stamp Duty Land Tax',
+        country: 'england'
+    };
+
+    let propertyPriceNumber = null;
+    if (property.price) {
+        const priceMatch = String(property.price).match(/[\d,]+/);
+        if (priceMatch) {
+            propertyPriceNumber = parseInt(priceMatch[0].replace(/,/g, ''));
+            stampDutyAnalysis = calculatePropertyTaxScore(propertyPriceNumber, postcode);
+            console.log(`💷 ${stampDutyAnalysis.taxName} (${stampDutyAnalysis.country}): £${stampDutyAnalysis.amount}`);
+        }
+    }
+
+    // Step 6e: Combined Property Cost Score
+    let propertyCostScore = null;
+    let propertyCostRating = 'Unknown';
+    const availableScores = [];
+
+    if (councilTaxAnalysis.score !== null) availableScores.push(councilTaxAnalysis.score);
+    if (pricePerSqMAnalysis.score !== null) availableScores.push(pricePerSqMAnalysis.score);
+    if (stampDutyAnalysis.score !== null) availableScores.push(stampDutyAnalysis.score);
+
+    if (availableScores.length > 0) {
+        propertyCostScore = availableScores.reduce((a, b) => a + b, 0) / availableScores.length;
+        propertyCostRating = getScoreRating(propertyCostScore);
+        console.log(`💷 Property Cost: ${availableScores.length} score(s) available, averaged to ${propertyCostScore.toFixed(1)}`);
+    }
+
+    // Overall score calculation
+    let scoresToAverage = [
+        gpProximity?.score,
+        accessibleFeatures?.score,
+        publicTransport?.score,
+        roomScore?.score
+    ].filter(s => s !== null && s !== undefined);
+
+    if (epcScore !== null) scoresToAverage.push(epcScore);
+    if (propertyCostScore !== null) scoresToAverage.push(propertyCostScore);
+
+    const overallScore = scoresToAverage.length > 0
+        ? scoresToAverage.reduce((sum, score) => sum + score, 0) / scoresToAverage.length
+        : null;
+
+    console.log('📊 Scores included in overall:', scoresToAverage.length);
+    console.log('💷 Property Cost Score:', propertyCostScore);
+    console.log('⚡ EPC Score:', epcScore);
+    console.log('🎯 Overall Score:', overallScore);
+
+    // Debug logging before summary generation
+    console.log('📝 About to generate summary with:', {
+        gpProximityScore: gpProximity?.score,  // ← optional chaining fix
+        epcScore: epcScore,
+        councilTaxScore: councilTaxAnalysis.score,
+        councilTaxRating: councilTaxAnalysis.rating,
+        title: property.title,
+        epcRating: property.epcRating,
+        location: property.location
+    });
+
+    // Generate comprehensive summary
+    let summary;
+    try {
+        summary = generateComprehensiveSummary(
+            gpProximity, 
+            epcScore, 
+            accessibleFeatures, 
+            publicTransport, 
+            cost,
+            councilTaxAnalysis,
+            pricePerSqMAnalysis,
+            stampDutyAnalysis,
+            overallScore, 
+            property.title, 
+            property.epcRating, 
+            property.location,
+            roomScore,
+            accessibleFeatures.details.isSingleLevel,
+            accessibleFeatures.details.isFlat,
+            accessibleFeatures.details.hasAnyLift,
+            accessibleFeatures.details.isUpperFloorFlat,
+            accessibleFeatures.details.floorLevel
+        );
+        
+        console.log('✅ Summary generated successfully');
     } catch (error) {
-        console.log('📮 Reverse geocoding failed:', error.message);
+        console.error('❌ Summary generation failed:', error.message);
+        console.error('Stack trace:', error.stack);
+        throw error;
     }
-}
-
-if (!postcode) {
-    console.log('📮 No postcode found, defaulting to England');
-}
-
-let stampDutyAnalysis = { 
-    score: null, 
-    rating: 'Unknown', 
-    description: 'Not available', 
-    amount: null, 
-    percentage: null,
-    taxName: 'Stamp Duty',
-    taxNameFull: 'Stamp Duty Land Tax',
-    country: 'england'
-};
-
-// Parse property price
-let propertyPriceNumber = null;
-if (property.price) {
-    const priceMatch = String(property.price).match(/[\d,]+/);
-    if (priceMatch) {
-        propertyPriceNumber = parseInt(priceMatch[0].replace(/,/g, ''));
-        stampDutyAnalysis = calculatePropertyTaxScore(propertyPriceNumber, postcode);
-        console.log(`💷 ${stampDutyAnalysis.taxName} (${stampDutyAnalysis.country}): £${stampDutyAnalysis.amount}`);
-    }
-}
-
-// Step 6e: Calculate combined Property Cost Score
-let propertyCostScore = null;
-let propertyCostRating = 'Unknown';
-const availableScores = [];
-
-if (councilTaxAnalysis.score !== null) {
-    availableScores.push(councilTaxAnalysis.score);
-}
-if (pricePerSqMAnalysis.score !== null) {
-    availableScores.push(pricePerSqMAnalysis.score);
-}
-if (stampDutyAnalysis.score !== null) {
-    availableScores.push(stampDutyAnalysis.score);
-}
-
-if (availableScores.length > 0) {
-    propertyCostScore = availableScores.reduce((a, b) => a + b, 0) / availableScores.length;
-    propertyCostRating = getScoreRating(propertyCostScore);
-    console.log(`💷 Property Cost: ${availableScores.length} score(s) available, averaged to ${propertyCostScore.toFixed(1)}`);
-}
-
-
-// Updated overall score calculation - only include available metrics
-let scoresToAverage = [
-    gpProximity.score, 
-    accessibleFeatures.score, 
-    publicTransport.score, 
-    roomScore.score
-];
-
-// Only include EPC if it was actually found
-if (epcScore !== null) {
-    scoresToAverage.push(epcScore);
-}
-
-// Only include property cost if available
-if (propertyCostScore !== null) {
-    scoresToAverage.push(propertyCostScore);
-}
-
-const overallScore = scoresToAverage.reduce((sum, score) => sum + score, 0) / scoresToAverage.length;
-
-console.log('📊 Scores included in overall:', scoresToAverage.length);
-console.log('💷 Property Cost Score:', propertyCostScore);
-console.log('⚡ EPC Score:', epcScore);
-console.log('🎯 Overall Score:', overallScore);
-
-
-// Debug logging before summary generation
-console.log('📝 About to generate summary with:', {
-    gpProximityScore: gpProximity.score,
-    epcScore: epcScore,
-    councilTaxScore: councilTaxAnalysis.score,
-    councilTaxRating: councilTaxAnalysis.rating,
-    title: property.title,
-    epcRating: property.epcRating,
-    location: property.location
-});
-
-
-// Generate comprehensive summary
-let summary;
-try {
-    summary = generateComprehensiveSummary(
-        gpProximity, 
-        epcScore, 
-        accessibleFeatures, 
-        publicTransport, 
-        cost,
-        councilTaxAnalysis,
-        pricePerSqMAnalysis,
-        stampDutyAnalysis,
-        overallScore, 
-        property.title, 
-        property.epcRating, 
-        property.location,
-        roomScore,
-        accessibleFeatures.details.isSingleLevel,      // From returned object
-        accessibleFeatures.details.isFlat,             // From returned object
-        accessibleFeatures.details.hasAnyLift,         // From returned object
-        accessibleFeatures.details.isUpperFloorFlat,   // From returned object
-        accessibleFeatures.details.floorLevel          // From returned object
-    );
-    
-    console.log('✅ Summary generated successfully');
-} catch (error) {
-    console.error('❌ Summary generation failed:', error.message);
-    console.error('Stack trace:', error.stack);
-    throw error;
-}
     
     return {
-        gpProximity: {
+        gpProximity: gpProximity ? {
             score: gpProximity.score || 0,
             rating: gpProximity.rating || getScoreRating(gpProximity.score || 0),
             details: gpProximity.details || 'No details available',
-            nearestGPs: gpProximity.nearestGPs || []  // NEW - pass the array
+            nearestGPs: gpProximity.nearestGPs || []
+        } : {
+            score: null,
+            rating: 'N/A',
+            details: 'GP proximity could not be calculated - location not found',
+            nearestGPs: []
         },
         epcRating: {
             score: epcScore || 0,
@@ -5608,7 +5572,6 @@ try {
             details: `${roomScore.rawScore}/${roomScore.maxPossible} essential rooms found`,
             roomsFound: roomScore.roomsFound
         },
-        // NEW: Public Transport
         publicTransport: {
             score: publicTransport.score || 0,
             rating: getScoreRating(publicTransport.score || 0),
@@ -6134,7 +6097,7 @@ app.post('/api/analyze', async (req, res) => {
                     const { data: dbUser } = await supabase
                         .from('users')
                         .select('id')
-                        .eq('email', user.email)
+                        .eq('email', user.email.toLowerCase().trim())
                         .single();
                     console.log('🔍 DB user found:', !!dbUser);
                     
@@ -6415,7 +6378,7 @@ app.post('/api/teams', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     if (!dbUser) return res.status(404).json({ error: 'User not found' });
@@ -6432,7 +6395,7 @@ app.post('/api/teams', async (req, res) => {
         .insert({
             name: name,
             owner_id: dbUser.id,
-            owner_email: user.email
+            owner_email: user.email.toLowerCase().trim()
         })
         .select()
         .single();
@@ -6449,7 +6412,7 @@ app.post('/api/teams', async (req, res) => {
             team_id: team.id,
             user_id: dbUser.id,
             role: 'owner',
-            email: user.email
+            email: user.email.toLowerCase().trim()
         });
     
     console.log('🏢 Team created:', name);
@@ -6468,7 +6431,7 @@ app.get('/api/teams/me', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     if (!dbUser) return res.status(404).json({ error: 'User not found' });
@@ -6644,7 +6607,7 @@ app.delete('/api/teams/members/:userId', async (req, res) => {
     const { data: dbUser } = await supabase
         .from('users')
         .select('id')
-        .eq('email', user.email)
+        .eq('email', user.email.toLowerCase().trim())
         .single();
     
     const { data: membership } = await supabase
