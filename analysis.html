@@ -1810,6 +1810,102 @@
             margin: 1rem 0;
         }
 
+        /* ========== FREE SEARCH COUNTER ========== */
+        .free-search-counter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff8f0;
+            border: 1px solid #f5d0a9;
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-top: 14px;
+            font-size: 0.85rem;
+            color: #7c4a00;
+        }
+
+        .free-search-counter .counter-pip-track {
+            display: flex;
+            gap: 4px;
+        }
+
+        .free-search-counter .pip {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #f5d0a9;
+        }
+
+        .free-search-counter .pip.used {
+            background: #e8985e;
+        }
+
+        .free-search-counter .counter-text {
+            flex: 1;
+        }
+
+        .free-search-counter .counter-subscribe {
+            color: #e8985e;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 0.85rem;
+            font-family: inherit;
+        }
+
+        .free-search-counter .counter-subscribe:hover {
+            text-decoration: underline;
+        }
+
+        /* ========== FREE LIMIT REACHED ========== */
+        .free-limit-reached {
+            background: white;
+            border-radius: 16px;
+            padding: 2.5rem 2rem;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            max-width: 480px;
+            margin: 2rem auto;
+        }
+
+        .free-limit-reached .limit-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .free-limit-reached h3 {
+            font-family: 'Fraunces', serif;
+            font-size: 1.4rem;
+            color: #1e3a5f;
+            margin-bottom: 0.75rem;
+        }
+
+        .free-limit-reached p {
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .free-limit-reached .btn-limit-subscribe {
+            background: #e8985e;
+            color: white;
+            border: none;
+            padding: 0.85rem 2rem;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: background 0.2s;
+        }
+
+        .free-limit-reached .btn-limit-subscribe:hover {
+            background: #f4b183;
+        }
+
         /* ========== AUTH STYLES ========== */
         .auth-container {
             position: absolute;
@@ -2494,6 +2590,17 @@
 
         .auth-btn-subscribe:hover {
             background: #d4874f;
+        }
+
+        .auth-btn-signup {
+            background: transparent;
+            color: #1e3a5f;
+            border: 1.5px solid #1e3a5f;
+        }
+
+        .auth-btn-signup:hover {
+            background: #1e3a5f;
+            color: white;
         }
 
         .subscription-badge {
@@ -3655,6 +3762,7 @@
         <!-- Shown when logged out -->
         <button class="auth-btn auth-btn-subscribe" id="subscribeBtn" onclick="showPaywallModal()">Subscribe</button>
         <button class="auth-btn" id="loginBtn" onclick="showLoginModal()">Sign In</button>
+        <button class="auth-btn auth-btn-signup" id="signUpFreeBtn" onclick="showSignUpModal()">Sign Up Free</button>
 
         <!-- Shown when logged in -->
         <div class="user-menu hidden" id="userMenu">
@@ -4251,11 +4359,12 @@
             modal.id = 'reauthModal';
             modal.innerHTML = `
                 <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
-                    <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; text-align: center;">
+                    <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; position: relative;">
+                        <div onclick="document.getElementById('reauthModal').remove()" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: rgba(0,0,0,0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: #666; line-height: 1;">✕</div>
                         <h3 style="margin-bottom: 12px;">Session Expired</h3>
                         <p style="margin-bottom: 16px; color: #666;">Click below to receive a new sign-in link.</p>
-                        <p style="margin-bottom: 16px; font-weight: 500;">${email}</p>
-                        <button onclick="resendMagicLink('${email}')" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">Send New Link</button>
+                        <input id="reauthEmailInput" type="email" value="${email}" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; margin-bottom: 12px; box-sizing: border-box; text-align: center;" />
+                        <button onclick="resendMagicLink()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">Send New Link</button>
                         <p id="reauthMessage" style="margin-top: 12px; font-size: 0.9rem;"></p>
                     </div>
                 </div>
@@ -4263,7 +4372,8 @@
             document.body.appendChild(modal);
         }
 
-        async function resendMagicLink(email) {
+        async function resendMagicLink() {
+            const email = document.getElementById('reauthEmailInput').value.trim();
             const msgEl = document.getElementById('reauthMessage');
             msgEl.textContent = 'Sending...';
             msgEl.style.color = '#666';
@@ -4308,8 +4418,127 @@
             return !hasUsedFreeSearch();
         }
 
-        
-       
+        // ========== FREE SIGN-UP MODAL ==========
+        function showSignUpModal() {
+            var modal = document.getElementById('paywallModal');
+            var box = modal.querySelector('.paywall-box');
+
+            // Remove any paywall-specific close container so it doesn't conflict
+            var existing = modal.querySelector('.paywall-close-container');
+            if (existing) existing.remove();
+
+            box.style.position = 'relative';
+            box.innerHTML =
+                '<div onclick="hidePaywallModal()" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: rgba(0,0,0,0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: #666; line-height: 1;">✕</div>' +
+                '<h2 style="margin-bottom: 10px; font-size: 1.3rem;">Get 4 More Free Searches</h2>' +
+                '<p style="color: #6b7280; font-size: 0.95rem; margin-bottom: 18px; line-height: 1.5;">Create a free account — no password needed, just your email. You\'ll get 4 more property searches before being asked to subscribe.</p>' +
+
+                '<div id="signupFormArea">' +
+                '<input type="email" id="signupFreeEmail" placeholder="your@email.com" style="width: 100%; padding: 11px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; margin-bottom: 10px; box-sizing: border-box;" />' +
+                '<button id="signupFreeBtn" onclick="sendSignUpFreeLink()" style="width: 100%; padding: 12px; background: #e8985e; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; font-family: inherit;">Send My Free Access Link</button>' +
+                '<p id="signupFreeMessage" style="margin-top: 10px; font-size: 0.85rem; min-height: 20px;"></p>' +
+                '</div>' +
+
+                '<hr style="margin: 16px 0; border: none; border-top: 1px solid #e5e7eb;" />' +
+
+                '<p onclick="toggleSignupSignIn()" style="font-size: 0.9rem; color: #2563eb; cursor: pointer; text-align: center; text-decoration: underline; margin-bottom: 0;">Already have an account? Sign in</p>' +
+
+                '<div id="signupSignInBox" style="display: none; margin-top: 12px;">' +
+                '<input type="email" id="signupSignInEmail" placeholder="your@email.com" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; margin-bottom: 8px; box-sizing: border-box;" />' +
+                '<button onclick="sendSignupSignInLink()" style="width: 100%; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit;">Send Sign-in Link</button>' +
+                '<p id="signupSignInMessage" style="margin-top: 8px; font-size: 0.85rem;"></p>' +
+                '</div>' +
+
+                '<button class="btn-close-paywall" onclick="hidePaywallModal()" style="margin-top: 16px; padding: 8px; font-size: 0.85rem;">Maybe later</button>';
+
+            modal.classList.remove('hidden');
+
+            // Pre-fill email if we have one saved
+            var saved = localStorage.getItem('captured_email') || '';
+            if (saved) document.getElementById('signupFreeEmail').value = saved;
+        }
+
+        async function sendSignUpFreeLink() {
+            var email = document.getElementById('signupFreeEmail').value.trim();
+            var msgEl = document.getElementById('signupFreeMessage');
+            var btn = document.getElementById('signupFreeBtn');
+
+            if (!email) {
+                msgEl.textContent = 'Please enter your email address.';
+                msgEl.style.color = '#ef4444';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Sending…';
+            msgEl.textContent = '';
+
+            try {
+                var response = await fetch('/auth/signup-free', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                var data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('captured_email', email);
+                    document.getElementById('signupFormArea').innerHTML =
+                        '<p style="text-align: center; color: #10b981; font-size: 1rem; font-weight: 600; margin: 8px 0;">✓ Check your inbox!</p>' +
+                        '<p style="text-align: center; color: #6b7280; font-size: 0.9rem;">We\'ve sent a link to <strong>' + email + '</strong>. Click it to activate your free account.</p>';
+                } else {
+                    msgEl.textContent = data.error || 'Something went wrong. Please try again.';
+                    msgEl.style.color = '#ef4444';
+                    btn.disabled = false;
+                    btn.textContent = 'Send My Free Access Link';
+                }
+            } catch (e) {
+                msgEl.textContent = 'Network error. Please try again.';
+                msgEl.style.color = '#ef4444';
+                btn.disabled = false;
+                btn.textContent = 'Send My Free Access Link';
+            }
+        }
+
+        function toggleSignupSignIn() {
+            var box = document.getElementById('signupSignInBox');
+            box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function sendSignupSignInLink() {
+            var email = document.getElementById('signupSignInEmail').value.trim();
+            var msgEl = document.getElementById('signupSignInMessage');
+
+            if (!email) {
+                msgEl.textContent = 'Please enter your email address.';
+                msgEl.style.color = '#ef4444';
+                return;
+            }
+
+            msgEl.textContent = 'Sending…';
+            msgEl.style.color = '#6b7280';
+
+            try {
+                var response = await fetch('/auth/magic-link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+                var data = await response.json();
+
+                if (response.ok) {
+                    msgEl.textContent = '✓ Check your email for the sign-in link';
+                    msgEl.style.color = '#10b981';
+                } else {
+                    msgEl.textContent = data.error || 'Failed to send link';
+                    msgEl.style.color = '#ef4444';
+                }
+            } catch (e) {
+                msgEl.textContent = 'Network error. Please try again.';
+                msgEl.style.color = '#ef4444';
+            }
+        }
+
         function showPaywallModal() {
             var modal = document.getElementById('paywallModal');
             var box = modal.querySelector('.paywall-box');
@@ -4601,7 +4830,7 @@
 
             // Check if user can analyze (signed in OR hasn't used free search)
             if (!isSignedIn() && hasUsedFreeSearch()) {
-                showPaywallModal();
+                showSignUpModal();
                 return;
             }
 
@@ -4626,17 +4855,32 @@
                 const data = await response.json();
 
                 if (!response.ok) {
+                    if (data.error === 'free_limit_reached') {
+                        document.getElementById('loading').innerHTML = `
+                            <div class="free-limit-reached">
+                                <div class="limit-icon">🔒</div>
+                                <h3>You've used all 5 free property searches</h3>
+                                <p>Subscribe to continue getting instant accessibility insights on any Rightmove listing.</p>
+                                <button class="btn-limit-subscribe" onclick="showPaywallModal()">Subscribe to continue</button>
+                            </div>
+                        `;
+                        return;
+                    }
                     throw new Error(data.error || 'Analysis failed');
                 }
 
                 displayResults(data);
 
-                // Mark free search as used for non-signed-in users
+                // Mark free search as used for non-signed-in users (client-side fallback)
                 if (!isSignedIn()) {
                     markFreeSearchUsed();
                 }
 
-                
+                // Show server-tracked free search counter for authenticated free-tier users
+                if (typeof data.freeSearchesRemaining === 'number') {
+                    displayFreeSearchCounter(data.freeSearchesRemaining);
+                }
+
             } catch (error) {
                 console.error('Analysis error:', error);
                 document.getElementById('loading').innerHTML = `
@@ -4646,6 +4890,32 @@
                 `;
             } finally {
                 document.querySelector('.analyze-btn').disabled = false;
+            }
+        }
+
+        function displayFreeSearchCounter(remaining) {
+            // Remove any existing counter first
+            const existing = document.getElementById('freeSearchCounter');
+            if (existing) existing.remove();
+
+            const used = 5 - remaining;
+            const pips = Array.from({ length: 5 }, (_, i) =>
+                `<span class="pip${i < used ? ' used' : ''}"></span>`
+            ).join('');
+
+            const counter = document.createElement('div');
+            counter.id = 'freeSearchCounter';
+            counter.className = 'free-search-counter';
+            counter.innerHTML = `
+                <div class="counter-pip-track">${pips}</div>
+                <span class="counter-text">${used} of 5 free searches used</span>
+                <button class="counter-subscribe" onclick="showPaywallModal()">Subscribe →</button>
+            `;
+
+            // Insert below the score overview card in the sidebar
+            const scoreOverview = document.querySelector('.score-overview');
+            if (scoreOverview) {
+                scoreOverview.insertAdjacentElement('afterend', counter);
             }
         }
 
@@ -6239,11 +6509,12 @@ function preparePrintReport() {
         modal.id = 'reauthModal';
         modal.innerHTML = `
             <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
-                <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; text-align: center;">
+                <div style="background: white; padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; text-align: center; position: relative;">
+                    <div onclick="document.getElementById('reauthModal').remove()" style="position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; background: rgba(0,0,0,0.08); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; color: #666; line-height: 1;">✕</div>
                     <h3 style="margin-bottom: 12px;">Session Expired</h3>
                     <p style="margin-bottom: 16px; color: #666;">Click below to receive a new sign-in link.</p>
-                    <p style="margin-bottom: 16px; font-weight: 500;">${email}</p>
-                    <button onclick="resendMagicLink('${email}')" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">Send New Link</button>
+                    <input id="reauthEmailInput" type="email" value="${email}" style="width: 100%; padding: 10px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 15px; margin-bottom: 12px; box-sizing: border-box; text-align: center;" />
+                    <button onclick="resendMagicLink()" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">Send New Link</button>
                     <p id="reauthMessage" style="margin-top: 12px; font-size: 0.9rem;"></p>
                 </div>
             </div>
@@ -6251,7 +6522,8 @@ function preparePrintReport() {
         document.body.appendChild(modal);
     }
 
-    async function resendMagicLink(email) {
+    async function resendMagicLink() {
+        const email = document.getElementById('reauthEmailInput').value.trim();
         const msgEl = document.getElementById('reauthMessage');
         msgEl.textContent = 'Sending...';
         msgEl.style.color = '#666';
@@ -6320,14 +6592,16 @@ function preparePrintReport() {
 function showLoggedOutState() {
     document.getElementById('subscribeBtn').classList.remove('hidden');
     document.getElementById('loginBtn').classList.remove('hidden');
+    document.getElementById('signUpFreeBtn').classList.remove('hidden');
     document.getElementById('userMenu').classList.add('hidden');
-    
+
     const saveBtn = document.getElementById('savePropertyBtn');
     if (saveBtn) saveBtn.classList.add('hidden');
 }
 
 function showLoggedInState(user) {
     document.getElementById('loginBtn').classList.add('hidden');
+    document.getElementById('signUpFreeBtn').classList.add('hidden');
     document.getElementById('userMenu').classList.remove('hidden');
 
     // Hide subscribe button if active subscriber or team member

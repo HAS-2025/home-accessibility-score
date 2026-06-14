@@ -5996,10 +5996,53 @@ app.post('/api/analyze', async (req, res) => {
         const { url } = req.body;
 
         if (!url || !url.includes('rightmove.co.uk')) {
-            return res.status(400).json({ 
-                error: 'Please provide a valid Rightmove property URL' 
+            return res.status(400).json({
+                error: 'Please provide a valid Rightmove property URL'
             });
         }
+
+        // ── Access control ──────────────────────────────────────────────────
+        let accessUserProfile = null;  // populated when a valid auth token is present
+        let isFreeUser = false;        // true when access is granted via free_searches_used
+
+        const authHeader = req.headers.authorization;
+        if (authHeader) {
+            const token = authHeader.replace('Bearer ', '');
+            const { data: { user: authUser } } = await supabase.auth.getUser(token);
+
+            if (authUser) {
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('id, account_type, free_searches_used, subscription_status')
+                    .eq('email', authUser.email.toLowerCase().trim())
+                    .single();
+
+                if (profile) {
+                    accessUserProfile = profile;
+                    const searchesUsed = profile.free_searches_used || 0;
+
+                    if (profile.account_type === 'donated') {
+                        // donated accounts: silent full access, no limit
+                        console.log('✅ Donated account access:', authUser.email);
+                    } else if (profile.subscription_status === 'active') {
+                        // active subscriber: full access
+                        console.log('✅ Subscriber access:', authUser.email);
+                    } else if (searchesUsed < 5) {
+                        // free tier with remaining searches
+                        isFreeUser = true;
+                        console.log(`✅ Free tier access (${searchesUsed}/5 used):`, authUser.email);
+                    } else {
+                        console.log(`🚫 Free limit reached (${searchesUsed}/5):`, authUser.email);
+                        return res.status(403).json({
+                            error: 'free_limit_reached',
+                            searchesUsed: searchesUsed,
+                            limit: 5
+                        });
+                    }
+                }
+            }
+        }
+        // ────────────────────────────────────────────────────────────────────
 
         console.log('Analyzing property:', url);
 
@@ -6131,6 +6174,17 @@ app.post('/api/analyze', async (req, res) => {
         // Add property ID to result for saving
         result.propertyId = savedProperty?.id;
 
+        // Increment free_searches_used for free-tier users after a successful analysis
+        if (isFreeUser && accessUserProfile) {
+            const newUsed = (accessUserProfile.free_searches_used || 0) + 1;
+            await supabase
+                .from('users')
+                .update({ free_searches_used: newUsed })
+                .eq('id', accessUserProfile.id);
+            result.freeSearchesRemaining = 5 - newUsed;
+            console.log(`📊 Free searches: ${newUsed}/5 used for user ${accessUserProfile.id}`);
+        }
+
         res.json(result);
 
     } catch (error) {
@@ -6157,37 +6211,28 @@ app.post('/auth/magic-link', async (req, res) => {
     
     const { data: user, error: userError } = await supabase
         .from('users')
-        .select('id, subscription_status')
+        .select('id, subscription_status, account_type')
         .eq('email', normalizedEmail)
         .single();
-    
-    console.log(`🔍 Sign-in attempt: ${normalizedEmail} | found: ${!!user} | status: ${user?.subscription_status}`);
-    
+
+    console.log(`🔍 Sign-in attempt: ${normalizedEmail} | found: ${!!user} | status: ${user?.subscription_status} | type: ${user?.account_type}`);
+
     if (userError || !user) {
         return res.status(404).json({ error: 'No account found with this email. Please subscribe to create an account.' });
     }
 
-    // Check if active subscriber
-    let hasAccess = user.subscription_status === 'active';
+    // Any registered user can sign in — access is gated at search time, not sign-in
+    const { data: teamMembership } = await supabase
+        .from('team_members')
+        .select('role, teams(subscription_status)')
+        .eq('user_id', user.id)
+        .single();
 
-    // If not a direct subscriber, check team membership
-    if (!hasAccess) {
-        const { data: teamMembership } = await supabase
-            .from('team_members')
-            .select('role, teams(subscription_status)')
-            .eq('user_id', user.id)
-            .single();
-        
-        if (teamMembership && teamMembership.teams?.subscription_status === 'active') {
-            hasAccess = true;
-            console.log(`👥 Team member access granted: ${normalizedEmail}`);
-        }
+    if (teamMembership && teamMembership.teams?.subscription_status === 'active') {
+        console.log(`👥 Team member sign-in: ${normalizedEmail}`);
     }
 
-    if (!hasAccess) {
-        console.log('❌ Sign-in attempt for non-subscriber:', normalizedEmail);
-        return res.status(403).json({ error: 'No active subscription found. Please subscribe to access your account.' });
-    }
+    console.log(`✅ Sign-in allowed: ${normalizedEmail} (status: ${user.subscription_status}, type: ${user.account_type})`);
     
     // Send magic link
     const redirectBase = process.env.NODE_ENV === 'development' 
@@ -6208,6 +6253,48 @@ app.post('/auth/magic-link', async (req, res) => {
     
     console.log('📧 Magic link sent to subscriber:', normalizedEmail);
     res.json({ message: 'Check your email for the login link' });
+});
+
+// Send magic link for free sign-up — no subscription check, creates user row if new
+app.post('/auth/signup-free', async (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Ensure a users row exists so free_searches_used tracking works after /auth/callback
+    const { data: existing } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .single();
+
+    if (!existing) {
+        await supabase.from('users').insert({
+            email: normalizedEmail,
+            user_type: 'individual',
+            account_type: 'free',
+            free_searches_used: 0
+        });
+        console.log('👤 Free signup: new user row created for', normalizedEmail);
+    }
+
+    const redirectBase = process.env.NODE_ENV === 'development'
+        ? 'http://localhost:3002'
+        : process.env.BASE_URL;
+
+    const { error } = await supabase.auth.signInWithOtp({
+        email: normalizedEmail,
+        options: { emailRedirectTo: `${redirectBase}/auth/callback` }
+    });
+
+    if (error) {
+        console.log('❌ Free signup OTP error:', error.message);
+        return res.status(400).json({ error: error.message });
+    }
+
+    console.log('📧 Free signup link sent to:', normalizedEmail);
+    res.json({ message: 'Check your email for the link' });
 });
 
 app.get('/auth/user', async (req, res) => {
