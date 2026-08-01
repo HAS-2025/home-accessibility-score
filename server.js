@@ -53,6 +53,38 @@ cron.schedule('0 0 */6 * *', async () => {
 });
 
 // ============================================
+// USER ACCESS CHECK
+// ============================================
+
+/**
+ * Returns { allowed: true } if the user has valid access, or { allowed: false } if not.
+ * Automatically expires individual plans whose access_expires_at has passed.
+ */
+async function checkUserAccess(profile) {
+    if (profile.account_type === 'donated') return { allowed: true };
+
+    if (profile.subscription_type === 'individual') {
+        if (profile.access_expires_at && new Date(profile.access_expires_at) > new Date()) {
+            return { allowed: true };
+        }
+        // Expired — mark the account so downstream checks reflect this
+        await supabase
+            .from('users')
+            .update({ subscription_status: 'expired' })
+            .eq('id', profile.id);
+        console.log(`⏰ Individual access expired for user ${profile.id}`);
+        return { allowed: false };
+    }
+
+    if (profile.subscription_type === 'team') {
+        return { allowed: profile.subscription_status === 'active' };
+    }
+
+    // Fallback: honour subscription_status for any legacy rows without subscription_type
+    return { allowed: profile.subscription_status === 'active' };
+}
+
+// ============================================
 // CONFIGURATION CONSTANTS
 // ============================================
 
@@ -911,12 +943,12 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
         if (session.metadata?.team_id) {
             const { error } = await supabase
                 .from('teams')
-                .update({ 
+                .update({
                     subscription_status: 'active',
                     subscription_tier: 'team'
                 })
                 .eq('id', session.metadata.team_id);
-            
+
             if (error) {
                 console.log('❌ Error updating team:', error.message);
             } else {
@@ -924,17 +956,43 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
             }
             return res.json({ received: true });
         }
-        
+
+        // Individual one-time payment (non-renewing 30-day access)
+        if (session.mode === 'payment') {
+            const email = (session.metadata?.email || session.customer_email).toLowerCase().trim();
+            const accessExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+            console.log('💳 Individual one-time payment for:', email);
+
+            const { error } = await supabase
+                .from('users')
+                .update({
+                    subscription_status: 'active',
+                    subscription_type: 'individual',
+                    access_expires_at: accessExpiry,
+                    stripe_customer_id: session.customer
+                })
+                .eq('email', email);
+
+            if (error) {
+                console.log('❌ Error activating individual access:', error.message);
+            } else {
+                console.log('✅ Individual 30-day access activated for:', email, '- expires:', accessExpiry);
+                await sendSubscriptionConfirmation(email, 'individual');
+            }
+            return res.json({ received: true });
+        }
+
         // Determine tier from actual price ID (most reliable)
         let tier = 'monthly'; // default
-        
+
         if (session.subscription) {
             try {
                 const subscription = await stripe.subscriptions.retrieve(session.subscription);
                 const priceId = subscription.items.data[0]?.price?.id;
-                
+
                 console.log('💰 Price ID from subscription:', priceId);
-                
+
                 if (priceId === process.env.STRIPE_PRICE_ANNUAL) {
                     tier = 'annual';
                 } else if (priceId === process.env.STRIPE_PRICE_TEAM_ANNUAL) {
@@ -948,20 +1006,21 @@ app.post('/api/stripe-webhook', express.raw({ type: 'application/json' }), async
                 console.log('⚠️ Could not retrieve subscription, using default tier:', err.message);
             }
         }
-        
+
         const email = (session.metadata?.email || session.customer_email).toLowerCase().trim();
         const isTeamPlan = tier === 'team' || tier === 'team-annual';
-        
+
         console.log('🏷️ Subscription tier:', tier);
         console.log('📧 User email:', email);
         console.log('👥 Is team plan:', isTeamPlan);
-        
+
         // Update user subscription
         const { data: updatedUser, error } = await supabase
             .from('users')
-            .update({ 
+            .update({
                 subscription_status: 'active',
                 subscription_tier: tier,
+                subscription_type: 'team',
                 stripe_customer_id: session.customer,
                 user_type: isTeamPlan ? 'agent' : 'individual'
             })
@@ -6030,7 +6089,7 @@ app.post('/api/analyze', async (req, res) => {
             if (authUser) {
                 const { data: profile } = await supabase
                     .from('users')
-                    .select('id, account_type, free_searches_used, subscription_status')
+                    .select('id, account_type, free_searches_used, subscription_status, subscription_type, access_expires_at')
                     .eq('email', authUser.email.toLowerCase().trim())
                     .single();
 
@@ -6038,12 +6097,10 @@ app.post('/api/analyze', async (req, res) => {
                     accessUserProfile = profile;
                     const searchesUsed = profile.free_searches_used || 0;
 
-                    if (profile.account_type === 'donated') {
-                        // donated accounts: silent full access, no limit
-                        console.log('✅ Donated account access:', authUser.email);
-                    } else if (profile.subscription_status === 'active') {
-                        // active subscriber: full access
-                        console.log('✅ Subscriber access:', authUser.email);
+                    const access = await checkUserAccess(profile);
+                    if (access.allowed) {
+                        // paid or donated: full access
+                        console.log('✅ Paid/donated access:', authUser.email);
                     } else if (searchesUsed < 5) {
                         // free tier with remaining searches
                         isFreeUser = true;
