@@ -36,6 +36,23 @@ const supabaseAdmin = createClient(
 
 
 // ============================================
+// SUPABASE KEEP-ALIVE
+// ============================================
+
+const cron = require('node-cron');
+
+// Runs every 6 days to prevent the Supabase free-tier DB from pausing
+cron.schedule('0 0 */6 * *', async () => {
+    try {
+        const { error } = await supabase.from('users').select('id').limit(1);
+        if (error) throw error;
+        console.log('✅ Supabase keep-alive ping succeeded');
+    } catch (err) {
+        console.error('❌ Supabase keep-alive ping failed:', err.message);
+    }
+});
+
+// ============================================
 // CONFIGURATION CONSTANTS
 // ============================================
 
