@@ -6063,6 +6063,29 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
+app.get('/api/check-subscription', async (req, res) => {
+    const email = (req.query.email || '').toLowerCase().trim();
+    if (!email) return res.status(400).json({ error: 'email query parameter is required' });
+
+    const { data: user } = await supabase
+        .from('users')
+        .select('subscription_status, subscription_type, access_expires_at')
+        .eq('email', email)
+        .single();
+
+    if (!user) return res.json({ hasActiveSubscription: false });
+
+    const isActive = user.subscription_status === 'active'
+        && (
+            user.subscription_type === 'team'
+            || (user.subscription_type === 'individual' && user.access_expires_at && new Date(user.access_expires_at) > new Date())
+            // legacy rows with no subscription_type
+            || (!user.subscription_type && user.subscription_status === 'active')
+        );
+
+    res.json({ hasActiveSubscription: isActive });
+});
+
 app.get('/health', (req, res) => {
     res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
